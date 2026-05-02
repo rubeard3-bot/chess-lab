@@ -46,7 +46,6 @@ const Storage = (() => {
     if (!raw) return null;
     try {
       const game = JSON.parse(raw);
-      console.log('[Storage] loadGame:', id, '— keys:', game ? Object.keys(game) : 'null');
       return game;
     } catch (e) { return null; }
   }

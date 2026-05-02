@@ -7,7 +7,10 @@
       "Bash(python -c \"from app import app; print\\('Flask app OK'\\)\")",
       "Bash(python -c ' *)",
       "Bash(grep -E \"\\\\.\\(html|css|js\\)$\")",
-      "Bash(curl *)"
+      "Bash(curl *)",
+      "Bash(Get-ChildItem -Recurse -File \"C:\\\\Users\\\\russe\\\\my-projects\\\\chess_analyzer\")",
+      "Bash(Select-Object FullName)",
+      "Bash(Sort-Object FullName)"
     ]
   }
 }

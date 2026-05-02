@@ -180,8 +180,6 @@ const UI = (() => {
     if (active) active.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   }
 
-  /* updateBestMoveDisplay removed — coaching card in renderMoveDetail handles this */
-
   /* ------------------------------------------------------------------ */
   /*  STOCKFISH PROGRESS BAR                                              */
   /* ------------------------------------------------------------------ */
@@ -659,7 +657,6 @@ const UI = (() => {
   /* ------------------------------------------------------------------ */
 
   function showAnalysisPanels() {
-    console.log('showAnalysisPanels called');
     const placeholder = document.getElementById('analysis-placeholder');
     if (placeholder) placeholder.style.display = 'none';
     const colRight = document.getElementById('col-right');

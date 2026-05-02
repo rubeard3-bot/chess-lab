@@ -156,8 +156,6 @@
         content.querySelectorAll('.arch-btn-review').forEach(btn => {
           btn.addEventListener('click', () => {
             const id = btn.dataset.id;
-            console.log('[Archive] game.id:', id);
-            console.log('[Archive] Navigating to URL:', 'analyzer.html?gameId=' + id);
             window.location.href = 'analyzer.html?gameId=' + id;
           });
         });

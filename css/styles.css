@@ -146,23 +146,6 @@ a:hover { text-decoration: underline; }
 .error-dismiss:hover { opacity: 1; }
 
 /* ============================================================
-   CHANGE API KEY
-   ============================================================ */
-.change-api-key-wrap {
-  position: fixed;
-  top: 8px;
-  right: 12px;
-  z-index: 200;
-}
-.change-api-key-link {
-  font-size: 11px;
-  color: var(--text2);
-  opacity: 0.6;
-  transition: opacity var(--trans);
-}
-.change-api-key-link:hover { opacity: 1; text-decoration: underline; }
-
-/* ============================================================
    APP SHELL
    ============================================================ */
 #app {
@@ -184,13 +167,6 @@ a:hover { text-decoration: underline; }
   flex-shrink: 0;
 }
 .topbar.collapsed { max-height: 0; }
-
-.topbar-inner {
-  display: flex;
-  align-items: flex-start;
-  gap: 16px;
-  padding: 12px 16px;
-}
 
 .pgn-area {
   flex: 1;
@@ -567,23 +543,6 @@ a:hover { text-decoration: underline; }
 }
 .nav-btn:hover { background: #1a3a60; border-color: rgba(255,255,255,0.2); }
 .nav-btn:disabled { opacity: 0.3; cursor: not-allowed; }
-
-.best-move-display {
-  margin-top: 8px;
-  padding: 8px 10px;
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  font-size: 13px;
-}
-.best-move-display.hidden { display: none; }
-.best-move-expl {
-  display: block;
-  margin-top: 3px;
-  font-size: 12px;
-  color: var(--text2);
-  font-style: italic;
-}
 
 /* MIDDLE COLUMN */
 .col-mid {
@@ -2741,13 +2700,6 @@ body.import-page {
   justify-content: flex-end;
   padding: 10px 0 12px;
   margin: 0 14px;
-}
-
-.analyzer-page .topbar-inner {
-  display: flex;
-  align-items: flex-start;
-  gap: 16px;
-  padding: 12px 16px;
 }
 
 /* ---- TWO-COLUMN MAIN LAYOUT ---- */

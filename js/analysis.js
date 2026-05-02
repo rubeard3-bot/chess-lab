@@ -112,7 +112,6 @@ const Analysis = (() => {
 
   function calculateAccuracy(classifiedMoves, playerColor) {
     const playerMoves = classifiedMoves.filter(m => m.color === playerColor);
-    console.log(`[Accuracy] playerColor="${playerColor}" — ${playerMoves.length} player moves out of ${classifiedMoves.length} total half-moves`);
     if (!playerMoves.length) return 0;
 
     let total = 0;
@@ -128,18 +127,10 @@ const Analysis = (() => {
       const acc     = 103.1668 * Math.exp(-0.04354 * wpl) - 3.1669;
       const clamped = Math.max(0, Math.min(100, acc));
 
-      console.log(
-        `  ply ${m.ply} (${m.color}) ${m.san}: ` +
-        `evalBefore=${(m.evalBefore ?? 0).toFixed(3)} evalAfter=${(m.eval ?? 0).toFixed(3)} ` +
-        `wpBefore=${wpBefore.toFixed(1)}% wpAfter=${wpAfter.toFixed(1)}% ` +
-        `winPctLoss=${wpl.toFixed(2)} → moveAcc=${clamped.toFixed(2)}`
-      );
-
       total += clamped;
     });
 
     const avg = Math.round(total / playerMoves.length);
-    console.log(`[Accuracy] total=${total.toFixed(2)} / ${playerMoves.length} moves → final=${avg}%`);
     return avg;
   }
 
@@ -298,13 +289,6 @@ RULES for moveExplanations — include EVERY ${playerPlies} ply (${playerName}'s
       else if (m.classification === 'mistake')    mistakes++;
       else if (m.classification === 'inaccuracy') inaccuracies++;
     });
-
-    console.log(
-      `[Analysis] Total half-moves: ${classifiedMoves.length} | ` +
-      `Player: ${playerColor} | Player moves: ${playerMoves.length} | ` +
-      `Blunders: ${blunders} | Mistakes: ${mistakes} | Inaccuracies: ${inaccuracies} | ` +
-      `Accuracy: ${accuracy}%`
-    );
 
     const explMap = {};
     (claudeData.moveExplanations || []).forEach(e => {

@@ -23,15 +23,12 @@ const App = (() => {
 
   function getGameIdFromUrl() {
     const search = window.location.search;
-    console.log('[App] Full URL search string:', search);
     const params = new URLSearchParams(search);
     const id = params.get('gameId');
-    console.log('[App] Parsed gameId:', id);
     return id;
   }
 
   function init() {
-    console.log('[App] init() — DOMContentLoaded');
     if (typeof initNav === 'function') initNav('analyzer');
     Board.init(document.getElementById('chess-board'));
 
@@ -48,9 +45,7 @@ const App = (() => {
     const gameId = getGameIdFromUrl();
 
     if (gameId) {
-      console.log('[App] Loading saved game:', gameId);
       const savedGame = Storage.loadGame(gameId);
-      console.log('[App] savedGame:', savedGame);
 
       if (savedGame && (savedGame.analysis || savedGame.pgn)) {
         if (savedGame.analysis) {
@@ -66,7 +61,6 @@ const App = (() => {
             }
             loadGameIntoApp(savedGame.pgn, savedGame.metadata, parsed.verboseHistory, savedGame.analysis, savedGame.id);
             collapseTopbar();
-            console.log('[App] Game loaded successfully from archive');
           } else {
             console.error('[App] Could not load game from storage - PGN invalid');
             UI.showError('Saved game PGN is invalid.');
@@ -95,27 +89,9 @@ const App = (() => {
     checkPendingPgn();
   }
 
-  function autoLoadGame(gameId) {
-    console.log('Loading saved game:', gameId);
-    const game = Storage.loadGame(gameId);
-    if (!game) { UI.showError('Game not found in storage.'); return; }
-    const parsed = Analysis.parsePGN(game.pgn);
-    if (!parsed.valid) { UI.showError('Saved game PGN is invalid.'); return; }
-    document.getElementById('pgn-input').value = game.pgn;
-    const filenameEl = document.getElementById('pgn-filename');
-    if (filenameEl) {
-      filenameEl.textContent = '📂 Loaded from archive';
-      filenameEl.classList.remove('hidden');
-    }
-    loadGameIntoApp(game.pgn, game.metadata, parsed.verboseHistory, game.analysis, game.id);
-    collapseTopbar();
-  }
-
   function checkPendingPgn() {
     const pgn   = sessionStorage.getItem('pending_pgn');
     const color = sessionStorage.getItem('pending_color') || 'white';
-
-    console.log('[App] checkPendingPgn — pgn length:', pgn ? pgn.length : 0);
 
     if (!pgn) {
       if (!Storage.getApiKey()) {
@@ -137,8 +113,6 @@ const App = (() => {
       console.error('[App] pgn-input textarea not found!');
       return;
     }
-
-    console.log('[App] PGN first 100 chars:', pgn.slice(0, 100));
 
     textarea.value = pgn;
 
@@ -356,17 +330,12 @@ const App = (() => {
     const pgmWhite    = (metadata.white || '').toLowerCase();
     const pgmBlack    = (metadata.black || '').toLowerCase();
 
-    console.log('Detecting color, username:', rawUsername);
-    console.log('PGN White header:', metadata.white || '');
-    console.log('PGN Black header:', metadata.black || '');
-
     let result = null;
     if (ccUser) {
       if (pgmWhite === ccUser) result = 'white';
       else if (pgmBlack === ccUser) result = 'black';
     }
 
-    console.log('Detected color:', result);
     return result;
   }
 
@@ -417,8 +386,6 @@ const App = (() => {
     // Build the full FEN array (ply 0 = start position, ply N = after last move)
     const fens = buildFens(parsed.verboseHistory);
 
-    console.log(`Analyzing as ${playerColor}, filtering moves accordingly`);
-
     // ---- Phase 1: Stockfish ----------------------------------------
     setAnalyzing(true, 'stockfish');
     UI.showProgress(0, fens.length);
@@ -461,7 +428,6 @@ const App = (() => {
     const fensToSave = buildFens(parsed.verboseHistory);
     const gameId     = Storage.saveGame(pgn, parsed.metadata, analysis, fensToSave, playerColor);
     loadGameIntoApp(pgn, parsed.metadata, parsed.verboseHistory, analysis, gameId);
-    console.log('[App] UI render complete');
     collapseTopbar();
   }
 
@@ -534,12 +500,6 @@ const App = (() => {
       fens.push(chess.fen());
     });
     return fens;
-  }
-
-  function rebuildFens(pgn) {
-    const parsed = Analysis.parsePGN(pgn);
-    if (!parsed.valid) return [];
-    return buildFens(parsed.verboseHistory);
   }
 
   /* ------------------------------------------------------------------ */

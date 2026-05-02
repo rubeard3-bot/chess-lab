@@ -242,12 +242,6 @@
         renderGames();
       }
 
-      function pgnToBase64(str) {
-        const bytes  = new TextEncoder().encode(str);
-        const binStr = Array.from(bytes, b => String.fromCharCode(b)).join('');
-        return btoa(binStr);
-      }
-
       function showApiKeyWarning() {
         const el = document.getElementById('import-key-warning');
         if (el) el.classList.remove('hidden');
@@ -305,7 +299,6 @@
               showApiKeyWarning();
               return;
             }
-            console.log('Storing PGN, length:', (game.pgn || '').length);
             sessionStorage.setItem('pending_pgn', game.pgn || '');
             sessionStorage.setItem('pending_color', color);
             window.location.href = 'analyzer.html';
