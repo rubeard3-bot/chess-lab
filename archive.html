@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Game Archive — Chess Lab</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body class="archive-page">
+
+  <div id="az-toast" class="az-toast"></div>
+
+  <!-- Nav Drawer Overlay -->
+  <div id="nav-overlay" class="nav-overlay hidden"></div>
+
+  <!-- Hamburger Nav Drawer -->
+  <div id="nav-drawer" class="nav-drawer">
+    <div class="nav-drawer-header">
+      <span class="nav-drawer-brand">♟ Chess Lab</span>
+      <button id="nav-drawer-close" class="nav-drawer-close" aria-label="Close menu">✕</button>
+    </div>
+    <nav class="nav-drawer-nav">
+      <a href="index.html" class="nav-item"><span class="nav-item-icon">🏠</span><span>Home</span></a>
+      <a href="analyzer.html" class="nav-item"><span class="nav-item-icon">♟</span><span>Game Analyzer</span></a>
+      <a href="archive.html" class="nav-item"><span class="nav-item-icon">📂</span><span>Game Archive</span></a>
+      <a href="practice.html" class="nav-item"><span class="nav-item-icon">♜</span><span>Practice Board</span></a>
+      <button class="nav-item nav-item-btn" id="nav-progress-btn">
+        <span class="nav-item-icon">📈</span><span>My Progress</span>
+        <span class="nav-coming-soon">Soon</span>
+      </button>
+      <button class="nav-item nav-item-btn" id="nav-openings-btn">
+        <span class="nav-item-icon">📖</span><span>Opening Explorer</span>
+        <span class="nav-coming-soon">Soon</span>
+      </button>
+    </nav>
+    <div class="nav-drawer-footer">
+      <button class="nav-item nav-item-btn" id="change-api-key-link">
+        <span class="nav-item-icon">⚙</span><span>Settings / API Key</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="archive-container">
+
+    <!-- Header -->
+    <header class="archive-header">
+      <button id="hamburger-btn" class="hamburger-btn" aria-label="Open menu">☰</button>
+      <div class="archive-header-center">
+        <span class="hub-logo archive-header-logo">♞</span>
+        <h1 class="archive-header-title">Game Archive</h1>
+      </div>
+      <div class="archive-header-spacer"></div>
+    </header>
+
+    <!-- Search -->
+    <div class="archive-search-wrap">
+      <input id="archive-search" class="archive-search" type="text"
+        placeholder="Filter by player name or opening…" autocomplete="off">
+    </div>
+
+    <!-- Content -->
+    <div id="archive-content"></div>
+
+  </div>
+
+  <script src="js/storage.js"></script>
+  <script src="js/nav.js"></script>
+  <script>document.addEventListener('DOMContentLoaded', function () { initNav('archive'); });</script>
+  <script>
+    (function () {
+      let allGames = [];
+
+      function esc(str) {
+        if (typeof str !== 'string') return '';
+        return str
+          .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+      }
+
+      function formatDate(iso) {
+        if (!iso) return '—';
+        try {
+          return new Date(iso).toLocaleDateString('en-US', {
+            month: 'short', day: 'numeric', year: 'numeric'
+          });
+        } catch (e) { return '—'; }
+      }
+
+      function renderTable(games) {
+        const content = document.getElementById('archive-content');
+
+        if (!games.length) {
+          content.innerHTML = `
+            <div class="archive-empty">
+              <div class="archive-empty-icon">♟</div>
+              <p class="archive-empty-text">No games analyzed yet</p>
+              <a href="analyzer.html" class="btn-primary archive-empty-btn">Analyze Your First Game →</a>
+            </div>`;
+          return;
+        }
+
+        const rows = games.map(g => {
+          const m  = g.metadata || {};
+          const s  = g.analysis?.summary || {};
+          const o  = g.analysis?.opening || {};
+          const result = m.result || '*';
+          const resCls = result === '1-0' ? 'arch-res-w'
+                       : result === '0-1' ? 'arch-res-b'
+                       :                    'arch-res-d';
+          const acc = typeof s.accuracy === 'number' ? s.accuracy + '%' : '—';
+          const accCls = s.accuracy >= 75 ? 'arch-acc-hi'
+                       : s.accuracy >= 55 ? 'arch-acc-mid'
+                       :                    'arch-acc-lo';
+
+          return `
+            <tr>
+              <td>
+                <span class="arch-player-white">○ ${esc(m.white || 'White')}</span><br>
+                <span class="arch-player-black">● ${esc(m.black || 'Black')}</span>
+              </td>
+              <td class="arch-td-opening">${esc(o.name || '—')}</td>
+              <td class="arch-td-center arch-mono">${esc(o.eco || '—')}</td>
+              <td class="arch-td-center"><span class="arch-result ${resCls}">${esc(result)}</span></td>
+              <td class="arch-td-center arch-mono ${accCls}">${acc}</td>
+              <td class="arch-td-center arch-blunder">${s.blunders ?? '—'}</td>
+              <td class="arch-td-center arch-mistake">${s.mistakes ?? '—'}</td>
+              <td class="arch-td-date">${formatDate(g.savedAt)}</td>
+              <td class="arch-td-actions">
+                <button class="arch-btn arch-btn-review" data-id="${g.id}">Review →</button>
+                <button class="arch-btn arch-btn-delete" data-id="${esc(g.id)}">Delete</button>
+              </td>
+            </tr>`;
+        }).join('');
+
+        content.innerHTML = `
+          <div class="archive-table-wrap">
+            <table class="archive-table">
+              <thead>
+                <tr>
+                  <th>Players</th>
+                  <th>Opening</th>
+                  <th class="arch-td-center">ECO</th>
+                  <th class="arch-td-center">Result</th>
+                  <th class="arch-td-center">Accuracy</th>
+                  <th class="arch-td-center">Blunders</th>
+                  <th class="arch-td-center">Mistakes</th>
+                  <th>Date</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>${rows}</tbody>
+            </table>
+          </div>`;
+
+        // Wire review buttons
+        content.querySelectorAll('.arch-btn-review').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const id = btn.dataset.id;
+            console.log('[Archive] game.id:', id);
+            console.log('[Archive] Navigating to URL:', 'analyzer.html?gameId=' + id);
+            window.location.href = 'analyzer.html?gameId=' + id;
+          });
+        });
+
+        // Wire delete buttons (event delegation wasn't reliable with dynamic innerHTML)
+        content.querySelectorAll('.arch-btn-delete').forEach(btn => {
+          btn.addEventListener('click', () => {
+            if (!confirm('Delete this game from the archive?')) return;
+            const id = btn.dataset.id;
+            Storage.deleteGame(id);
+            allGames = allGames.filter(g => g.id !== id);
+            applyFilter();
+          });
+        });
+      }
+
+      function applyFilter() {
+        const q = (document.getElementById('archive-search').value || '').toLowerCase().trim();
+        if (!q) { renderTable(allGames); return; }
+        const filtered = allGames.filter(g => {
+          const m = g.metadata || {};
+          const opening = (g.analysis?.opening?.name || '').toLowerCase();
+          return (m.white  || '').toLowerCase().includes(q) ||
+                 (m.black  || '').toLowerCase().includes(q) ||
+                 opening.includes(q);
+        });
+        renderTable(filtered);
+      }
+
+      // Boot
+      allGames = Storage.loadAllGames();
+      renderTable(allGames);
+      document.getElementById('archive-search').addEventListener('input', applyFilter);
+    })();
+  </script>
+</body>
+</html>

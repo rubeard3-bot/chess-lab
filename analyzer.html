@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Game Analyzer — Chess Lab</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body class="analyzer-page">
+
+  <!-- API Key Modal -->
+  <div id="api-key-modal" class="modal-overlay hidden">
+    <div class="modal">
+      <div class="modal-logo">♟</div>
+      <h2>Chess Analyzer</h2>
+      <p>Enter your Anthropic API key to analyze games with Claude.</p>
+      <input type="password" id="api-key-input" placeholder="sk-ant-api03-..." autocomplete="off" spellcheck="false">
+      <button id="api-key-save" class="btn-primary">Save &amp; Continue</button>
+      <p class="modal-note">Stored locally in your browser. Never transmitted anywhere except Anthropic's API.</p>
+    </div>
+  </div>
+
+  <!-- Error Banner -->
+  <div id="error-banner" class="error-banner hidden">
+    <span id="error-message"></span>
+    <button id="error-dismiss" class="error-dismiss">✕</button>
+  </div>
+
+  <!-- Toast -->
+  <div id="az-toast" class="az-toast"></div>
+
+  <!-- Nav Drawer Overlay -->
+  <div id="nav-overlay" class="nav-overlay hidden"></div>
+
+  <!-- Hamburger Nav Drawer -->
+  <div id="nav-drawer" class="nav-drawer">
+    <div class="nav-drawer-header">
+      <span class="nav-drawer-brand">♟ Chess Lab</span>
+      <button id="nav-drawer-close" class="nav-drawer-close" aria-label="Close menu">✕</button>
+    </div>
+    <nav class="nav-drawer-nav">
+      <a href="index.html" class="nav-item"><span class="nav-item-icon">🏠</span><span>Home</span></a>
+      <a href="analyzer.html" class="nav-item nav-item-active"><span class="nav-item-icon">♟</span><span>Game Analyzer</span></a>
+      <a href="archive.html" class="nav-item"><span class="nav-item-icon">📂</span><span>Game Archive</span></a>
+      <a href="practice.html" class="nav-item"><span class="nav-item-icon">♜</span><span>Practice Board</span></a>
+      <button class="nav-item nav-item-btn" id="nav-progress-btn">
+        <span class="nav-item-icon">📈</span><span>My Progress</span>
+        <span class="nav-coming-soon">Soon</span>
+      </button>
+      <button class="nav-item nav-item-btn" id="nav-openings-btn">
+        <span class="nav-item-icon">📖</span><span>Opening Explorer</span>
+        <span class="nav-coming-soon">Soon</span>
+      </button>
+    </nav>
+    <div class="nav-drawer-footer">
+      <button class="nav-item nav-item-btn" id="change-api-key-link">
+        <span class="nav-item-icon">⚙</span><span>Settings / API Key</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Past Games Sidebar -->
+  <div id="games-sidebar" class="games-sidebar hidden">
+    <div class="sidebar-header">
+      <h3>Saved Games</h3>
+      <button id="close-sidebar" class="icon-btn">✕</button>
+    </div>
+    <div id="games-list" class="games-list"></div>
+  </div>
+  <div id="sidebar-overlay" class="sidebar-overlay hidden"></div>
+
+  <!-- App Shell -->
+  <div id="app">
+
+    <!-- Top Navbar -->
+    <header id="top-navbar" class="top-navbar">
+      <button id="hamburger-btn" class="hamburger-btn" aria-label="Open menu">☰</button>
+      <div class="navbar-title">Chess Lab Analyzer</div>
+      <div class="navbar-right">
+        <div id="game-header" class="navbar-game-info hidden">
+          <span id="player-white" class="nav-player nav-player-white"></span>
+          <span class="nav-sep">vs</span>
+          <span id="player-black" class="nav-player nav-player-black"></span>
+          <span id="game-result" class="result-badge"></span>
+          <span id="game-date" style="display:none"></span>
+        </div>
+        <div id="navbar-acc-wrap" class="navbar-acc-wrap hidden">
+          <span id="navbar-acc" class="accuracy-badge"></span>
+          <span id="navbar-acc-label" class="navbar-acc-label"></span>
+        </div>
+        <button id="new-game-btn" class="nav-new-game-btn hidden">+ Analyze</button>
+      </div>
+    </header>
+
+    <!-- Topbar: mini bar + expandable PGN panel -->
+    <div id="topbar" class="topbar">
+      <!-- Always-visible mini bar -->
+      <div class="topbar-mini-bar">
+        <button id="pgn-load-btn" class="pgn-load-btn" type="button">📂 Load PGN</button>
+        <div class="color-selector">
+          <span class="color-selector-label">I played as</span>
+          <button id="btn-color-white" class="color-btn selected" type="button">
+            <span class="color-sq white-sq"></span>White
+          </button>
+          <button id="btn-color-black" class="color-btn" type="button">
+            <span class="color-sq black-sq"></span>Black
+          </button>
+        </div>
+        <div id="color-auto-msg" class="color-auto-msg hidden"></div>
+      </div>
+      <!-- Expandable PGN panel -->
+      <div id="pgn-dropdown" class="pgn-dropdown">
+        <input type="file" id="pgn-file-input" accept=".pgn" style="display:none">
+        <div id="pgn-dropzone" class="pgn-dropzone">
+          <span class="pgn-dropzone-icon">♟</span>
+          <span class="pgn-dropzone-main">Drop your .pgn file here</span>
+          <span class="pgn-dropzone-sub">or click to browse</span>
+        </div>
+        <div id="pgn-filename" class="pgn-filename hidden"></div>
+        <textarea id="pgn-input" placeholder="[Event &quot;Rapid&quot;]&#10;[White &quot;You&quot;]&#10;[Black &quot;Opponent&quot;]&#10;&#10;1. e4 e5 2. Nf3 ..."></textarea>
+        <div id="pgn-error" class="pgn-error hidden"></div>
+        <div class="pgn-dropdown-footer">
+          <button id="analyze-btn" class="btn-primary analyze-btn">
+            <span class="btn-text">Analyze Game</span>
+            <span class="spinner hidden" id="analyze-spinner"></span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Stockfish Progress -->
+    <div id="stockfish-progress" class="stockfish-progress hidden">
+      <span id="progress-label" class="progress-label">Analyzing positions…</span>
+      <div class="progress-track">
+        <div id="progress-bar-fill" class="progress-fill"></div>
+      </div>
+    </div>
+
+    <!-- Main Layout -->
+    <div id="main-layout" class="main-layout">
+
+      <!-- LEFT COLUMN -->
+      <div class="col-left">
+
+        <!-- Opponent nameplate (top of board) -->
+        <div class="nameplate nameplate-top">
+          <span class="np-dot" id="np-opp-dot">●</span>
+          <span class="np-name" id="np-opp-name">Opponent</span>
+        </div>
+
+        <!-- Eval bar + board -->
+        <div class="board-row">
+          <div class="eval-bar-wrap">
+            <div id="eval-bar" class="eval-bar">
+              <div id="eval-bar-fill-black" class="eval-bar-fill-black"></div>
+            </div>
+            <div id="eval-value" class="eval-value">0.0</div>
+          </div>
+          <div class="canvas-wrap" id="canvas-wrap">
+            <canvas id="chess-board"></canvas>
+          </div>
+        </div>
+
+        <!-- You nameplate (below board) -->
+        <div class="nameplate nameplate-bottom">
+          <span class="np-dot" id="np-you-dot">○</span>
+          <span class="np-name" id="np-you-name">You</span>
+        </div>
+
+        <!-- Navigation -->
+        <div class="board-controls">
+          <div class="nav-row">
+            <button class="nav-btn" id="btn-first" title="First move">|◀</button>
+            <button class="nav-btn" id="btn-prev"  title="Previous">◀</button>
+            <button class="nav-btn" id="btn-next"  title="Next">▶</button>
+            <button class="nav-btn" id="btn-last"  title="Last move">▶|</button>
+            <button class="nav-btn" id="btn-flip"  title="Flip board">⟳</button>
+            <button class="nav-btn" id="btn-games" title="Saved games">📂</button>
+          </div>
+        </div>
+
+        <!-- Move list -->
+        <div class="move-list-wrap">
+          <div id="move-list" class="move-list">
+            <p class="placeholder-text">Analyze a game to see moves.</p>
+          </div>
+        </div>
+
+        <!-- Eval graph -->
+        <div id="panel-graph" class="panel-graph-left hidden">
+          <div class="graph-row">
+            <div class="graph-y-labels">
+              <span>+3</span>
+              <span>0</span>
+              <span>−3</span>
+            </div>
+            <div class="graph-container graph-container-left">
+              <svg id="eval-graph" width="100%" height="120" preserveAspectRatio="none"></svg>
+            </div>
+          </div>
+          <div class="graph-x-labels" id="graph-x-labels"></div>
+        </div>
+
+      </div><!-- /col-left -->
+
+      <!-- RIGHT COLUMN -->
+      <div class="col-right" id="col-right">
+
+        <!-- Placeholder / Welcome -->
+        <div id="analysis-placeholder" class="analysis-placeholder">
+          <div class="welcome-icon">♟</div>
+          <div class="welcome-title">Chess Lab Analyzer</div>
+          <div class="welcome-sub">Load a PGN and click <strong>Analyze Game</strong> for full coaching feedback.</div>
+          <div class="welcome-features">
+            <div class="welcome-feature">
+              <span class="wf-icon">⚙</span>
+              <span class="wf-label"><strong>Stockfish-powered analysis</strong>Every position evaluated at depth 20</span>
+            </div>
+            <div class="welcome-feature">
+              <span class="wf-icon">💬</span>
+              <span class="wf-label"><strong>AI coaching explanations</strong>Plain-English feedback on your mistakes</span>
+            </div>
+            <div class="welcome-feature">
+              <span class="wf-icon">📖</span>
+              <span class="wf-label"><strong>Opening theory</strong>Learn the lines and ideas behind your openings</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- SECTION 1: Move Coaching -->
+        <div id="panel-move-detail" class="analysis-section coaching-section hidden">
+          <div id="move-detail-content" class="move-detail-content">
+            <p class="move-detail-empty">Navigate to a move to see coaching feedback.</p>
+          </div>
+        </div>
+
+        <!-- SECTION 2: Why Best Move -->
+        <div id="panel-why-best" class="analysis-section hidden">
+          <div class="section-heading" id="why-best-heading">Why the Best Move</div>
+          <div id="why-best-content" class="section-body-text"></div>
+        </div>
+
+        <!-- SECTION 3: Alternate Moves -->
+        <div id="panel-alternates" class="analysis-section hidden">
+          <div class="section-heading">Other Good Moves</div>
+          <div id="alternates-content" class="section-body-text"></div>
+        </div>
+
+        <!-- SECTION 4: Opening Theory (collapsible, collapsed by default) -->
+        <div id="panel-opening" class="analysis-section collapsible-section hidden">
+          <button class="section-toggle" data-body="opening-body">
+            <span class="section-toggle-label">Opening Theory</span>
+            <span class="toggle-arrow">▾</span>
+          </button>
+          <div id="opening-body" class="collapsible-body">
+            <div class="opening-title-row">
+              <h3 id="opening-name-heading" class="opening-name-h">Opening</h3>
+              <span id="eco-badge" class="eco-badge"></span>
+            </div>
+            <div id="opening-details" class="opening-details"></div>
+            <div id="lines-to-study" class="lines-to-study"></div>
+          </div>
+        </div>
+
+        <!-- SECTION 5: Game Summary (collapsible, collapsed by default) -->
+        <div id="panel-summary" class="analysis-section collapsible-section hidden">
+          <button class="section-toggle" data-body="summary-body">
+            <span class="section-toggle-label">Game Summary</span>
+            <span class="toggle-arrow">▾</span>
+          </button>
+          <div id="summary-body" class="collapsible-body">
+            <div class="summary-acc-row">
+              <span id="accuracy-badge" class="accuracy-badge"></span>
+              <span id="accuracy-color-label" class="accuracy-color-label"></span>
+            </div>
+            <div id="stats-row" class="stats-row"></div>
+            <div id="strength-card"  class="insight-card strength-card"></div>
+            <div id="weakness-card"  class="insight-card weakness-card"></div>
+            <div id="pattern-card"   class="insight-card pattern-card hidden"></div>
+          </div>
+        </div>
+
+        <!-- SECTION 6: Middlegame Notes (collapsible, collapsed by default) -->
+        <div id="panel-middlegame" class="analysis-section collapsible-section hidden">
+          <button class="section-toggle" data-body="middlegame-body">
+            <span class="section-toggle-label">Middlegame</span>
+            <span class="toggle-arrow">▾</span>
+          </button>
+          <div id="middlegame-body" class="collapsible-body">
+            <div id="middlegame-content" class="section-body-text"></div>
+          </div>
+        </div>
+
+        <!-- SECTION 7: Endgame Notes (collapsible, collapsed by default) -->
+        <div id="panel-endgame" class="analysis-section collapsible-section hidden">
+          <button class="section-toggle" data-body="endgame-body">
+            <span class="section-toggle-label">Endgame</span>
+            <span class="toggle-arrow">▾</span>
+          </button>
+          <div id="endgame-body" class="collapsible-body">
+            <div id="endgame-content" class="section-body-text"></div>
+          </div>
+        </div>
+
+      </div><!-- /col-right -->
+
+    </div><!-- /main-layout -->
+  </div><!-- /app -->
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/board.js"></script>
+  <script src="js/engine.js"></script>
+  <script src="js/analysis.js"></script>
+  <script src="js/nav.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

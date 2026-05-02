@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Import from Chess.com — Chess Lab</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body class="import-page">
+
+  <div id="import-toast" class="import-toast" role="status" aria-live="polite"></div>
+
+  <!-- Nav Drawer Overlay -->
+  <div id="nav-overlay" class="nav-overlay hidden"></div>
+
+  <!-- Hamburger Nav Drawer -->
+  <div id="nav-drawer" class="nav-drawer">
+    <div class="nav-drawer-header">
+      <span class="nav-drawer-brand">♟ Chess Lab</span>
+      <button id="nav-drawer-close" class="nav-drawer-close" aria-label="Close menu">✕</button>
+    </div>
+    <nav class="nav-drawer-nav">
+      <a href="index.html" class="nav-item"><span class="nav-item-icon">🏠</span><span>Home</span></a>
+      <a href="analyzer.html" class="nav-item"><span class="nav-item-icon">♟</span><span>Game Analyzer</span></a>
+      <a href="archive.html" class="nav-item"><span class="nav-item-icon">📂</span><span>Game Archive</span></a>
+      <a href="practice.html" class="nav-item"><span class="nav-item-icon">♜</span><span>Practice Board</span></a>
+      <button class="nav-item nav-item-btn" id="nav-progress-btn">
+        <span class="nav-item-icon">📈</span><span>My Progress</span>
+        <span class="nav-coming-soon">Soon</span>
+      </button>
+      <button class="nav-item nav-item-btn" id="nav-openings-btn">
+        <span class="nav-item-icon">📖</span><span>Opening Explorer</span>
+        <span class="nav-coming-soon">Soon</span>
+      </button>
+    </nav>
+    <div class="nav-drawer-footer">
+      <button class="nav-item nav-item-btn" id="change-api-key-link">
+        <span class="nav-item-icon">⚙</span><span>Settings / API Key</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="import-container">
+
+    <!-- Header -->
+    <header class="import-header">
+      <button id="hamburger-btn" class="hamburger-btn" aria-label="Open menu">☰</button>
+      <div class="import-header-center">
+        <span class="import-header-logo">♟</span>
+        <h1 class="import-header-title">Import from Chess.com</h1>
+        <span id="import-username-display" class="import-connected-username" style="display:none"></span>
+      </div>
+      <div class="import-header-spacer"></div>
+    </header>
+
+    <!-- Not connected state -->
+    <div id="import-no-connection" class="import-empty hidden">
+      <div class="import-empty-icon">⚡</div>
+      <p>No chess.com account connected.</p>
+      <p><a href="index.html">Go to the home page</a> to connect your chess.com username first.</p>
+    </div>
+
+    <!-- Controls -->
+    <div id="import-controls" class="import-controls hidden">
+
+      <div class="import-control-group">
+        <label class="import-label" for="import-month-select">Month</label>
+        <select id="import-month-select" class="import-select">
+          <option value="">Loading archives…</option>
+        </select>
+      </div>
+
+      <div class="import-control-group">
+        <span class="import-label">Time Control</span>
+        <div class="filter-toggle-group" id="tc-filter">
+          <button class="filter-btn active" data-tc="all">All</button>
+          <button class="filter-btn" data-tc="bullet">Bullet</button>
+          <button class="filter-btn" data-tc="blitz">Blitz</button>
+          <button class="filter-btn" data-tc="rapid">Rapid</button>
+          <button class="filter-btn" data-tc="classical">Classical</button>
+        </div>
+      </div>
+
+      <div class="import-control-group">
+        <span class="import-label">Result</span>
+        <div class="filter-toggle-group" id="result-filter">
+          <button class="filter-btn active" data-result="all">All</button>
+          <button class="filter-btn" data-result="win">Wins</button>
+          <button class="filter-btn" data-result="loss">Losses</button>
+          <button class="filter-btn" data-result="draw">Draws</button>
+        </div>
+      </div>
+
+      <button id="import-all-btn" class="import-all-btn">Import All This Month</button>
+
+    </div>
+
+    <!-- API key missing warning -->
+    <div id="import-key-warning" class="import-key-warning hidden">
+      ⚠ You need to add your API key before analyzing.
+      <a href="index.html?needsKey=true">Go to Settings on the home page</a>
+    </div>
+
+    <!-- Loading spinner -->
+    <div id="import-loading" class="import-loading hidden">
+      <span class="spinner"></span> Loading games…
+    </div>
+
+    <!-- Game list -->
+    <div id="import-game-list" class="import-game-list"></div>
+
+    <!-- Load more -->
+    <div id="import-load-more-wrap" class="import-load-more-wrap hidden">
+      <button id="import-load-more-btn" class="import-load-more-btn">Load More</button>
+    </div>
+
+    <!-- Empty state -->
+    <div id="import-empty" class="import-empty hidden">
+      <div class="import-empty-icon">♟</div>
+      <p>No games found for the selected filters.</p>
+    </div>
+
+  </div>
+
+  <script src="js/storage.js"></script>
+  <script src="js/chesscom.js"></script>
+  <script src="js/nav.js"></script>
+  <script>document.addEventListener('DOMContentLoaded', function () { initNav('import'); });</script>
+  <script>
+    (function () {
+
+      /* ---- constants ---- */
+      const LS_USERNAME = 'csa_chesscom_username';
+      const PAGE_SIZE   = 20;
+
+      /* ---- state ---- */
+      let username       = '';
+      let allGames       = [];
+      let filteredGames  = [];
+      let visibleCount   = PAGE_SIZE;
+      let tcFilter       = 'all';
+      let resultFilter   = 'all';
+      let analyzedHashes = new Set();
+
+      /* ---- elements ---- */
+      const elNoConn     = document.getElementById('import-no-connection');
+      const elControls   = document.getElementById('import-controls');
+      const elLoading    = document.getElementById('import-loading');
+      const elGameList   = document.getElementById('import-game-list');
+      const elLoadMore   = document.getElementById('import-load-more-wrap');
+      const elEmpty      = document.getElementById('import-empty');
+      const elMonthSel   = document.getElementById('import-month-select');
+      const elUsername   = document.getElementById('import-username-display');
+
+      /* ---- toast ---- */
+      const toast = document.getElementById('import-toast');
+      let toastTimer;
+      function showToast(msg) {
+        clearTimeout(toastTimer);
+        toast.textContent = msg;
+        toast.classList.add('show');
+        toastTimer = setTimeout(() => toast.classList.remove('show'), 3000);
+      }
+
+      /* ---- pgn hash (djb2) ---- */
+      function pgnHash(pgn) {
+        const clean = pgn.replace(/\s+/g, ' ').trim();
+        let h = 5381;
+        for (let i = 0; i < clean.length; i++) {
+          h = (((h << 5) + h) + clean.charCodeAt(i)) & 0x7fffffff;
+        }
+        return h.toString(36);
+      }
+
+      function buildAnalyzedSet() {
+        const games = Storage.loadAllGames();
+        const set   = new Set();
+        games.forEach(g => { if (g.pgn) set.add(pgnHash(g.pgn)); });
+        return set;
+      }
+
+      /* ---- game helpers ---- */
+      function getResult(game) {
+        const lc = username.toLowerCase();
+        const isWhite = game.white.username.toLowerCase() === lc;
+        const myResult = isWhite ? game.white.result : game.black.result;
+        if (myResult === 'win') return 'win';
+        const lossResults = ['checkmated','timeout','resigned','lose','abandoned','timeout_vs_insufficient'];
+        if (lossResults.includes(myResult)) return 'loss';
+        return 'draw';
+      }
+
+      function getOpponent(game) {
+        const lc = username.toLowerCase();
+        if (game.white.username.toLowerCase() === lc) {
+          return { username: game.black.username, rating: game.black.rating };
+        }
+        return { username: game.white.username, rating: game.white.rating };
+      }
+
+      function getPlayerColor(game) {
+        return game.white.username.toLowerCase() === username.toLowerCase() ? 'white' : 'black';
+      }
+
+      function extractOpening(pgn) {
+        const m = pgn.match(/\[Opening "([^"]+)"\]/);
+        return m ? m[1] : null;
+      }
+
+      function tcLabel(tc) {
+        const map = { bullet: 'Bullet', blitz: 'Blitz', rapid: 'Rapid', classical: 'Classical', daily: 'Daily' };
+        return map[tc] || tc || '?';
+      }
+
+      function formatDate(ts) {
+        return new Date(ts * 1000).toLocaleDateString('en-US',
+          { month: 'short', day: 'numeric', year: 'numeric' });
+      }
+
+      function archiveToLabel(url) {
+        const parts = url.split('/');
+        const year  = parts[parts.length - 2];
+        const month = parseInt(parts[parts.length - 1], 10);
+        const names = ['January','February','March','April','May','June',
+                       'July','August','September','October','November','December'];
+        return names[month - 1] + ' ' + year;
+      }
+
+      function archiveToYearMonth(url) {
+        const parts = url.split('/');
+        return { year: parts[parts.length - 2], month: parts[parts.length - 1] };
+      }
+
+      /* ---- filter & render ---- */
+      function applyFilters() {
+        filteredGames = allGames.filter(g => {
+          if (tcFilter !== 'all' && g.time_class !== tcFilter) return false;
+          if (resultFilter !== 'all' && getResult(g) !== resultFilter) return false;
+          return true;
+        });
+        visibleCount = PAGE_SIZE;
+        renderGames();
+      }
+
+      function pgnToBase64(str) {
+        const bytes  = new TextEncoder().encode(str);
+        const binStr = Array.from(bytes, b => String.fromCharCode(b)).join('');
+        return btoa(binStr);
+      }
+
+      function showApiKeyWarning() {
+        const el = document.getElementById('import-key-warning');
+        if (el) el.classList.remove('hidden');
+      }
+
+      function renderGames() {
+        elGameList.innerHTML = '';
+        elEmpty.classList.add('hidden');
+        elLoadMore.classList.add('hidden');
+
+        if (filteredGames.length === 0) {
+          elEmpty.classList.remove('hidden');
+          return;
+        }
+
+        const slice = filteredGames.slice(0, visibleCount);
+        const frag  = document.createDocumentFragment();
+
+        slice.forEach((game, idx) => {
+          const result   = getResult(game);
+          const opponent = getOpponent(game);
+          const opening  = extractOpening(game.pgn || '');
+          const date     = game.end_time ? formatDate(game.end_time) : '';
+          const color    = getPlayerColor(game);
+          const hash     = pgnHash(game.pgn || '');
+          const analyzed = analyzedHashes.has(hash);
+
+          const card = document.createElement('div');
+          card.className = `import-card import-card-${result}`;
+
+          const resultLabels = { win: 'Win', loss: 'Loss', draw: 'Draw' };
+
+          card.innerHTML = `
+            <span class="import-result-badge badge-${result}">${resultLabels[result]}</span>
+            <div class="import-card-main">
+              <div class="import-card-opponent">
+                vs <strong>${escHtml(opponent.username)}</strong>
+                ${opponent.rating ? `<span class="import-opp-rating">(${opponent.rating})</span>` : ''}
+              </div>
+              <div class="import-card-meta">
+                <span class="import-tc-badge">${escHtml(tcLabel(game.time_class))}</span>
+                ${date ? `<span class="import-card-date">${escHtml(date)}</span>` : ''}
+                ${opening ? `<span class="import-card-opening">${escHtml(opening)}</span>` : ''}
+              </div>
+            </div>
+            <div class="import-card-actions">
+              ${analyzed ? '<span class="import-analyzed-badge">Already Analyzed</span>' : ''}
+              <button class="import-analyze-btn">Analyze</button>
+            </div>
+          `;
+
+          // Attach click via closure so we never store the PGN in a DOM attribute
+          card.querySelector('.import-analyze-btn').addEventListener('click', () => {
+            if (!localStorage.getItem('csa_api_key')) {
+              showApiKeyWarning();
+              return;
+            }
+            console.log('Storing PGN, length:', (game.pgn || '').length);
+            sessionStorage.setItem('pending_pgn', game.pgn || '');
+            sessionStorage.setItem('pending_color', color);
+            window.location.href = 'analyzer.html';
+          });
+
+          frag.appendChild(card);
+        });
+
+        elGameList.appendChild(frag);
+
+        if (visibleCount < filteredGames.length) {
+          elLoadMore.classList.remove('hidden');
+        }
+      }
+
+      function escHtml(s) {
+        return String(s)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;');
+      }
+
+      /* ---- month load ---- */
+      async function loadMonth(url) {
+        elLoading.classList.remove('hidden');
+        elGameList.innerHTML = '';
+        elEmpty.classList.add('hidden');
+        elLoadMore.classList.add('hidden');
+
+        const { year, month } = archiveToYearMonth(url);
+        const games = await ChessCom.fetchRecentGames(username, year, month);
+
+        elLoading.classList.add('hidden');
+
+        if (!games) {
+          elEmpty.classList.remove('hidden');
+          return;
+        }
+
+        allGames = games;
+        applyFilters();
+      }
+
+      /* ---- init ---- */
+      async function init() {
+        username = localStorage.getItem(LS_USERNAME) || '';
+
+        if (!username) {
+          elNoConn.classList.remove('hidden');
+          return;
+        }
+
+        elUsername.textContent = '@' + username;
+        elUsername.style.display = '';
+        elControls.classList.remove('hidden');
+
+        analyzedHashes = buildAnalyzedSet();
+
+        // Load archives
+        const archives = await ChessCom.fetchGameArchives(username);
+        elMonthSel.innerHTML = '';
+
+        if (!archives || archives.length === 0) {
+          const opt = document.createElement('option');
+          opt.textContent = 'No games found';
+          elMonthSel.appendChild(opt);
+          return;
+        }
+
+        archives.forEach((url, i) => {
+          const opt = document.createElement('option');
+          opt.value       = url;
+          opt.textContent = archiveToLabel(url);
+          if (i === 0) opt.selected = true;
+          elMonthSel.appendChild(opt);
+        });
+
+        await loadMonth(archives[0]);
+      }
+
+      /* ---- event listeners ---- */
+      elMonthSel.addEventListener('change', () => {
+        if (elMonthSel.value) loadMonth(elMonthSel.value);
+      });
+
+      document.getElementById('tc-filter').addEventListener('click', e => {
+        const btn = e.target.closest('.filter-btn');
+        if (!btn) return;
+        document.querySelectorAll('#tc-filter .filter-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        tcFilter = btn.dataset.tc;
+        applyFilters();
+      });
+
+      document.getElementById('result-filter').addEventListener('click', e => {
+        const btn = e.target.closest('.filter-btn');
+        if (!btn) return;
+        document.querySelectorAll('#result-filter .filter-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        resultFilter = btn.dataset.result;
+        applyFilters();
+      });
+
+      document.getElementById('import-all-btn').addEventListener('click', () => {
+        showToast('Import All coming soon!');
+      });
+
+      document.getElementById('import-load-more-btn').addEventListener('click', () => {
+        visibleCount += PAGE_SIZE;
+        renderGames();
+      });
+
+      init();
+
+    })();
+  </script>
+</body>
+</html>

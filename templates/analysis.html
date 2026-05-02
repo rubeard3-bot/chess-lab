@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Analysis — {{ analysis.game_info.white }} vs {{ analysis.game_info.black }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <!-- chessboard.js -->
+  <link rel="stylesheet"
+        href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="header-inner">
+    <a href="/" class="logo">♟ Chess Analyzer</a>
+    <div class="game-header-meta">
+      <span class="gh-players">
+        {{ analysis.game_info.white }}
+        <span class="vs-sep">vs</span>
+        {{ analysis.game_info.black }}
+      </span>
+      <span class="result-badge result-{{ analysis.game_info.result|replace('/', '-')|replace('*','x') }}">
+        {{ analysis.game_info.result }}
+      </span>
+      <span class="gh-opening">{{ analysis.game_info.eco }} · {{ analysis.game_info.opening }}</span>
+    </div>
+  </div>
+</header>
+
+<main class="analysis-layout">
+
+  <!-- ════════════ LEFT: Board + Nav ════════════════════════════════════════ -->
+  <section class="board-panel">
+
+    <div class="board-with-eval">
+      <!-- Eval bar -->
+      <div class="eval-bar-wrap" title="White advantage">
+        <div class="eval-bar" id="evalBar">
+          <div class="eval-black-section" id="evalBlack"></div>
+          <div class="eval-white-section" id="evalWhite"></div>
+        </div>
+        <div class="eval-label" id="evalLabel">0.00</div>
+      </div>
+
+      <!-- Board -->
+      <div id="chessboard"></div>
+    </div>
+
+    <!-- Current move info -->
+    <div class="move-info-bar">
+      <span class="move-num-badge" id="moveNumBadge">Start</span>
+      <span class="move-san-display" id="moveSanDisplay">—</span>
+      <span class="cls-badge" id="clsBadge"></span>
+    </div>
+
+    <div class="move-explanation" id="moveExplanation">
+      Use the buttons or move list to navigate through the game.
+    </div>
+
+    <!-- Navigation -->
+    <div class="nav-row">
+      <button class="nav-btn" id="btnFirst" onclick="gotoMove(0)">⏮</button>
+      <button class="nav-btn" id="btnPrev"  onclick="gotoMove(currentIndex - 1)">◀</button>
+      <button class="nav-btn" id="btnNext"  onclick="gotoMove(currentIndex + 1)">▶</button>
+      <button class="nav-btn" id="btnLast"  onclick="gotoMove(movesData.length - 1)">⏭</button>
+    </div>
+
+  </section>
+
+  <!-- ════════════ MIDDLE: Move list ════════════════════════════════════════ -->
+  <section class="movelist-panel">
+    <h3 class="panel-title">Move List</h3>
+    <div class="movelist" id="moveList"></div>
+  </section>
+
+  <!-- ════════════ RIGHT: Report sections ══════════════════════════════════ -->
+  <section class="report-panel">
+
+    <!-- Game Summary -->
+    {% set gs = analysis.sections.game_summary %}
+    <details class="report-section" open>
+      <summary class="section-header">
+        <span class="section-icon">📊</span> Game Summary
+        <span class="accuracy-pill">{{ gs.accuracy_score }}% accuracy</span>
+      </summary>
+      <div class="section-body">
+        <p class="narrative">{{ gs.result_narrative }}</p>
+        <div class="summary-stats">
+          <div class="sstat">
+            <div class="sstat-val">{{ analysis.summary.total_blunders }}</div>
+            <div class="sstat-label">Blunders</div>
+          </div>
+          <div class="sstat">
+            <div class="sstat-val warn">{{ analysis.summary.total_mistakes }}</div>
+            <div class="sstat-label">Mistakes</div>
+          </div>
+          <div class="sstat">
+            <div class="sstat-val muted">{{ analysis.summary.total_inaccuracies }}</div>
+            <div class="sstat-label">Inaccuracies</div>
+          </div>
+          <div class="sstat">
+            <div class="sstat-val info">{{ analysis.game_info.total_moves }}</div>
+            <div class="sstat-label">Total Moves</div>
+          </div>
+        </div>
+        <div class="two-col">
+          <div class="insight-box strength">
+            <div class="ib-title">💪 Strength</div>
+            <div>{{ gs.key_strength }}</div>
+          </div>
+          <div class="insight-box weakness">
+            <div class="ib-title">⚠ Weakness</div>
+            <div>{{ gs.key_weakness }}</div>
+          </div>
+        </div>
+      </div>
+    </details>
+
+    <!-- Opening Theory -->
+    {% set ot = analysis.sections.opening_theory %}
+    <details class="report-section">
+      <summary class="section-header">
+        <span class="section-icon">📖</span> Opening Theory
+        <span class="eco-pill">{{ ot.eco }}</span>
+      </summary>
+      <div class="section-body">
+        <p class="op-name">{{ ot.opening_name }}</p>
+        <div class="opening-deviation">
+          <div class="dev-row">
+            <span class="dev-label">Book until:</span>
+            <span class="dev-val">Move {{ ot.book_until_move }}</span>
+          </div>
+          <div class="dev-row">
+            <span class="dev-label">You played:</span>
+            <span class="dev-val bad-move">{{ ot.deviation_move }}</span>
+          </div>
+          <div class="dev-row">
+            <span class="dev-label">Theory says:</span>
+            <span class="dev-val good-move">{{ ot.correct_book_move }}</span>
+          </div>
+        </div>
+        {% if ot.deviation_explanation %}
+        <p class="dev-explain">{{ ot.deviation_explanation }}</p>
+        {% endif %}
+        {% if ot.lines_to_study %}
+        <h4 class="sub-heading">Lines to Study</h4>
+        <div class="study-lines">
+          {% for line in ot.lines_to_study %}
+          <div class="study-card">
+            <div class="study-name">{{ line.name }}</div>
+            <div class="study-desc">{{ line.description }}</div>
+            <div class="study-resource">📚 {{ line.resource }}</div>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </div>
+    </details>
+
+    <!-- Middlegame Analysis -->
+    {% set mg = analysis.sections.middlegame_analysis %}
+    <details class="report-section">
+      <summary class="section-header">
+        <span class="section-icon">⚔</span> Middlegame Analysis
+      </summary>
+      <div class="section-body">
+        {% if mg.critical_mistakes %}
+        <h4 class="sub-heading">Critical Mistakes</h4>
+        {% for cm in mg.critical_mistakes %}
+        <div class="mistake-card mistake-{{ cm.classification }}">
+          <div class="mistake-header">
+            <span class="mistake-move">Move {{ cm.move_number }}. {{ cm.move_played }}</span>
+            <span class="cls-badge cls-{{ cm.classification }}">{{ cm.classification }}</span>
+            <span class="cp-loss">−{{ (cm.cp_loss / 100)|round(1) }} pawns</span>
+            <button class="goto-move-btn"
+                    onclick="gotoMoveByNumber({{ cm.move_number }}, {{ '"white"' if analysis.game_info.user_color == 'white' else '"black"' }})">
+              View on board
+            </button>
+          </div>
+          <div class="mistake-body">
+            <div class="move-compare">
+              <span class="mc-bad">✗ {{ cm.move_played }}</span>
+              <span class="mc-arrow">→</span>
+              <span class="mc-good">✓ {{ cm.best_move }}</span>
+            </div>
+            <p class="mistake-explain">{{ cm.explanation }}</p>
+            <div class="concept-tag">💡 {{ cm.concept_missed }}</div>
+          </div>
+        </div>
+        {% endfor %}
+        {% endif %}
+
+        {% if mg.tactical_patterns_missed %}
+        <h4 class="sub-heading">Tactical Patterns Missed</h4>
+        <div class="tactic-list">
+          {% for tp in mg.tactical_patterns_missed %}
+          <div class="tactic-item">
+            <span class="tactic-type">{{ tp.pattern }}</span>
+            <span class="tactic-desc">{{ tp.description }}</span>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </div>
+    </details>
+
+    <!-- Endgame Analysis -->
+    {% set eg = analysis.sections.endgame_analysis %}
+    <details class="report-section">
+      <summary class="section-header">
+        <span class="section-icon">♚</span> Endgame Analysis
+      </summary>
+      <div class="section-body">
+        {% if not eg.reached_endgame %}
+        <p class="muted-text">The game did not reach a clear endgame phase.</p>
+        {% else %}
+        {% if eg.endgame_type %}
+        <p class="op-name">{{ eg.endgame_type }}</p>
+        {% endif %}
+        {% if eg.technique_errors %}
+        <h4 class="sub-heading">Technique Errors</h4>
+        <ul class="bullet-list">
+          {% for err in eg.technique_errors %}
+          <li>{{ err }}</li>
+          {% endfor %}
+        </ul>
+        {% endif %}
+        {% if eg.key_concepts %}
+        <h4 class="sub-heading">Key Concepts to Study</h4>
+        <ul class="bullet-list accent-list">
+          {% for c in eg.key_concepts %}
+          <li>{{ c }}</li>
+          {% endfor %}
+        </ul>
+        {% endif %}
+        {% endif %}
+      </div>
+    </details>
+
+    <!-- Improvement Plan -->
+    {% set ip = analysis.sections.improvement_plan %}
+    <details class="report-section">
+      <summary class="section-header">
+        <span class="section-icon">🎯</span> Improvement Plan
+      </summary>
+      <div class="section-body">
+        <div class="plan-list">
+          {% for item in ip %}
+          <div class="plan-item">
+            <div class="plan-priority">{{ item.priority }}</div>
+            <div class="plan-content">
+              <div class="plan-area">{{ item.area }}</div>
+              <div class="plan-rec">{{ item.recommendation }}</div>
+              <div class="plan-resource">📚 {{ item.resource }}</div>
+              <div class="plan-why">{{ item.why }}</div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </details>
+
+    <!-- Delete -->
+    <div class="delete-row">
+      <form method="POST" action="{{ url_for('delete_game', game_id=game_id) }}"
+            onsubmit="return confirm('Delete this analysis?')">
+        <button type="submit" class="delete-btn">🗑 Delete Analysis</button>
+      </form>
+    </div>
+
+  </section>
+</main>
+
+<!-- chessboard.js + chess.js -->
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"></script>
+<script src="{{ url_for('static', filename='js/board.js') }}"></script>
+
+<script>
+const movesData   = {{ analysis.moves | tojson }};
+const userColor   = {{ analysis.game_info.user_color | tojson }};
+const orientation = userColor === 'black' ? 'black' : 'white';
+initBoard(movesData, orientation);
+</script>
+</body>
+</html>

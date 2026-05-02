@@ -1,0 +1,280 @@
+<h1>Chess Analysis Report</h1>
+<h1>Personalized Improvement Report — Black Pieces</h1>
+<h2>Performance Overview</h2>
+<p><strong>Record:</strong> 0 wins / 0 draws / 1 loss (single game analyzed vs. Kulio54)
+<strong>Error count:</strong> 7 blunders, 14 mistakes, 10 inaccuracies in one game — a very high error density.</p>
+<p>The single most notable trend: <strong>errors snowballed across phases.</strong> You drifted in the opening (5 mistakes!), got crushed tactically in the middlegame (5 blunders), and the position collapsed completely in the endgame (a +30000 cp blunder on move 34 indicates you walked into a mate). This wasn't one bad move — it was a chain reaction triggered by an unfamiliar opening structure. With only one game in the dataset, treat this report as a diagnostic snapshot, not a verdict on your overall play.</p>
+<h2>Opening Analysis</h2>
+<p>You played into an <strong>E70 King's Indian Defense</strong> (likely a sideline where White avoided the mainline Classical or Sämisch). The engine's repeated suggestion of <strong>...Ng4</strong> at moves 6, 7, and 9 is a huge clue: in many KID structures, the knight maneuver <strong>Nf6–g4</strong> is a thematic idea to challenge a White bishop on e3, provoke h3, or prepare ...f5/...e5 breaks. You missed it three times in a row.</p>
+<p><strong>What you played instead</strong> — moves like 6...Re8, 7...e5, 9...a5 — are not bad-looking moves in isolation, but they were poorly timed for the specific structure. Then on move 13 you played <strong>Nc5</strong> when <strong>Ne5</strong> was correct (centralization vs. flank); on move 15 you missed <strong>Bxh6</strong> (a tactical resource), and the engine kept suggesting Bxh6 on moves 16 and 17 — meaning the opportunity hung in the air for <strong>three moves</strong> and you didn't see it.</p>
+<p><strong>Diagnosis:</strong> You're playing the King's Indian by feel, not by plan. The KID is one of the most plan-heavy openings in chess — you need to know the standard knight maneuvers and pawn breaks cold.</p>
+<p><strong>Concrete study path:</strong>
+- <strong>Book:</strong> <em>The King's Indian: A Complete Black Repertoire</em> by Victor Bologan — focused on understanding, not memorization.
+- <strong>Video:</strong> GM Sam Shankland's KID series on Chessable, or GingerGM's "Killer KID" lectures on YouTube for typical pawn structures.
+- <strong>Drill:</strong> On Lichess, search the study <strong>"King's Indian Defense — Typical Plans"</strong> and play through the model games. Specifically learn the <strong>...Nf6–g4–e5</strong> and <strong>...Nf6–h5–f4</strong> maneuvers.</p>
+<h2>Tactical Weaknesses</h2>
+<p><strong>Error distribution:</strong> Mistakes (14) dominate over blunders (7), but the blunders were catastrophic — one was 30,173 cp (a missed mate). The <strong>middlegame is your worst phase</strong> (5 blunders, 4 mistakes, 7 inaccuracies).</p>
+<p>Looking at the move data, three patterns jump out:</p>
+<ol>
+<li><strong>You repeatedly miss knight captures on d1.</strong> The engine recommended <strong>Nxd1</strong> at moves 20, 24, and 27 — picking off material — and you missed it every time. This suggests you're not scanning for <strong>undefended pieces on the back rank</strong> when calculating.</li>
+<li><strong>You miss in-between moves and forcing checks.</strong> On move 34, <strong>Nd1+</strong> was a forced sequence; you played Qd3+ instead and got mated. You're choosing the "obvious" check rather than calculating which check actually works.</li>
+<li><strong>Knight maneuvering is shaky.</strong> Moves 28 (Ne5 vs. Nxc4), 40 (Nb5+ vs. Ne6+), and 13 (Nc5 vs. Ne5) all show you reaching for the wrong knight square — likely because you're moving by general principles ("centralize," "give check") instead of calculating concrete consequences.</li>
+</ol>
+<h2>Critical Moments Breakdown</h2>
+<h3>Blunder #1 — Move 34: Qd3+ instead of Nd1+</h3>
+<p><strong>Position (FEN):</strong> <code>r3k3/1p5p/3p2pQ/3P4/2P1q3/pPK5/Pn1N4/4n1RR b - - 3 34</code>
+You had <strong>Nd1+</strong>, a discovered/forking attack that wins on the spot (the engine evaluates it as decisive). Instead, you played <strong>Qd3+</strong>, which allowed a forced mate by White. The CP loss of 30,173 means you went from winning to getting mated in a few moves.
+<strong>Concept missed:</strong> When you have multiple checks, <strong>calculate each one to a conclusion</strong> before choosing. Knight checks especially can be devastating because the king can't block them. You went for the queen check because it "felt active," but Nd1+ was geometric — it attacked the king AND created a deadly threat.</p>
+<h3>Blunder #2 — Move 28: Ne5 instead of Nxc4</h3>
+<p><strong>Position (FEN):</strong> <code>r7/1p2q1kp/3p2p1/3P4/2P1r1n1/pP3N2/Pn1Q4/1NK3RR b - - 7 28</code>
+<strong>Nxc4</strong> simply wins a pawn and attacks the queen on d2 — a straightforward double attack. You played Ne5 (centralization instinct again) and lost ~3.9 pawns of evaluation.
+<strong>Concept missed:</strong> <strong>Material before activity.</strong> Free pawns matter, especially when the capture comes with tempo (attacking the queen). Always ask: "Can I take something?" before "Where does my piece belong?"</p>
+<h3>Blunder #3 — Move 22: f2 instead of Bxb1</h3>
+<p><strong>Position (FEN):</strong> <code>r2qr3/1p3pkp/3p1nP1/3P1b2/2P5/pPN2p2/Pn1Q4/1BKR2NR b - - 2 22</code>
+You had <strong>Bxb1</strong> — capturing a piece! Instead you advanced the f-pawn (likely chasing some attacking idea against the White king). CP loss of 381.
+<strong>Concept missed:</strong> <strong>Don't get tunnel vision on attacks while ignoring free material.</strong> This is the same theme as the missed Nxd1 captures — pieces hanging on the first rank that you're not registering during calculation.</p>
+<h2>Your Improvement Plan</h2>
+<h3>1. Tactics: Drill "Hanging Pieces" and "Knight Forks" on Chess.com or Lichess</h3>
+<p>Set Lichess Puzzle Themes to <strong>"Hanging Piece"</strong> and <strong>"Fork"</strong> specifically. Do <strong>20 puzzles a day for 2 weeks</strong>. Your data shows you literally walked past free knights and bishops three times in one game — this is a board-vision issue, fixable with reps. Also drill <strong>"Mate in 2"</strong> puzzles to fix the move-34 disaster (calculating forcing checks to the end).</p>
+<h3>2. Opening: Build a Real King's Indian Repertoire</h3>
+<p>Pick <strong>one</strong> KID resource and stick with it for 2 months. I recommend the <strong>Chessable course "Lifetime Repertoires: King's Indian Defense" by GM David Howell</strong> — it's structured for understanding plans, not just memorizing lines. Learn the typical ...Ng4 and ...Nh5 ideas the engine kept suggesting in your game.</p>
+<h3>3. Middlegame: Master "Candidate Moves" Discipline</h3>
+<p>Before every move, force yourself to write down (or mentally list) <strong>three candidate moves</strong>, including <strong>every check, capture, and threat available to you</strong>. Your blunders show you're choosing the first plausible move you see. Read <strong>Axel Smith's "Pump Up Your Rating," Chapter on Calculation</strong> — it teaches a concrete CCT (Checks-Captures-Threats) scanning routine.</p>
+<h3>4. Endgame: Learn King + Pawn Activity Basics</h3>
+<p>You had 2 blunders and 5 mistakes in the endgame. Before tackling complex endgames, nail down the fundamentals: <strong>opposition, key squares, and the rule of the square.</strong> Use <strong>Jesus de la Villa's "100 Endgames You Must Know"</strong> — start with chapters 1–4 only. Don't skip ahead; these basics underpin everything.</p>
+<h3>5. Mental Habit: The "Blunder Check" Pause</h3>
+<p>Before every move, do a <strong>5-second sanity check</strong>: "If I play this, what's my opponent's most forcing reply? Any check, capture, or threat?" Your move 34 (Qd3+ leading to mate) almost certainly came from playing on autopilot. Build the habit now of pausing BEFORE the move, not after. A reasonable target: take at least 15 seconds on every non-trivial move, even in blitz.</p>
+<hr />
+<p><strong>Final word:</strong> One game isn't enough to draw firm conclusions, so submit 10–15 more games for a fuller picture. But the patterns here — missing free pieces, weak opening plans, autopilot in critical moments — are very fixable. The fact that the engine kept suggesting the <em>same</em> moves repeatedly (Ng4, Bxh6, Nxd1) suggests that once you train your eye to see these motifs, your results will jump quickly. Get to work on those tactics puzzles today.</p>
+<hr />
+<details>
+<summary>📊 Raw Statistics (click to expand)</summary>
+
+```json
+{
+  "total_games": 1,
+  "results": {
+    "wins": 0,
+    "draws": 0,
+    "losses": 1
+  },
+  "total_blunders": 7,
+  "total_mistakes": 14,
+  "total_inaccuracies": 10,
+  "avg_blunders_per_game": 7.0,
+  "avg_mistakes_per_game": 14.0,
+  "errors_by_phase": {
+    "opening": {
+      "blunders": 0,
+      "mistakes": 5,
+      "inaccuracies": 1
+    },
+    "middlegame": {
+      "blunders": 5,
+      "mistakes": 4,
+      "inaccuracies": 7
+    },
+    "endgame": {
+      "blunders": 2,
+      "mistakes": 5,
+      "inaccuracies": 2
+    }
+  },
+  "openings_played": {
+    "E70 \u2014 Unknown": 1
+  },
+  "opening_errors": [
+    {
+      "game": 1,
+      "opening_name": "Unknown",
+      "eco": "E70",
+      "move": "6. Re8",
+      "best_move": "Ng4",
+      "cp_loss": 159
+    },
+    {
+      "game": 1,
+      "opening_name": "Unknown",
+      "eco": "E70",
+      "move": "7. e5",
+      "best_move": "Ng4",
+      "cp_loss": 138
+    },
+    {
+      "game": 1,
+      "opening_name": "Unknown",
+      "eco": "E70",
+      "move": "9. a5",
+      "best_move": "Ng4",
+      "cp_loss": 153
+    },
+    {
+      "game": 1,
+      "opening_name": "Unknown",
+      "eco": "E70",
+      "move": "13. Nc5",
+      "best_move": "Ne5",
+      "cp_loss": 174
+    },
+    {
+      "game": 1,
+      "opening_name": "Unknown",
+      "eco": "E70",
+      "move": "15. a3",
+      "best_move": "Bxh6",
+      "cp_loss": 124
+    }
+  ],
+  "worst_blunders": [
+    {
+      "game": 1,
+      "opening": "Unknown",
+      "move": "34. Qd3+",
+      "best_move": "Nd1+",
+      "cp_loss": 30173,
+      "phase": "middlegame",
+      "fen": "r3k3/1p5p/3p2pQ/3P4/2P1q3/pPK5/Pn1N4/4n1RR b - - 3 34"
+    },
+    {
+      "game": 1,
+      "opening": "Unknown",
+      "move": "44. Rb6+",
+      "best_move": "Ra7+",
+      "cp_loss": 954,
+      "phase": "endgame",
+      "fen": "4k3/1K5p/r2p2pQ/1P1P4/8/pPq1n3/P7/4R2R b - - 0 44"
+    },
+    {
+      "game": 1,
+      "opening": "Unknown",
+      "move": "40. Nb5+",
+      "best_move": "Ne6+",
+      "cp_loss": 715,
+      "phase": "endgame",
+      "fen": "4k3/1pK4p/r2p2pQ/3P4/2Pn4/pP1q4/Pn1N4/6RR b - - 15 40"
+    },
+    {
+      "game": 1,
+      "opening": "Unknown",
+      "move": "28. Ne5",
+      "best_move": "Nxc4",
+      "cp_loss": 388,
+      "phase": "middlegame",
+      "fen": "r7/1p2q1kp/3p2p1/3P4/2P1r1n1/pP3N2/Pn1Q4/1NK3RR b - - 7 28"
+    },
+    {
+      "game": 1,
+      "opening": "Unknown",
+      "move": "22. f2",
+      "best_move": "Bxb1",
+      "cp_loss": 381,
+      "phase": "middlegame",
+      "fen": "r2qr3/1p3pkp/3p1nP1/3P1b2/2P5/pPN2p2/Pn1Q4/1BKR2NR b - - 2 22"
+    },
+    {
+      "game": 1,
+      "opening": "Unknown",
+      "move": "27. Ng4",
+      "best_move": "Nxd1",
+      "cp_loss": 341,
+      "phase": "middlegame",
+      "fen": "r7/1p2q1kp/3p1np1/3P4/2P1r3/pP3N2/Pn1Q4/1NKR3R b - - 5 27"
+    },
+    {
+      "game": 1,
+      "opening": "Unknown",
+      "move": "29. Kf7",
+      "best_move": "Kg8",
+      "cp_loss": 314,
+      "phase": "middlegame",
+      "fen": "r7/1p2q1kp/3p2pQ/3Pn3/2P1r3/pP3N2/Pn6/1NK3RR b - - 9 29"
+    }
+  ],
+  "sample_mistakes": [
+    {
+      "game": 1,
+      "move": "6. Re8",
+      "best_move": "Ng4",
+      "cp_loss": 159,
+      "phase": "opening"
+    },
+    {
+      "game": 1,
+      "move": "7. e5",
+      "best_move": "Ng4",
+      "cp_loss": 138,
+      "phase": "opening"
+    },
+    {
+      "game": 1,
+      "move": "9. a5",
+      "best_move": "Ng4",
+      "cp_loss": 153,
+      "phase": "opening"
+    },
+    {
+      "game": 1,
+      "move": "13. Nc5",
+      "best_move": "Ne5",
+      "cp_loss": 174,
+      "phase": "opening"
+    },
+    {
+      "game": 1,
+      "move": "15. a3",
+      "best_move": "Bxh6",
+      "cp_loss": 124,
+      "phase": "opening"
+    },
+    {
+      "game": 1,
+      "move": "16. Nd3+",
+      "best_move": "Bxh6",
+      "cp_loss": 188,
+      "phase": "middlegame"
+    },
+    {
+      "game": 1,
+      "move": "17. Nb2",
+      "best_move": "Bxh6",
+      "cp_loss": 217,
+      "phase": "middlegame"
+    },
+    {
+      "game": 1,
+      "move": "20. Bxg4",
+      "best_move": "Nxd1",
+      "cp_loss": 151,
+      "phase": "middlegame"
+    },
+    {
+      "game": 1,
+      "move": "24. fxg6",
+      "best_move": "Nxd1",
+      "cp_loss": 156,
+      "phase": "middlegame"
+    },
+    {
+      "game": 1,
+      "move": "37. Nc2+",
+      "best_move": "Rd8",
+      "cp_loss": 209,
+      "phase": "endgame"
+    }
+  ],
+  "per_game": [
+    {
+      "game": 1,
+      "vs": "Kulio54",
+      "result": "1-0",
+      "opening": "Unknown",
+      "eco": "E70",
+      "blunders": 7,
+      "mistakes": 14,
+      "inaccuracies": 10
+    }
+  ]
+}
+```
+
+</details>

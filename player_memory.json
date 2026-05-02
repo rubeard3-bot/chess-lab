@@ -1,0 +1,32 @@
+{
+  "games_analyzed": 1,
+  "last_updated": "2026-04-28T11:43:50.740807",
+  "opening_gaps": [
+    {
+      "opening": "Unknown Opening",
+      "eco": "B10",
+      "error_count": 1
+    }
+  ],
+  "tactical_weaknesses": {},
+  "endgame_struggles": [],
+  "performance_trend": [
+    {
+      "date": "2026-04-28",
+      "blunders": 6,
+      "mistakes": 7,
+      "accuracy": 60,
+      "opening": "Unknown Opening"
+    }
+  ],
+  "most_common_mistakes": [
+    "Piece activity vs. piece placement \u2014 rook activation before knight sortie",
+    "Pawn structure integrity around the king",
+    "Rook placement on open/half-open files"
+  ],
+  "improvement_areas": [
+    "Endgame technique",
+    "Calculation & tactics",
+    "Caro-Kann opening theory"
+  ]
+}
