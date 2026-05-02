@@ -344,7 +344,7 @@ const UI = (() => {
       const cls = p.classification;
       if (cls === 'blunder' || cls === 'mistake') {
         const dot = svgEl('circle', {
-          cx: p.x, cy: p.y, r: '4',
+          cx: p.x, cy: p.y, r: '5',
           fill: cls === 'blunder' ? '#f05555' : '#e09952',
           stroke: '#1a1a2e',
           'stroke-width': '1.5'
@@ -553,10 +553,10 @@ const UI = (() => {
 
     content.innerHTML =
       `<div class="why-best-move-row">
-         <span style="font-size:12px;color:var(--text2)">Best move:</span>
+         <span style="font-size:14px;color:var(--text2)">Best move:</span>
          <span class="why-best-move-san">${escapeHtml(bestSan)}</span>
        </div>` +
-      (explanation ? `<p style="font-size:13px;color:var(--text2);line-height:1.65;margin-bottom:8px">${escapeHtml(explanation)}</p>` : '') +
+      (explanation ? `<p style="font-size:15px;color:#dcdcea;line-height:1.8;margin-bottom:8px">${escapeHtml(explanation)}</p>` : '') +
       (pvText
         ? `<div class="engine-line"><span class="engine-line-label">Engine line</span>${escapeHtml(pvText)}</div>`
         : '');

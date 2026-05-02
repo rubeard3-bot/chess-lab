@@ -12,12 +12,12 @@
   --danger:    #e05252;
   --warn:      #e09952;
   --text:      #e0e0e0;
-  --text2:     #a0a0b0;
+  --text2:     #c0c0d0;
   --border:    rgba(255,255,255,0.08);
   --topbar-h:  110px;
   --col-left:  520px;
   --col-mid:   220px;
-  --eval-bar-w: 40px;
+  --eval-bar-w: 44px;
   --radius:    8px;
   --trans:     0.2s ease;
 }
@@ -26,8 +26,8 @@ html, body {
   background: var(--bg);
   color: var(--text);
   font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-  font-size: 14px;
-  line-height: 1.5;
+  font-size: 15px;
+  line-height: 1.7;
 }
 
 button { cursor: pointer; border: none; background: none; color: inherit; font: inherit; }
@@ -470,7 +470,7 @@ a:hover { text-decoration: underline; }
 }
 
 .eval-bar {
-  width: 28px;
+  width: 32px;
   flex: 1;
   background: #d8d8d8;
   border-radius: 4px;
@@ -495,9 +495,9 @@ a:hover { text-decoration: underline; }
 }
 
 .eval-value {
-  font-size: 11px;
+  font-size: 16px;
   font-weight: 700;
-  color: var(--text2);
+  color: #ffffff;
   text-align: center;
   font-family: monospace;
   min-width: 36px;
@@ -594,7 +594,7 @@ a:hover { text-decoration: underline; }
 
 .move-list {
   padding: 8px 6px;
-  font-size: 13px;
+  font-size: 14px;
   font-family: 'Courier New', monospace;
 }
 
@@ -611,6 +611,7 @@ a:hover { text-decoration: underline; }
   font-size: 12px;
   min-width: 24px;
   flex-shrink: 0;
+  opacity: 0.75;
 }
 
 .move-san {
@@ -626,13 +627,16 @@ a:hover { text-decoration: underline; }
 }
 .move-san:hover { background: rgba(255,255,255,0.07); }
 .move-san.active {
-  background: var(--accent);
+  background: #5db82e;
   color: #fff;
+  font-weight: 700;
 }
 
 .move-badge {
-  font-size: 10px;
-  margin-left: 1px;
+  font-size: 13px;
+  font-weight: 700;
+  margin-left: 2px;
+  padding: 0 2px;
 }
 .badge-blunder     { color: #f05555; }
 .badge-mistake     { color: #e09952; }
@@ -691,11 +695,13 @@ a:hover { text-decoration: underline; }
   margin-bottom: 12px;
 }
 .panel-header h3 {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 700;
-  color: var(--text);
+  color: #a8d880;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.08em;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(168,216,128,0.25);
 }
 
 /* Accuracy Badge */
@@ -727,8 +733,8 @@ a:hover { text-decoration: underline; }
   flex: 1;
   min-width: 0;
 }
-.stat-value { font-size: 16px; font-weight: 800; display: block; line-height: 1.2; }
-.stat-label { font-size: 9px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.05em; }
+.stat-value { font-size: 28px; font-weight: 800; display: block; line-height: 1.2; }
+.stat-label { font-size: 12px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.05em; }
 .stat-blunder .stat-value   { color: #f05555; }
 .stat-mistake .stat-value   { color: #e09952; }
 .stat-inaccuracy .stat-value{ color: #d4c038; }
@@ -760,13 +766,14 @@ a:hover { text-decoration: underline; }
 .insight-card {
   padding: 10px 12px;
   border-radius: 6px;
-  font-size: 13px;
+  font-size: 14px;
+  line-height: 1.7;
   margin-bottom: 8px;
   border-left: 3px solid transparent;
 }
 .insight-card.hidden { display: none; }
-.strength-card { background: rgba(127,166,80,0.12); border-left-color: var(--accent); }
-.weakness-card { background: rgba(224,82,82,0.12);  border-left-color: var(--danger); }
+.strength-card { background: rgba(127,166,80,0.12); border-left: 3px solid #5db82e; }
+.weakness-card { background: rgba(224,82,82,0.12);  border-left: 3px solid #e84040; }
 .pattern-card  { background: rgba(212,160,40,0.12); border-left-color: #d4a028; }
 .insight-label {
   font-size: 10px;
@@ -794,7 +801,7 @@ a:hover { text-decoration: underline; }
   display: flex;
   gap: 10px;
   margin-bottom: 8px;
-  font-size: 13px;
+  font-size: 14px;
   align-items: baseline;
 }
 .opening-row-label {
@@ -806,23 +813,25 @@ a:hover { text-decoration: underline; }
   min-width: 80px;
   flex-shrink: 0;
 }
-.opening-row-value { color: var(--text); }
+.opening-row-value { color: #e8e8f0; }
 .opening-explanation {
-  font-size: 13px;
-  color: var(--text2);
-  line-height: 1.6;
+  font-size: 14px;
+  color: #c8c8da;
+  line-height: 1.8;
   margin-top: 10px;
   padding-top: 10px;
   border-top: 1px solid var(--border);
 }
 
 .lines-to-study h4 {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--text2);
+  letter-spacing: 0.08em;
+  color: #a8d880;
   margin: 14px 0 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(168,216,128,0.25);
 }
 .study-card {
   background: var(--card);
@@ -842,10 +851,11 @@ a:hover { text-decoration: underline; }
   display: inline-block;
   margin-top: 6px;
   font-size: 12px;
-  color: #4da8da;
+  color: #38c8f0;
   text-decoration: underline;
+  font-weight: 600;
 }
-.study-card-link:hover { color: #6fc8fa; }
+.study-card-link:hover { color: #6fdcff; }
 
 /* Eval Graph */
 .graph-container {
@@ -889,11 +899,11 @@ a:hover { text-decoration: underline; }
 }
 
 .coach-badge {
-  font-size: 10px;
+  font-size: 16px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.07em;
-  padding: 3px 9px;
+  padding: 5px 14px;
   border-radius: 10px;
   flex-shrink: 0;
 }
@@ -909,7 +919,8 @@ a:hover { text-decoration: underline; }
   align-items: center;
   gap: 4px;
   font-family: 'Courier New', monospace;
-  font-size: 12px;
+  font-size: 15px;
+  font-weight: 700;
   color: var(--text2);
 }
 
@@ -918,7 +929,8 @@ a:hover { text-decoration: underline; }
 .coach-arrow-gain { color: #7fa650; }
 
 .coach-loss {
-  font-size: 11px;
+  font-size: 15px;
+  font-weight: 700;
   font-family: 'Courier New', monospace;
   color: var(--text2);
   margin-left: auto;
@@ -933,12 +945,12 @@ a:hover { text-decoration: underline; }
   background: rgba(0,0,0,0.18);
   padding: 7px 10px;
   border-radius: 5px;
-  font-size: 13px;
+  font-size: 14px;
   flex-wrap: wrap;
 }
 
 .coach-played { color: var(--text2); }
-.coach-played strong { font-family: 'Courier New', monospace; color: var(--text); }
+.coach-played strong { font-family: 'Courier New', monospace; font-size: 22px; font-weight: 700; color: #e8e8f0; }
 
 .coach-mid-sep { color: var(--text2); opacity: 0.4; font-size: 12px; }
 
@@ -948,14 +960,14 @@ a:hover { text-decoration: underline; }
   gap: 4px;
   color: var(--accent);
 }
-.coach-best strong { font-family: 'Courier New', monospace; }
+.coach-best strong { font-family: 'Courier New', monospace; font-size: 22px; font-weight: 700; }
 .coach-engine-icon { font-size: 10px; opacity: 0.75; }
 
 /* Explanation */
 .coach-explanation {
-  font-size: 13px;
-  color: var(--text);
-  line-height: 1.65;
+  font-size: 15px;
+  color: #dcdcea;
+  line-height: 1.8;
 }
 
 /* Engine PV line */
@@ -982,8 +994,8 @@ a:hover { text-decoration: underline; }
 
 .coach-pv-line {
   font-family: 'Courier New', monospace;
-  font-size: 12px;
-  color: var(--text2);
+  font-size: 13px;
+  color: #b8b8cc;
   line-height: 1.5;
   background: rgba(0,0,0,0.2);
   padding: 6px 10px;
@@ -1155,15 +1167,15 @@ body.hub-page {
 }
 
 .hub-card-title {
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 700;
   color: var(--text);
   margin-top: 2px;
 }
 
 .hub-card-desc {
-  font-size: 13px;
-  color: var(--text2);
+  font-size: 14px;
+  color: #c0c0d0;
   line-height: 1.6;
 }
 
@@ -1195,7 +1207,7 @@ body.hub-page {
 }
 
 .hub-stat-value {
-  font-size: 26px;
+  font-size: 24px;
   font-weight: 800;
   color: var(--accent);
   font-family: 'Courier New', monospace;
@@ -1203,7 +1215,7 @@ body.hub-page {
 }
 
 .hub-stat-label {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text2);
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -1325,7 +1337,7 @@ body.archive-page {
 .archive-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 13px;
+  font-size: 14px;
   min-width: 800px;
 }
 
@@ -1361,8 +1373,8 @@ body.archive-page {
 .arch-td-actions { white-space: nowrap; }
 .arch-mono { font-family: 'Courier New', monospace; }
 
-.arch-player-white { font-size: 12px; color: var(--text); }
-.arch-player-black { font-size: 12px; color: var(--text2); }
+.arch-player-white { font-size: 15px; color: #e8e8f0; font-weight: 600; }
+.arch-player-black { font-size: 15px; color: #c0c0d0; font-weight: 600; }
 
 .arch-result {
   display: inline-block;
@@ -1562,7 +1574,7 @@ body.archive-page {
 }
 
 .elo-big-number {
-  font-size: 42px;
+  font-size: 52px;
   font-weight: 800;
   color: var(--accent);
   font-family: 'Courier New', monospace;
@@ -1711,12 +1723,11 @@ body.archive-page {
 }
 
 .elo-quote {
-  font-size: 12px;
-  color: var(--text2);
+  font-size: 14px;
+  color: #b8b8cc;
   font-style: italic;
   text-align: center;
-  line-height: 1.55;
-  opacity: 0.75;
+  line-height: 1.6;
   max-width: 360px;
 }
 
@@ -2939,9 +2950,9 @@ body.import-page {
   margin-bottom: 10px;
 }
 .opening-name-h {
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 700;
-  color: var(--text);
+  color: #e8e8f0;
 }
 
 /* Summary section accuracy row */
