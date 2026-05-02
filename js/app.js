@@ -460,9 +460,6 @@ const App = (() => {
     const analysis   = Analysis.buildAnalysis(classifiedMoves, accuracy, claudeData, parsed.metadata, playerColor);
     const fensToSave = buildFens(parsed.verboseHistory);
     const gameId     = Storage.saveGame(pgn, parsed.metadata, analysis, fensToSave, playerColor);
-    // Hide welcome state before rendering — actual class in analyzer.html is "analysis-placeholder"
-    document.querySelector('.analysis-placeholder')?.style.setProperty('display', 'none');
-    console.log('[App] About to render UI with analysisData:', !!analysis);
     loadGameIntoApp(pgn, parsed.metadata, parsed.verboseHistory, analysis, gameId);
     console.log('[App] UI render complete');
     collapseTopbar();
