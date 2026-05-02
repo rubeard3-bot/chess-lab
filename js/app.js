@@ -56,20 +56,6 @@ const App = (() => {
         if (savedGame.analysis) {
           playerColor = savedGame.playerColor || 'white';
 
-          // Rebuild fens from PGN since they may not be saved in older games
-          let gameFens = (savedGame.fens && savedGame.fens.length > 0) ? savedGame.fens : null;
-          if (!gameFens) {
-            const chessTemp = new Chess();
-            chessTemp.load_pgn(savedGame.pgn);
-            const moves  = chessTemp.history();
-            const chess2 = new Chess();
-            gameFens = [chess2.fen()];
-            for (const move of moves) {
-              chess2.move(move);
-              gameFens.push(chess2.fen());
-            }
-          }
-
           const parsed = Analysis.parsePGN(savedGame.pgn);
           if (parsed.valid) {
             document.getElementById('pgn-input').value = savedGame.pgn;
@@ -333,6 +319,10 @@ const App = (() => {
     if (pgnDropdown) pgnDropdown.classList.remove('open');
     const pgnLoadBtn = document.getElementById('pgn-load-btn');
     if (pgnLoadBtn) pgnLoadBtn.classList.remove('active');
+    const topbar = document.getElementById('topbar');
+    if (topbar) topbar.classList.add('collapsed');
+    const newGameBtn = document.getElementById('new-game-btn');
+    if (newGameBtn) newGameBtn.classList.remove('hidden');
   }
 
   function setAnalyzing(loading, phase) {
