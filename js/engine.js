@@ -11,7 +11,7 @@ const Engine = (() => {
       const timer = setTimeout(() => {
         worker.removeEventListener('message', handler);
         reject(new Error('Stockfish init timeout'));
-      }, 15000);
+      }, 30000);
 
       function handler(e) {
         const line = typeof e === 'string' ? e : (e.data || '');
@@ -35,7 +35,7 @@ const Engine = (() => {
       const timer = setTimeout(() => {
         worker.removeEventListener('message', handler);
         reject(new Error('Position analysis timeout'));
-      }, 60000);
+      }, 15000);
 
       function handler(e) {
         const line = typeof e === 'string' ? e : (e.data || '');
@@ -73,6 +73,25 @@ const Engine = (() => {
     });
   }
 
+  function stopAndDrain(worker) {
+    return new Promise(resolve => {
+      const timer = setTimeout(() => {
+        worker.removeEventListener('message', handler);
+        resolve();
+      }, 2000);
+      function handler(e) {
+        const line = typeof e === 'string' ? e : (e.data || '');
+        if (line.startsWith('bestmove')) {
+          clearTimeout(timer);
+          worker.removeEventListener('message', handler);
+          resolve();
+        }
+      }
+      worker.addEventListener('message', handler);
+      worker.postMessage('stop');
+    });
+  }
+
   async function analyzeAllPositions(fens, onProgress) {
     let worker;
     try {
@@ -98,6 +117,7 @@ const Engine = (() => {
 
     const results = [];
     const total   = fens.length;
+    let lastEvalFromWhiteCp = 0;
 
     for (let i = 0; i < total; i++) {
       if (onProgress) onProgress(i, total);
@@ -106,13 +126,21 @@ const Engine = (() => {
       const sideToMove = chess.turn();
 
       let sfResult;
-      try {
-        sfResult = await analyzePosition(worker, fens[i]);
-      } catch (e) {
-        worker.terminate();
-        const err = new Error('Stockfish failed at ply ' + i + ': ' + e.message);
-        err.code = 'ENGINE_ERROR';
-        throw err;
+      let attempts = 0;
+      while (true) {
+        try {
+          sfResult = await analyzePosition(worker, fens[i]);
+          lastEvalFromWhiteCp = sideToMove === 'b' ? -sfResult.bestEvalCp : sfResult.bestEvalCp;
+          break;
+        } catch (e) {
+          attempts++;
+          await stopAndDrain(worker);
+          if (attempts >= 2) {
+            const fallbackCp = sideToMove === 'b' ? -lastEvalFromWhiteCp : lastEvalFromWhiteCp;
+            sfResult = { bestEvalCp: fallbackCp, isMate: false, mateIn: 0, bestMove: null, pvUci: [] };
+            break;
+          }
+        }
       }
 
       // Stockfish returns eval from the side-to-move's perspective; convert to white's
