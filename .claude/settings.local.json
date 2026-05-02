@@ -6,7 +6,8 @@
       "Bash(python -c \"from analyzer_web import run_full_analysis; print\\('analyzer_web OK'\\)\")",
       "Bash(python -c \"from app import app; print\\('Flask app OK'\\)\")",
       "Bash(python -c ' *)",
-      "Bash(grep -E \"\\\\.\\(html|css|js\\)$\")"
+      "Bash(grep -E \"\\\\.\\(html|css|js\\)$\")",
+      "Bash(curl *)"
     ]
   }
 }

@@ -660,10 +660,10 @@ const UI = (() => {
 
   function showAnalysisPanels() {
     console.log('showAnalysisPanels called');
-    // Hide welcome state — actual class in analyzer.html is "analysis-placeholder"
-    document.querySelectorAll('.analysis-placeholder').forEach(el => {
-      el.style.display = 'none';
-    });
+    const placeholder = document.getElementById('analysis-placeholder');
+    if (placeholder) placeholder.style.display = 'none';
+    const colRight = document.getElementById('col-right');
+    if (colRight) colRight.style.display = 'flex';
     // Always-visible sections (1-3)
     ['panel-move-detail','panel-why-best','panel-alternates'].forEach(id => {
       const el = document.getElementById(id);
