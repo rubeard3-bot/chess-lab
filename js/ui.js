@@ -774,6 +774,49 @@ const UI = (() => {
     return el;
   }
 
+  /* ------------------------------------------------------------------ */
+  /*  PATTERNS SUMMARY PANEL (cross-game recommendations)                */
+  /* ------------------------------------------------------------------ */
+
+  function renderPatternsSummary() {
+    const panel = document.getElementById('panel-patterns');
+    if (!panel) return;
+
+    let recs = null;
+    try {
+      const raw = localStorage.getItem('csa_recommendations');
+      recs = raw ? JSON.parse(raw) : null;
+    } catch (_) {}
+
+    if (!recs) {
+      panel.classList.add('hidden');
+      return;
+    }
+
+    panel.classList.remove('hidden');
+
+    const content = document.getElementById('patterns-summary-content');
+    if (!content) return;
+
+    const overall  = recs.overallAssessment || '';
+    const topTwo   = (recs.topWeaknesses   || []).slice(0, 2);
+    const coach    = recs.coachMessage      || '';
+
+    const weakHtml = topTwo.map(w => {
+      const sev = (w.severity || 'moderate').toLowerCase();
+      return `<div class="patterns-weakness-mini sev-${escapeHtml(sev)}">
+        <div class="patterns-weakness-mini-title">${escapeHtml(w.title || '')}</div>
+        <div class="patterns-weakness-mini-freq">${escapeHtml(w.frequency || '')}</div>
+      </div>`;
+    }).join('');
+
+    content.innerHTML =
+      `<p class="patterns-overall">${escapeHtml(overall)}</p>` +
+      weakHtml +
+      (coach ? `<div class="patterns-coach-msg">${escapeHtml(coach)}</div>` : '') +
+      `<a href="recommendations.html" class="patterns-see-full">See full report →</a>`;
+  }
+
   document.addEventListener('DOMContentLoaded', initDrawer);
 
   return {
@@ -798,6 +841,8 @@ const UI = (() => {
     closeSidebar,
     showError,
     hideError,
-    showParseError
+    showParseError,
+    showToast,
+    renderPatternsSummary
   };
 })();

@@ -3094,3 +3094,650 @@ body.import-page {
   .analyzer-page .col-left { width: 400px; min-width: 400px; }
   .analyzer-page .eval-bar { width: 18px; }
 }
+
+/* ============================================================
+   RECOMMENDATIONS PAGE
+   ============================================================ */
+.rec-page {
+  min-height: 100vh;
+}
+
+.rec-container {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 24px 24px 80px;
+}
+
+/* Back button */
+.rec-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--text2);
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  transition: color var(--trans);
+}
+.rec-back-btn:hover { color: var(--text); text-decoration: none; }
+
+/* Page header */
+.rec-page-header { margin-bottom: 20px; }
+.rec-header-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.rec-page-title {
+  font-size: 26px;
+  font-weight: 800;
+  color: var(--text);
+  line-height: 1.2;
+}
+.rec-page-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.rec-last-updated {
+  font-size: 11px;
+  color: var(--text2);
+  white-space: nowrap;
+}
+.rec-regen-btn {
+  font-size: 12px !important;
+  padding: 6px 14px !important;
+  white-space: nowrap;
+}
+
+/* Overall assessment */
+.rec-overall-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 18px 22px;
+  margin-bottom: 24px;
+}
+.rec-overall-text {
+  font-size: 14px;
+  line-height: 1.8;
+  color: var(--text2);
+}
+
+/* Phase score bars */
+.rec-phase-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  margin-bottom: 32px;
+}
+.rec-phase-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.rec-phase-bar-label {
+  width: 90px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text2);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  flex-shrink: 0;
+}
+.rec-phase-bar-track {
+  flex: 1;
+  height: 9px;
+  background: rgba(255,255,255,0.07);
+  border-radius: 5px;
+  overflow: hidden;
+}
+.rec-phase-bar-fill {
+  height: 100%;
+  border-radius: 5px;
+  width: 0%;
+  transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.fill-opening    { background: var(--accent2); }
+.fill-middlegame { background: var(--warn); }
+.fill-endgame    { background: var(--accent); }
+.rec-phase-bar-score {
+  width: 28px;
+  text-align: right;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  flex-shrink: 0;
+}
+
+/* Section */
+.rec-section { margin-bottom: 40px; }
+.rec-section-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 14px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+.rec-repertoire-assessment {
+  font-size: 14px;
+  color: var(--text2);
+  line-height: 1.7;
+  margin-bottom: 14px;
+}
+.rec-none-msg {
+  font-size: 14px;
+  color: var(--text2);
+  font-style: italic;
+}
+
+/* Weakness cards */
+.rec-weakness-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-left: 4px solid;
+  border-radius: var(--radius);
+  padding: 18px 20px;
+  margin-bottom: 14px;
+}
+.rec-weakness-card.sev-critical { border-left-color: var(--danger); }
+.rec-weakness-card.sev-major    { border-left-color: var(--warn); }
+.rec-weakness-card.sev-moderate { border-left-color: #c8ad30; }
+
+.rec-weakness-header {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.rec-sev-badge {
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+.rec-sev-badge.sev-critical { background: rgba(224,82,82,0.18);  color: var(--danger); }
+.rec-sev-badge.sev-major    { background: rgba(224,153,82,0.18); color: var(--warn); }
+.rec-sev-badge.sev-moderate { background: rgba(200,173,48,0.18); color: #c8ad30; }
+
+.rec-weakness-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+}
+.rec-freq-tag {
+  font-size: 11px;
+  color: var(--text2);
+  background: rgba(255,255,255,0.06);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1px 8px;
+}
+.rec-weakness-desc {
+  font-size: 13px;
+  color: var(--text2);
+  line-height: 1.75;
+  margin-bottom: 12px;
+}
+.rec-examples-block {
+  background: rgba(0,0,0,0.22);
+  border-radius: 5px;
+  padding: 10px 13px;
+  margin-bottom: 12px;
+}
+.rec-examples-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text2);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  margin-bottom: 6px;
+}
+.rec-example-line {
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  color: var(--accent2);
+  padding: 1px 0;
+}
+
+/* Study plan toggle */
+.rec-sp-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent);
+  padding: 6px 0;
+  cursor: pointer;
+  background: none;
+  border: none;
+  text-align: left;
+  transition: color var(--trans);
+  width: 100%;
+}
+.rec-sp-toggle:hover { color: #8fb85e; }
+.rec-sp-arrow { margin-left: auto; font-size: 10px; }
+
+.rec-sp-body {
+  display: none;
+  padding-top: 10px;
+}
+.rec-sp-body.open { display: block; }
+
+/* Resource cards */
+.rec-resource-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  transition: background var(--trans), border-color var(--trans);
+}
+.rec-resource-card:hover {
+  background: rgba(26,58,96,0.8);
+  border-color: rgba(255,255,255,0.14);
+}
+.rec-resource-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+.rec-resource-info { flex: 1; min-width: 0; }
+.rec-resource-name { font-size: 13px; font-weight: 600; color: var(--text); }
+.rec-resource-desc { font-size: 12px; color: var(--text2); margin-top: 2px; }
+.rec-resource-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  color: var(--accent2);
+  margin-top: 4px;
+}
+.rec-resource-link:hover { text-decoration: underline; }
+
+/* Drills list */
+.rec-drills-list {
+  list-style: none;
+  margin-top: 10px;
+}
+.rec-drill-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  padding: 3px 0;
+  font-size: 13px;
+  color: var(--text2);
+}
+.rec-drill-item::before {
+  content: '▸';
+  color: var(--accent);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+/* Opening cards */
+.rec-opening-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 18px;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+.rec-opening-main { flex: 1; min-width: 0; }
+.rec-opening-name { font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+.rec-opening-stats {
+  display: flex;
+  gap: 14px;
+  font-size: 12px;
+  color: var(--text2);
+  margin-bottom: 4px;
+}
+.rec-opening-mistake {
+  font-size: 12px;
+  color: var(--text2);
+  margin-top: 4px;
+  line-height: 1.6;
+}
+.rec-opening-links { margin-top: 6px; display: flex; flex-wrap: wrap; gap: 4px; }
+.rec-opening-rec-badge {
+  padding: 4px 10px;
+  border-radius: 5px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  flex-shrink: 0;
+  align-self: flex-start;
+}
+.rec-opening-rec-badge.keep    { background: rgba(127,166,80,0.2);  color: var(--accent); }
+.rec-opening-rec-badge.modify  { background: rgba(224,153,82,0.2);  color: var(--warn); }
+.rec-opening-rec-badge.replace { background: rgba(224,82,82,0.2);   color: var(--danger); }
+
+/* Phase analysis cards */
+.rec-phase-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+.rec-phase-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px 16px;
+  text-align: center;
+}
+.rec-phase-card-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text2);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 14px;
+}
+.rec-circular-progress {
+  position: relative;
+  display: inline-block;
+  margin-bottom: 12px;
+}
+.rec-circular-track { fill: none; stroke: rgba(255,255,255,0.07); }
+.rec-circular-fill  { fill: none; stroke-linecap: round; }
+.rec-circular-label {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--text);
+}
+.rec-phase-assessment {
+  font-size: 12px;
+  color: var(--text2);
+  line-height: 1.6;
+  text-align: left;
+  margin-bottom: 10px;
+}
+.rec-phase-issues {
+  list-style: none;
+  text-align: left;
+}
+.rec-phase-issues li {
+  font-size: 12px;
+  color: var(--text2);
+  padding: 2px 0;
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+}
+.rec-phase-issues li::before { content: '•'; color: var(--accent); flex-shrink: 0; }
+
+/* Tactics */
+.rec-tactic-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 18px;
+  margin-bottom: 10px;
+}
+.rec-tactic-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.rec-tactic-pattern { font-size: 15px; font-weight: 700; color: var(--text); }
+.rec-tactic-occ {
+  background: var(--card);
+  border-radius: 10px;
+  padding: 2px 9px;
+  font-size: 11px;
+  color: var(--text2);
+}
+.rec-tactic-desc {
+  font-size: 13px;
+  color: var(--text2);
+  line-height: 1.65;
+  margin-bottom: 8px;
+}
+
+/* Improvements */
+.rec-improvement-card {
+  background: rgba(127,166,80,0.07);
+  border: 1px solid rgba(127,166,80,0.18);
+  border-radius: var(--radius);
+  padding: 14px 18px;
+  margin-bottom: 10px;
+}
+.rec-improvement-area {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--accent);
+  margin-bottom: 4px;
+}
+.rec-improvement-evidence {
+  font-size: 13px;
+  color: var(--text2);
+  line-height: 1.6;
+  margin-bottom: 6px;
+}
+.rec-improvement-msg {
+  font-size: 13px;
+  color: var(--text);
+  font-style: italic;
+}
+
+/* Weekly study plan */
+.rec-study-header { margin-bottom: 12px; }
+.rec-total-time {
+  display: inline-block;
+  padding: 4px 12px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  font-size: 13px;
+  color: var(--text2);
+}
+.rec-week-day {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 11px 14px;
+  border-radius: 5px;
+  margin-bottom: 2px;
+}
+.rec-week-day.even  { background: rgba(255,255,255,0.035); }
+.rec-week-day.odd   { background: rgba(255,255,255,0.01); }
+.rec-day-name {
+  width: 88px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  flex-shrink: 0;
+  padding-top: 1px;
+}
+.rec-day-body { flex: 1; min-width: 0; }
+.rec-day-focus {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text2);
+  margin-bottom: 4px;
+}
+.rec-day-activities {
+  list-style: none;
+}
+.rec-day-activities li {
+  font-size: 12px;
+  color: var(--text2);
+  padding: 1px 0;
+  display: flex;
+  gap: 6px;
+}
+.rec-day-activities li::before { content: '–'; color: var(--accent); flex-shrink: 0; }
+.rec-day-duration {
+  width: 76px;
+  text-align: right;
+  font-size: 11px;
+  color: var(--text2);
+  flex-shrink: 0;
+  padding-top: 2px;
+}
+
+/* Goals */
+.rec-goal-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 18px;
+  margin-bottom: 10px;
+}
+.rec-goal-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.rec-goal-number {
+  width: 26px; height: 26px;
+  background: var(--accent);
+  color: #fff;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 700;
+  flex-shrink: 0;
+}
+.rec-goal-title    { font-size: 14px; font-weight: 700; color: var(--text); }
+.rec-goal-timeframe {
+  font-size: 11px;
+  color: var(--text2);
+  margin-top: 2px;
+}
+.rec-goal-achieve {
+  font-size: 13px;
+  color: var(--text2);
+  line-height: 1.65;
+}
+
+/* Coach message */
+.rec-coach-msg-card {
+  background: rgba(240,217,181,0.05);
+  border: 1px solid rgba(240,217,181,0.13);
+  border-radius: var(--radius);
+  padding: 26px 30px;
+}
+.rec-coach-msg-quote {
+  font-size: 48px;
+  color: rgba(240,217,181,0.25);
+  font-family: Georgia, serif;
+  line-height: 1;
+  margin-bottom: -8px;
+}
+.rec-coach-msg-text {
+  font-size: 15px;
+  font-family: Georgia, 'Times New Roman', serif;
+  color: var(--text);
+  line-height: 1.9;
+  font-style: italic;
+  margin-bottom: 16px;
+}
+.rec-coach-signature {
+  font-size: 13px;
+  font-family: Georgia, serif;
+  color: var(--text2);
+  text-align: right;
+  font-style: italic;
+}
+
+/* Empty state */
+.rec-empty {
+  text-align: center;
+  padding: 90px 24px;
+}
+.rec-empty-icon  { font-size: 64px; margin-bottom: 16px; }
+.rec-empty-title { font-size: 22px; font-weight: 700; color: var(--text); margin-bottom: 8px; }
+.rec-empty-sub {
+  font-size: 15px;
+  color: var(--text2);
+  max-width: 360px;
+  margin: 0 auto 24px;
+  line-height: 1.6;
+}
+
+/* ---- Analyzer patterns panel ---- */
+.patterns-summary-content { padding: 4px 0 8px; }
+
+.patterns-overall {
+  font-size: 13px;
+  color: var(--text2);
+  line-height: 1.7;
+  margin-bottom: 12px;
+}
+
+.patterns-weakness-mini {
+  background: var(--card);
+  border-radius: 5px;
+  padding: 8px 11px;
+  margin-bottom: 6px;
+  border-left: 3px solid;
+}
+.patterns-weakness-mini.sev-critical { border-left-color: var(--danger); }
+.patterns-weakness-mini.sev-major    { border-left-color: var(--warn); }
+.patterns-weakness-mini.sev-moderate { border-left-color: #c8ad30; }
+
+.patterns-weakness-mini-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+.patterns-weakness-mini-freq {
+  font-size: 11px;
+  color: var(--text2);
+  margin-top: 1px;
+}
+
+.patterns-coach-msg {
+  font-size: 13px;
+  color: var(--text2);
+  font-style: italic;
+  margin: 12px 0;
+  padding: 10px 13px;
+  background: rgba(240,217,181,0.05);
+  border-left: 2px solid rgba(240,217,181,0.18);
+  border-radius: 4px;
+  line-height: 1.65;
+}
+
+.patterns-see-full {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent2);
+  margin-top: 4px;
+}
+.patterns-see-full:hover { text-decoration: underline; }
+
+/* ---- Study streak stat ---- */
+.hub-stat-streak .hub-stat-value { color: var(--warn); }
+
+/* ---- Responsive ---- */
+@media (max-width: 700px) {
+  .rec-phase-cards-grid { grid-template-columns: 1fr; }
+  .rec-container { padding: 16px 14px 60px; }
+  .rec-opening-card { flex-direction: column; }
+  .rec-week-day { flex-wrap: wrap; }
+  .rec-day-duration { width: auto; text-align: left; }
+}

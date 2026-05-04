@@ -43,6 +43,7 @@
       <a href="analyzer.html" class="nav-item nav-item-active"><span class="nav-item-icon">♟</span><span>Game Analyzer</span></a>
       <a href="archive.html" class="nav-item"><span class="nav-item-icon">📂</span><span>Game Archive</span></a>
       <a href="practice.html" class="nav-item"><span class="nav-item-icon">♜</span><span>Practice Board</span></a>
+      <a href="recommendations.html" class="nav-item"><span class="nav-item-icon">🎯</span><span>My Recommendations</span></a>
       <button class="nav-item nav-item-btn" id="nav-progress-btn">
         <span class="nav-item-icon">📈</span><span>My Progress</span>
         <span class="nav-coming-soon">Soon</span>
@@ -302,6 +303,17 @@
           </div>
         </div>
 
+        <!-- SECTION 8: Your Patterns — condensed cross-game recommendations -->
+        <div id="panel-patterns" class="analysis-section collapsible-section hidden">
+          <button class="section-toggle" data-body="patterns-body">
+            <span class="section-toggle-label">Your Patterns</span>
+            <span class="toggle-arrow">▾</span>
+          </button>
+          <div id="patterns-body" class="collapsible-body">
+            <div id="patterns-summary-content" class="patterns-summary-content"></div>
+          </div>
+        </div>
+
       </div><!-- /col-right -->
 
     </div><!-- /main-layout -->
@@ -312,6 +324,7 @@
   <script src="js/board.js"></script>
   <script src="js/engine.js"></script>
   <script src="js/analysis.js"></script>
+  <script src="js/recommendations.js"></script>
   <script src="js/nav.js"></script>
   <script src="js/ui.js"></script>
   <script src="js/app.js"></script>

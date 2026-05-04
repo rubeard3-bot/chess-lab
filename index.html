@@ -24,6 +24,7 @@
       <a href="analyzer.html" class="nav-item"><span class="nav-item-icon">♟</span><span>Game Analyzer</span></a>
       <a href="archive.html" class="nav-item"><span class="nav-item-icon">📂</span><span>Game Archive</span></a>
       <a href="practice.html" class="nav-item"><span class="nav-item-icon">♜</span><span>Practice Board</span></a>
+      <a href="recommendations.html" class="nav-item"><span class="nav-item-icon">🎯</span><span>My Recommendations</span></a>
       <button class="nav-item nav-item-btn" id="nav-progress-btn">
         <span class="nav-item-icon">📈</span><span>My Progress</span>
         <span class="nav-coming-soon">Soon</span>
@@ -124,12 +125,12 @@
         <div class="hub-card-desc">Browse all your analyzed games with full analysis, move by move review</div>
       </a>
 
-      <div class="hub-card coming-soon" data-soon>
-        <span class="hub-badge soon">Coming Soon</span>
+      <a class="hub-card active" href="recommendations.html">
+        <span class="hub-badge ready">Ready</span>
         <div class="hub-card-icon">🎯</div>
         <div class="hub-card-title">My Recommendations</div>
         <div class="hub-card-desc">AI-powered coaching tips and study plans built from your game history</div>
-      </div>
+      </a>
 
       <div class="hub-card coming-soon" data-soon>
         <span class="hub-badge soon">Coming Soon</span>
@@ -259,6 +260,11 @@
         <span class="hub-stat-label">Most Played Opening</span>
       </div>
       <div class="hub-stat-sep"></div>
+      <div class="hub-stat-item hub-stat-streak">
+        <span class="hub-stat-value" id="stat-streak">—</span>
+        <span class="hub-stat-label">Study Streak</span>
+      </div>
+      <div class="hub-stat-sep"></div>
       <div class="hub-stat-item hub-stat-reset-item">
         <button class="hub-reset-btn" id="stat-reset-btn">Reset Stats</button>
         <span class="hub-stat-label">Clear game history</span>
@@ -269,7 +275,7 @@
     <footer class="hub-footer">
       <span>Powered by Stockfish 18 + Claude AI</span>
       <span class="hub-footer-sep">·</span>
-      <span class="hub-footer-version">v1.0 — Phase 1</span>
+      <span class="hub-footer-version">v2.0 — Phase 2</span>
     </footer>
 
   </div>
@@ -844,6 +850,27 @@
           el.title = top;
         }
       }
+
+      /* ---- Study Streak ---- */
+      (function () {
+        const dates = [...new Set(
+          games.map(g => g.savedAt ? g.savedAt.slice(0, 10) : null).filter(Boolean)
+        )].sort();
+        if (dates.length > 0) {
+          let streak    = 0;
+          let checkDate = new Date().toISOString().slice(0, 10);
+          for (let i = 0; i < 365; i++) {
+            if (dates.includes(checkDate)) {
+              streak++;
+              const d = new Date(checkDate);
+              d.setDate(d.getDate() - 1);
+              checkDate = d.toISOString().slice(0, 10);
+            } else { break; }
+          }
+          const streakEl = document.getElementById('stat-streak');
+          if (streakEl) streakEl.textContent = streak > 0 ? streak + (streak === 1 ? ' day' : ' days') : '—';
+        }
+      })();
 
       document.getElementById('stat-reset-btn').addEventListener('click', () => {
         if (!confirm('Clear all analyzed game data? This cannot be undone.\n\nYour ELO tracker data will be kept.')) return;

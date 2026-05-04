@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Recommendations — Chess Lab</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body class="rec-page">
+
+  <div id="rec-toast" class="az-toast" role="status" aria-live="polite"></div>
+
+  <!-- Nav Drawer Overlay -->
+  <div id="nav-overlay" class="nav-overlay hidden"></div>
+
+  <!-- Hamburger Nav Drawer -->
+  <div id="nav-drawer" class="nav-drawer">
+    <div class="nav-drawer-header">
+      <span class="nav-drawer-brand">♟ Chess Lab</span>
+      <button id="nav-drawer-close" class="nav-drawer-close" aria-label="Close menu">✕</button>
+    </div>
+    <nav class="nav-drawer-nav">
+      <a href="index.html" class="nav-item"><span class="nav-item-icon">🏠</span><span>Home</span></a>
+      <a href="analyzer.html" class="nav-item"><span class="nav-item-icon">♟</span><span>Game Analyzer</span></a>
+      <a href="archive.html" class="nav-item"><span class="nav-item-icon">📂</span><span>Game Archive</span></a>
+      <a href="practice.html" class="nav-item"><span class="nav-item-icon">♜</span><span>Practice Board</span></a>
+      <a href="recommendations.html" class="nav-item nav-item-active"><span class="nav-item-icon">🎯</span><span>My Recommendations</span></a>
+      <button class="nav-item nav-item-btn" id="nav-progress-btn">
+        <span class="nav-item-icon">📈</span><span>My Progress</span>
+        <span class="nav-coming-soon">Soon</span>
+      </button>
+      <button class="nav-item nav-item-btn" id="nav-openings-btn">
+        <span class="nav-item-icon">📖</span><span>Opening Explorer</span>
+        <span class="nav-coming-soon">Soon</span>
+      </button>
+    </nav>
+    <div class="nav-drawer-footer">
+      <button class="nav-item nav-item-btn" id="change-api-key-link">
+        <span class="nav-item-icon">⚙</span><span>Settings / API Key</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Top Navbar -->
+  <header id="top-navbar" class="top-navbar">
+    <button id="hamburger-btn" class="hamburger-btn" aria-label="Open menu">☰</button>
+    <div class="navbar-title">My Recommendations</div>
+    <div class="navbar-right"></div>
+  </header>
+
+  <!-- Empty State (shown when no recs and < 1 game) -->
+  <div id="rec-empty" class="rec-empty hidden">
+    <div class="rec-empty-icon">🎯</div>
+    <h2 class="rec-empty-title">No Recommendations Yet</h2>
+    <p class="rec-empty-sub">Analyze at least one game to generate your personalized coaching report</p>
+    <a href="analyzer.html" class="btn-primary" style="display:inline-flex;margin-top:4px">Go to Analyzer →</a>
+  </div>
+
+  <!-- Main Content -->
+  <div class="rec-container" id="rec-content">
+
+    <!-- Page Header -->
+    <div class="rec-page-header">
+      <a href="index.html" class="rec-back-btn">← Home</a>
+      <div class="rec-header-row">
+        <h1 class="rec-page-title">My Recommendations</h1>
+        <div class="rec-page-meta">
+          <span class="rec-last-updated" id="rec-last-updated"></span>
+          <button id="rec-regenerate-btn" class="btn-primary rec-regen-btn">↺ Regenerate</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Overall Assessment -->
+    <div class="rec-overall-card">
+      <p class="rec-overall-text" id="rec-assessment-text"></p>
+    </div>
+
+    <!-- Phase Score Bars -->
+    <div class="rec-phase-bars">
+      <div class="rec-phase-bar-row">
+        <span class="rec-phase-bar-label">Opening</span>
+        <div class="rec-phase-bar-track">
+          <div class="rec-phase-bar-fill fill-opening" id="bar-opening"></div>
+        </div>
+        <span class="rec-phase-bar-score" id="score-opening">—</span>
+      </div>
+      <div class="rec-phase-bar-row">
+        <span class="rec-phase-bar-label">Middlegame</span>
+        <div class="rec-phase-bar-track">
+          <div class="rec-phase-bar-fill fill-middlegame" id="bar-middlegame"></div>
+        </div>
+        <span class="rec-phase-bar-score" id="score-middlegame">—</span>
+      </div>
+      <div class="rec-phase-bar-row">
+        <span class="rec-phase-bar-label">Endgame</span>
+        <div class="rec-phase-bar-track">
+          <div class="rec-phase-bar-fill fill-endgame" id="bar-endgame"></div>
+        </div>
+        <span class="rec-phase-bar-score" id="score-endgame">—</span>
+      </div>
+    </div>
+
+    <!-- Top Weaknesses -->
+    <section class="rec-section">
+      <h2 class="rec-section-title">Your Top Weaknesses</h2>
+      <div id="rec-weaknesses"></div>
+    </section>
+
+    <!-- Opening Report -->
+    <section class="rec-section">
+      <h2 class="rec-section-title">Your Opening Repertoire</h2>
+      <p class="rec-repertoire-assessment" id="rec-repertoire-assessment"></p>
+      <div id="rec-openings"></div>
+    </section>
+
+    <!-- Phase Analysis -->
+    <section class="rec-section">
+      <h2 class="rec-section-title">Game Phase Analysis</h2>
+      <div class="rec-phase-cards-grid" id="rec-phase-cards"></div>
+    </section>
+
+    <!-- Tactical Patterns -->
+    <section class="rec-section">
+      <h2 class="rec-section-title">Tactical Patterns You Miss</h2>
+      <div id="rec-tactics"></div>
+    </section>
+
+    <!-- Improvements -->
+    <section class="rec-section">
+      <h2 class="rec-section-title">Where You're Improving</h2>
+      <div id="rec-improvements"></div>
+    </section>
+
+    <!-- Weekly Study Plan -->
+    <section class="rec-section">
+      <h2 class="rec-section-title">Weekly Study Plan</h2>
+      <div class="rec-study-header">
+        <span class="rec-total-time" id="rec-total-time"></span>
+      </div>
+      <div id="rec-study-plan"></div>
+    </section>
+
+    <!-- Next Goals -->
+    <section class="rec-section">
+      <h2 class="rec-section-title">Your Next Goals</h2>
+      <div id="rec-goals"></div>
+    </section>
+
+    <!-- Coach Message -->
+    <section class="rec-section" id="sec-coach">
+      <div class="rec-coach-msg-card">
+        <div class="rec-coach-msg-quote">"</div>
+        <p class="rec-coach-msg-text" id="rec-coach-msg-text"></p>
+        <div class="rec-coach-signature">— Your Chess Coach</div>
+      </div>
+    </section>
+
+  </div><!-- /rec-container -->
+
+  <script src="js/storage.js"></script>
+  <script src="js/recommendations.js"></script>
+  <script src="js/nav.js"></script>
+  <script>
+
+    document.addEventListener('DOMContentLoaded', function () {
+      initNav('recommendations');
+      init();
+
+      document.getElementById('rec-regenerate-btn').addEventListener('click', async () => {
+        const btn = document.getElementById('rec-regenerate-btn');
+        btn.disabled    = true;
+        btn.textContent = 'Generating...';
+        showToast('Regenerating recommendations...');
+        const fresh = await Recommendations.generateRecommendations();
+        if (fresh) {
+          renderRecommendations(fresh);
+          showToast('Recommendations updated!');
+        } else {
+          showToast('Generation failed — check your API key.');
+        }
+        btn.disabled    = false;
+        btn.textContent = '↺ Regenerate';
+      });
+    });
+
+    /* ---- helpers ---- */
+    function esc(str) {
+      if (str == null) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    let _toastTimer;
+    function showToast(msg) {
+      const el = document.getElementById('rec-toast');
+      if (!el) return;
+      el.textContent = msg;
+      el.classList.add('show');
+      clearTimeout(_toastTimer);
+      _toastTimer = setTimeout(() => el.classList.remove('show'), 3200);
+    }
+
+    /* ---- init ---- */
+    function init() {
+      const recs  = Recommendations.loadRecommendations();
+      const games = Storage.loadAllGames();
+
+      if (!recs || games.length === 0) {
+        document.getElementById('rec-content').classList.add('hidden');
+        document.getElementById('rec-empty').classList.remove('hidden');
+        return;
+      }
+
+      renderRecommendations(recs);
+    }
+
+    /* ---- master render ---- */
+    function renderRecommendations(recs) {
+      // Last updated timestamp
+      const meta = (() => {
+        try { return JSON.parse(localStorage.getItem('csa_recommendations_meta')) || {}; }
+        catch (_) { return {}; }
+      })();
+      const updEl = document.getElementById('rec-last-updated');
+      if (updEl && meta.generatedAt) {
+        const d = new Date(meta.generatedAt);
+        updEl.textContent =
+          'Last updated: ' + d.toLocaleDateString() +
+          ' at ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      }
+
+      // Overall assessment
+      const assessEl = document.getElementById('rec-assessment-text');
+      if (assessEl) assessEl.textContent = recs.overallAssessment || '';
+
+      // Phase score bars — animate after a short delay so the transition fires
+      ['opening', 'middlegame', 'endgame'].forEach(p => {
+        const score   = recs.phaseAnalysis?.[p]?.score ?? 0;
+        const fillEl  = document.getElementById('bar-' + p);
+        const scoreEl = document.getElementById('score-' + p);
+        if (scoreEl) scoreEl.textContent = score;
+        if (fillEl) {
+          fillEl.style.width = '0%';
+          setTimeout(() => { fillEl.style.width = Math.min(100, Math.max(0, score)) + '%'; }, 120);
+        }
+      });
+
+      // Sections
+      renderWeaknesses(recs.topWeaknesses || []);
+
+      const repEl = document.getElementById('rec-repertoire-assessment');
+      if (repEl) repEl.textContent = recs.openingReport?.repertoireAssessment || '';
+      renderOpenings(recs.openingReport?.openings || []);
+
+      renderPhaseAnalysis(recs.phaseAnalysis || {});
+      renderTactics(recs.tacticalPatterns || []);
+      renderImprovements(recs.improvements || []);
+
+      const timeEl = document.getElementById('rec-total-time');
+      if (timeEl) timeEl.textContent = '⏱ ' + (recs.weeklyStudyPlan?.totalTimePerWeek || 'N/A') + ' per week';
+      renderStudyPlan(recs.weeklyStudyPlan?.days || []);
+
+      renderGoals(recs.nextGoals || []);
+
+      const coachEl = document.getElementById('rec-coach-msg-text');
+      if (coachEl) coachEl.textContent = recs.coachMessage || '';
+    }
+
+    /* ---- weaknesses ---- */
+    function renderWeaknesses(weaknesses) {
+      const el = document.getElementById('rec-weaknesses');
+      if (!el) return;
+      if (!weaknesses.length) {
+        el.innerHTML = '<p class="rec-none-msg">No significant weaknesses detected yet. Keep analyzing games!</p>';
+        return;
+      }
+      el.innerHTML = weaknesses.map(w => {
+        const sev      = (w.severity || 'moderate').toLowerCase();
+        const sevLabel = { critical: 'Critical', major: 'Major', moderate: 'Moderate' }[sev] || esc(w.severity);
+        const examples = (w.examples || []).map(e =>
+          `<div class="rec-example-line">${esc(e)}</div>`
+        ).join('');
+
+        const sp = w.studyPlan;
+        const resources = sp ? (sp.resources || []).map(r => {
+          const icon = { video: '📹', book: '📖', puzzle: '🧩', article: '📄' }[r.type] || '📄';
+          return `<div class="rec-resource-card">
+            <div class="rec-resource-icon">${icon}</div>
+            <div class="rec-resource-info">
+              <div class="rec-resource-name">${esc(r.name)}</div>
+              <div class="rec-resource-desc">${esc(r.description)}</div>
+              ${r.url ? `<a class="rec-resource-link" href="${esc(r.url)}" target="_blank" rel="noopener noreferrer">Open resource ↗</a>` : ''}
+            </div>
+          </div>`;
+        }).join('') : '';
+
+        const drillsHtml = sp ? (sp.drills || []).map(d =>
+          `<li class="rec-drill-item">${esc(d)}</li>`
+        ).join('') : '';
+
+        return `
+<div class="rec-weakness-card sev-${esc(sev)}">
+  <div class="rec-weakness-header">
+    <span class="rec-sev-badge sev-${esc(sev)}">${sevLabel}</span>
+    <span class="rec-weakness-title">${esc(w.title)}</span>
+    ${w.frequency ? `<span class="rec-freq-tag">${esc(w.frequency)}</span>` : ''}
+  </div>
+  <p class="rec-weakness-desc">${esc(w.description)}</p>
+  ${examples ? `<div class="rec-examples-block"><div class="rec-examples-label">Examples from your games</div>${examples}</div>` : ''}
+  ${sp ? `
+  <button class="rec-sp-toggle" onclick="toggleStudyPlan(this)">
+    📚 Study Plan &nbsp;·&nbsp; Priority ${esc(String(sp.priority))} &nbsp;·&nbsp; ${esc(sp.timeRecommended)} <span class="rec-sp-arrow">▾</span>
+  </button>
+  <div class="rec-sp-body">
+    ${resources}
+    ${drillsHtml ? `<ul class="rec-drills-list">${drillsHtml}</ul>` : ''}
+  </div>` : ''}
+</div>`;
+      }).join('');
+    }
+
+    function toggleStudyPlan(btn) {
+      const body = btn.nextElementSibling;
+      if (!body) return;
+      const open = body.classList.toggle('open');
+      const arrow = btn.querySelector('.rec-sp-arrow');
+      if (arrow) arrow.textContent = open ? '▴' : '▾';
+    }
+
+    /* ---- openings ---- */
+    function renderOpenings(openings) {
+      const el = document.getElementById('rec-openings');
+      if (!el) return;
+      if (!openings.length) {
+        el.innerHTML = '<p class="rec-none-msg">Not enough games to analyze opening repertoire.</p>';
+        return;
+      }
+      el.innerHTML = openings.map(o => {
+        const rec     = (o.recommendation || '').toLowerCase();
+        const recType = rec.startsWith('keep') ? 'keep' : rec.startsWith('replace') ? 'replace' : 'modify';
+        const recLabel = recType.charAt(0).toUpperCase() + recType.slice(1);
+
+        const links = (o.studyResources || []).filter(r => r.url || r.name).map(r =>
+          r.url
+            ? `<a href="${esc(r.url)}" target="_blank" rel="noopener noreferrer" class="rec-resource-link">${esc(r.name)} ↗</a>`
+            : `<span class="rec-resource-link">${esc(r.name)}</span>`
+        ).join('');
+
+        return `
+<div class="rec-opening-card">
+  <div class="rec-opening-main">
+    <div class="rec-opening-name">${esc(o.name)}</div>
+    <div class="rec-opening-stats">
+      <span>${o.gamesPlayed || 0} game${(o.gamesPlayed || 0) !== 1 ? 's' : ''}</span>
+      <span>${o.averageAccuracy || 0}% avg accuracy</span>
+    </div>
+    ${o.commonMistake ? `<p class="rec-opening-mistake">Common mistake: ${esc(o.commonMistake)}</p>` : ''}
+    ${links ? `<div class="rec-opening-links">${links}</div>` : ''}
+  </div>
+  <span class="rec-opening-rec-badge ${esc(recType)}">${esc(recLabel)}</span>
+</div>`;
+      }).join('');
+    }
+
+    /* ---- phase analysis ---- */
+    function renderPhaseAnalysis(phases) {
+      const el = document.getElementById('rec-phase-cards');
+      if (!el) return;
+      const PHASES = [
+        { key: 'opening',    label: 'Opening',    color: '#4da8da' },
+        { key: 'middlegame', label: 'Middlegame',  color: '#e09952' },
+        { key: 'endgame',    label: 'Endgame',     color: '#7fa650' }
+      ];
+      el.innerHTML = PHASES.map(ph => {
+        const data  = phases[ph.key] || {};
+        const score = Math.max(0, Math.min(100, data.score ?? 0));
+        const R     = 38;
+        const circ  = 2 * Math.PI * R;
+        const dash  = (score / 100 * circ).toFixed(2);
+        const issues = (data.keyIssues || []).map(i => `<li>${esc(i)}</li>`).join('');
+        return `
+<div class="rec-phase-card">
+  <div class="rec-phase-card-title">${ph.label}</div>
+  <div class="rec-circular-progress">
+    <svg width="96" height="96" viewBox="0 0 96 96">
+      <circle class="rec-circular-track" cx="48" cy="48" r="${R}" stroke-width="8"/>
+      <circle class="rec-circular-fill"  cx="48" cy="48" r="${R}" stroke-width="8"
+        stroke="${ph.color}"
+        stroke-dasharray="${dash} ${circ.toFixed(2)}"
+        style="transform:rotate(-90deg);transform-origin:48px 48px;transition:stroke-dasharray 1s ease"/>
+    </svg>
+    <div class="rec-circular-label">${score}</div>
+  </div>
+  <p class="rec-phase-assessment">${esc(data.assessment)}</p>
+  ${issues ? `<ul class="rec-phase-issues">${issues}</ul>` : ''}
+</div>`;
+      }).join('');
+    }
+
+    /* ---- tactics ---- */
+    function renderTactics(tactics) {
+      const el = document.getElementById('rec-tactics');
+      if (!el) return;
+      if (!tactics.length) {
+        el.innerHTML = '<p class="rec-none-msg">No recurring tactical patterns identified yet.</p>';
+        return;
+      }
+      el.innerHTML = tactics.map(t => {
+        const drills = (t.drills || []).map(d => `<li class="rec-drill-item">${esc(d)}</li>`).join('');
+        return `
+<div class="rec-tactic-card">
+  <div class="rec-tactic-header">
+    <span class="rec-tactic-pattern">${esc(t.pattern)}</span>
+    <span class="rec-tactic-occ">${t.occurrences || 0}×</span>
+  </div>
+  <p class="rec-tactic-desc">${esc(t.description)}</p>
+  ${drills ? `<ul class="rec-drills-list">${drills}</ul>` : ''}
+</div>`;
+      }).join('');
+    }
+
+    /* ---- improvements ---- */
+    function renderImprovements(improvements) {
+      const el = document.getElementById('rec-improvements');
+      if (!el) return;
+      if (!improvements.length) {
+        el.innerHTML = '<p class="rec-none-msg">Keep analyzing games to track your improvement trends.</p>';
+        return;
+      }
+      el.innerHTML = improvements.map(imp => `
+<div class="rec-improvement-card">
+  <div class="rec-improvement-area">${esc(imp.area)}</div>
+  <p class="rec-improvement-evidence">${esc(imp.evidence)}</p>
+  <p class="rec-improvement-msg">${esc(imp.message)}</p>
+</div>`).join('');
+    }
+
+    /* ---- study plan ---- */
+    function renderStudyPlan(days) {
+      const el = document.getElementById('rec-study-plan');
+      if (!el) return;
+      if (!days.length) {
+        el.innerHTML = '<p class="rec-none-msg">No study plan generated yet.</p>';
+        return;
+      }
+      el.innerHTML = days.map((day, i) => {
+        const acts = (day.activities || []).map(a => `<li>${esc(a)}</li>`).join('');
+        return `
+<div class="rec-week-day ${i % 2 === 0 ? 'even' : 'odd'}">
+  <div class="rec-day-name">${esc(day.day)}</div>
+  <div class="rec-day-body">
+    <div class="rec-day-focus">${esc(day.focus)}</div>
+    ${acts ? `<ul class="rec-day-activities">${acts}</ul>` : ''}
+  </div>
+  <div class="rec-day-duration">${esc(day.duration)}</div>
+</div>`;
+      }).join('');
+    }
+
+    /* ---- goals ---- */
+    function renderGoals(goals) {
+      const el = document.getElementById('rec-goals');
+      if (!el) return;
+      if (!goals.length) {
+        el.innerHTML = '<p class="rec-none-msg">No goals set yet.</p>';
+        return;
+      }
+      el.innerHTML = goals.map((g, i) => `
+<div class="rec-goal-card">
+  <div class="rec-goal-header">
+    <div class="rec-goal-number">${i + 1}</div>
+    <div>
+      <div class="rec-goal-title">${esc(g.goal)}</div>
+      <div class="rec-goal-timeframe">${esc(g.timeframe)}</div>
+    </div>
+  </div>
+  <p class="rec-goal-achieve">${esc(g.howToAchieve)}</p>
+</div>`).join('');
+    }
+
+  </script>
+</body>
+</html>

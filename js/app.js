@@ -429,6 +429,17 @@ const App = (() => {
     const gameId     = Storage.saveGame(pgn, parsed.metadata, analysis, fensToSave, playerColor);
     loadGameIntoApp(pgn, parsed.metadata, parsed.verboseHistory, analysis, gameId);
     collapseTopbar();
+
+    // Phase 2: async cross-game recommendations (non-blocking)
+    if (typeof Recommendations !== 'undefined') {
+      UI.showToast('Updating recommendations...');
+      Recommendations.generateRecommendations().then(recs => {
+        if (recs) {
+          localStorage.setItem('csa_recommendations', JSON.stringify(recs));
+          UI.renderPatternsSummary();
+        }
+      }).catch(() => {});
+    }
   }
 
   function handleAnalysisError(err) {
@@ -490,6 +501,7 @@ const App = (() => {
     }
 
     navigateToPly(0);
+    UI.renderPatternsSummary();
   }
 
   function buildFens(verboseHistory) {
