@@ -8,6 +8,8 @@ const Recommendations = (() => {
   const RECS_KEY = 'csa_recommendations';
   const META_KEY = 'csa_recommendations_meta';
 
+  let _toastTimer;
+
   function loadRecommendations() {
     try {
       const raw = localStorage.getItem(RECS_KEY);
@@ -24,9 +26,151 @@ const Recommendations = (() => {
     return games.length !== (meta.gameCount || 0);
   }
 
+  function _notify(msg) {
+    const el = document.getElementById('rec-toast');
+    if (!el) return;
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(_toastTimer);
+    _toastTimer = setTimeout(() => el.classList.remove('show'), 3200);
+  }
+
+  function _setProgress(label) {
+    const btn = document.getElementById('rec-regenerate-btn');
+    if (btn) btn.textContent = label;
+    _notify(label);
+  }
+
+  function _buildHeaders(apiKey) {
+    return {
+      'Content-Type':                              'application/json',
+      'x-api-key':                                 apiKey,
+      'anthropic-version':                         '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true'
+    };
+  }
+
+  function _parseResponse(text, label) {
+    let json = text.trim()
+      .replace(/^```(?:json)?\s*/i, '')
+      .replace(/\s*```\s*$/i, '')
+      .trim();
+    const firstBrace = json.indexOf('{');
+    const lastBrace  = json.lastIndexOf('}');
+    if (firstBrace !== -1 && lastBrace > firstBrace) {
+      json = json.slice(firstBrace, lastBrace + 1);
+    }
+
+    try {
+      return JSON.parse(json);
+    } catch (parseErr) {
+      console.error(`[Recommendations] ${label} JSON parse failed:`, parseErr.message);
+      console.error(`[Recommendations] ${label} raw JSON length:`, json.length);
+
+      let repaired = null;
+
+      const lastCurly = json.lastIndexOf('}');
+      if (lastCurly !== -1) {
+        try { repaired = JSON.parse(json.slice(0, lastCurly + 1)); } catch (_) {}
+      }
+
+      if (!repaired) {
+        try { repaired = JSON.parse(json + '}]}]}]}'); } catch (_) {}
+      }
+
+      if (repaired) return repaired;
+
+      console.error(`[Recommendations] ${label} all repair attempts failed`);
+      return null;
+    }
+  }
+
+  async function _callApi(apiKey, prompt, label) {
+    const headers = _buildHeaders(apiKey);
+    console.log(`[Recommendations] ${label} sending prompt, length:`, prompt.length);
+
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      try {
+        const response = await fetch(API_URL, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            model:      MODEL,
+            max_tokens: 4000,
+            messages:   [{ role: 'user', content: prompt }]
+          })
+        });
+
+        console.log(`[Recommendations] ${label} attempt ${attempt} status:`, response.status);
+
+        if (!response.ok) {
+          const errText = await response.text();
+          console.error(`[Recommendations] ${label} API error:`, errText.substring(0, 500));
+          if (attempt < 2) { console.log(`[Recommendations] ${label} retrying...`); continue; }
+          return null;
+        }
+
+        const data    = await response.json();
+        const rawText = data?.content?.[0]?.text || '';
+        console.log(`[Recommendations] ${label} raw response (first 300):`, rawText.substring(0, 300));
+
+        if (!rawText) {
+          if (attempt < 2) continue;
+          return null;
+        }
+
+        const parsed = _parseResponse(rawText, label);
+        if (!parsed && attempt < 2) {
+          console.log(`[Recommendations] ${label} retrying after parse failure...`);
+          continue;
+        }
+        return parsed;
+
+      } catch (err) {
+        console.error(`[Recommendations] ${label} attempt ${attempt} network error:`, err.message);
+        if (attempt < 2) continue;
+        return null;
+      }
+    }
+    return null;
+  }
+
+  function _buildGamesSummary(games) {
+    return games.map(g => ({
+      gameId:           'csa_game_' + g.id,
+      date:             g.savedAt ? g.savedAt.slice(0, 10) : '',
+      playerColor:      g.playerColor || 'white',
+      openingName:      g.analysis?.opening?.name || '',
+      eco:              g.analysis?.opening?.eco  || '',
+      accuracy:         g.analysis?.summary?.accuracy ?? null,
+      blunders:         g.analysis?.summary?.blunders     || 0,
+      mistakes:         g.analysis?.summary?.mistakes     || 0,
+      inaccuracies:     g.analysis?.summary?.inaccuracies || 0,
+      result:           g.metadata?.result || '*',
+      white:            g.metadata?.white  || '',
+      black:            g.metadata?.black  || '',
+      strength:         g.analysis?.summary?.strength         || '',
+      weakness:         g.analysis?.summary?.weakness         || '',
+      recurringPattern: g.analysis?.summary?.recurringPattern || '',
+      coachingNotes:    g.analysis?.summary?.middlegameNotes  || '',
+      openingDeviations: {
+        youPlayed:   g.analysis?.opening?.youPlayed   || '',
+        theorySays:  g.analysis?.opening?.theorySays  || '',
+        bookedUntil: g.analysis?.opening?.bookedUntil || null
+      },
+      moves: (g.analysis?.moves || []).map(m => ({
+        ply:            m.ply,
+        san:            m.san,
+        classification: m.classification,
+        evalLoss:       m.evalLoss,
+        explanation:    m.explanation
+      }))
+    }));
+  }
+
   async function generateRecommendations() {
     try {
-      const games  = Storage.loadAllGames();
+      const games = Storage.loadAllGames();
       console.log('[Recommendations] Starting generation, games found:', games.length);
       if (games.length === 0) return null;
 
@@ -35,79 +179,63 @@ const Recommendations = (() => {
       console.log('[Recommendations] API key prefix:', apiKey ? apiKey.substring(0, 10) : '(none)');
       if (!apiKey) return null;
 
-      const includeMoves = games.length <= 10;
-      if (!includeMoves) {
-        console.log('[Recommendations] More than 10 games — omitting move-by-move data to stay within token limit');
-      }
+      const gamesSummary = _buildGamesSummary(games);
+      const gamesJson    = JSON.stringify(gamesSummary);
+      const preamble     =
+`You are a chess coach. Analyze the following complete game history and return ONLY valid JSON with no markdown or commentary.
 
-      const gamesSummary = games.map(g => {
-        const entry = {
-          gameId:           'csa_game_' + g.id,
-          date:             g.savedAt ? g.savedAt.slice(0, 10) : '',
-          playerColor:      g.playerColor || 'white',
-          openingName:      g.analysis?.opening?.name || '',
-          eco:              g.analysis?.opening?.eco  || '',
-          accuracy:         g.analysis?.summary?.accuracy ?? null,
-          blunders:         g.analysis?.summary?.blunders     || 0,
-          mistakes:         g.analysis?.summary?.mistakes     || 0,
-          inaccuracies:     g.analysis?.summary?.inaccuracies || 0,
-          result:           g.metadata?.result || '*',
-          white:            g.metadata?.white  || '',
-          black:            g.metadata?.black  || '',
-          strength:         g.analysis?.summary?.strength         || '',
-          weakness:         g.analysis?.summary?.weakness         || '',
-          recurringPattern: g.analysis?.summary?.recurringPattern || '',
-          coachingNotes:    g.analysis?.summary?.middlegameNotes  || '',
-          openingDeviations: {
-            youPlayed:   g.analysis?.opening?.youPlayed   || '',
-            theorySays:  g.analysis?.opening?.theorySays  || '',
-            bookedUntil: g.analysis?.opening?.bookedUntil || null
-          }
-        };
-        if (includeMoves) {
-          entry.moves = (g.analysis?.moves || []).map(m => ({
-            ply:            m.ply,
-            san:            m.san,
-            classification: m.classification,
-            evalLoss:       m.evalLoss,
-            explanation:    m.explanation
-          }));
-        }
-        return entry;
-      });
+Games data: ${gamesJson}
 
-      const prompt =
-`You are a chess coach who has analyzed all of a student's games. Based on the complete game history below, provide an extremely detailed personalized coaching report.
+When citing specific games as examples, always include the gameId in examples arrays as objects with this shape: { "gameId": "csa_game_...", "description": "..." }
 
-Games data: ${JSON.stringify(gamesSummary)}
+`;
 
-When citing specific games as examples, always include the gameId field in your response so the user can link back to that game. Include gameIds in the examples array as objects: { 'gameId': 'csa_game_...', 'description': '...' }
+      // ----------------------------------------------------------------
+      // Call 1 — Core Analysis
+      // ----------------------------------------------------------------
+      _setProgress('Analyzing your game patterns... (1/3)');
 
-Return ONLY valid JSON with no markdown:
+      const prompt1 = preamble +
+`Return ONLY this JSON structure (scores are 0-100):
 {
   "overallAssessment": "<3-4 sentences about the player's current level, style, and biggest opportunities for improvement>",
   "accuracyTrend": {
     "direction": "<improving|declining|stable>",
     "message": "<2 sentences about accuracy trend over time>",
-    "data": [{ "date": "...", "accuracy": 85 }]
+    "data": [{ "date": "YYYY-MM-DD", "accuracy": 85 }]
+  },
+  "phaseAnalysis": {
+    "opening":    { "score": 0, "assessment": "<2 sentences>", "keyIssues": ["..."] },
+    "middlegame": { "score": 0, "assessment": "<2 sentences>", "keyIssues": ["..."] },
+    "endgame":    { "score": 0, "assessment": "<2 sentences>", "keyIssues": ["..."] }
   },
   "topWeaknesses": [
     {
-      "title": "<weakness name e.g. Rook Endgame Technique>",
+      "title": "<weakness name>",
       "severity": "<critical|major|moderate>",
       "frequency": "<how many times across how many games>",
-      "description": "<3-4 sentences explaining the pattern in detail>",
-      "examples": [{ "gameId": "<the csa_game_... id>", "move": "<specific move>", "description": "<what happened>" }],
+      "description": "<3-4 sentences explaining the pattern>",
+      "examples": [{ "gameId": "<csa_game_...>", "move": "<specific move>", "description": "<what happened>" }],
       "studyPlan": {
-        "priority": "<1-5, 1 being most urgent>",
+        "priority": 1,
         "timeRecommended": "<e.g. 30 mins per day for 2 weeks>",
-        "resources": [
-          { "name": "<resource name>", "type": "<video|book|puzzle|article>", "url": "<real URL if known>", "description": "<one line>" }
-        ],
-        "drills": ["<specific drill or exercise to practice this skill>"]
+        "resources": [{ "name": "...", "type": "<video|book|puzzle|article>", "url": "<url if known>", "description": "<one line>" }],
+        "drills": ["<specific drill or exercise>"]
       }
     }
-  ],
+  ]
+}`;
+
+      const result1 = await _callApi(apiKey, prompt1, 'Call1-Core');
+
+      // ----------------------------------------------------------------
+      // Call 2 — Opening and Tactical Analysis
+      // ----------------------------------------------------------------
+      _setProgress('Analyzing your openings and tactics... (2/3)');
+
+      const prompt2 = preamble +
+`Return ONLY this JSON structure:
+{
   "openingReport": {
     "repertoireAssessment": "<2-3 sentences about opening choices overall>",
     "openings": [
@@ -115,35 +243,42 @@ Return ONLY valid JSON with no markdown:
         "name": "<opening name>",
         "gamesPlayed": 0,
         "averageAccuracy": 0,
-        "commonMistake": "<the most frequent deviation or error>",
-        "recommendation": "<keep/modify/replace and why>",
-        "studyResources": [{ "name": "...", "url": "..." }],
-        "gameExamples": [{ "gameId": "<csa_game_... id>", "description": "<what happened in this game>" }]
+        "commonMistake": "<most frequent deviation or error>",
+        "recommendation": "<keep|modify|replace>",
+        "gameExamples": [{ "gameId": "<csa_game_...>", "description": "<what happened in this game>" }],
+        "studyResources": [{ "name": "...", "url": "..." }]
       }
     ]
-  },
-  "phaseAnalysis": {
-    "opening":    { "score": 0, "assessment": "<2 sentences>", "keyIssues": ["..."] },
-    "middlegame": { "score": 0, "assessment": "<2 sentences>", "keyIssues": ["..."] },
-    "endgame":    { "score": 0, "assessment": "<2 sentences>", "keyIssues": ["..."] }
   },
   "tacticalPatterns": [
     {
       "pattern": "<e.g. Missing back rank mates>",
       "occurrences": 0,
       "description": "<2 sentences>",
-      "drills": ["<specific puzzle type to practice>"],
-      "gameExamples": [{ "gameId": "<csa_game_... id>", "description": "<what happened in this game>" }]
+      "gameExamples": [{ "gameId": "<csa_game_...>", "description": "<what happened in this game>" }],
+      "drills": ["<specific puzzle type to practice>"]
     }
   ],
   "improvements": [
     {
       "area": "<what improved>",
       "evidence": "<specific comparison across games showing improvement>",
-      "message": "<encouraging one sentence>",
-      "gameId": "<csa_game_... id of the game that best shows this improvement>"
+      "gameId": "<csa_game_...>",
+      "message": "<encouraging one sentence>"
     }
-  ],
+  ]
+}`;
+
+      const result2 = await _callApi(apiKey, prompt2, 'Call2-OpenTactics');
+
+      // ----------------------------------------------------------------
+      // Call 3 — Study Plan and Goals
+      // ----------------------------------------------------------------
+      _setProgress('Building your study plan... (3/3)');
+
+      const prompt3 = preamble +
+`Return ONLY this JSON structure:
+{
   "weeklyStudyPlan": {
     "totalTimePerWeek": "<e.g. 5 hours>",
     "days": [
@@ -165,67 +300,43 @@ Return ONLY valid JSON with no markdown:
   "coachMessage": "<A personal message from the coach to the player, 3-4 sentences, warm and encouraging but honest about what needs work>"
 }`;
 
-      console.log('[Recommendations] Sending prompt, length:', prompt.length);
+      const result3 = await _callApi(apiKey, prompt3, 'Call3-StudyPlan');
 
-      const headers = {
-        'Content-Type':                              'application/json',
-        'x-api-key':                                 apiKey,
-        'anthropic-version':                         '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
-      };
-      console.log('[Recommendations] Request headers (keys):', Object.keys(headers));
-      console.log('[Recommendations] anthropic-dangerous-direct-browser-access header present:', !!headers['anthropic-dangerous-direct-browser-access']);
+      // ----------------------------------------------------------------
+      // Merge
+      // ----------------------------------------------------------------
+      const failedSections = [
+        !result1 && 'Core Analysis',
+        !result2 && 'Opening & Tactics',
+        !result3 && 'Study Plan'
+      ].filter(Boolean);
 
-      const response = await fetch(API_URL, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          model:      MODEL,
-          max_tokens: 8000,
-          messages:   [{ role: 'user', content: prompt }]
-        })
-      });
-
-      console.log('[Recommendations] API response status:', response.status);
-
-      if (!response.ok) {
-        const errText = await response.text();
-        console.error('[Recommendations] API error body:', errText.substring(0, 500));
+      if (failedSections.length === 3) {
+        console.error('[Recommendations] All three calls failed');
         return null;
       }
 
-      const data = await response.json();
-      const rawText = data?.content?.[0]?.text || '';
-      console.log('[Recommendations] Raw response:', rawText.substring(0, 500));
-      if (!rawText) return null;
+      const merged = Object.assign({}, result1 || {}, result2 || {}, result3 || {});
 
-      let json = rawText.trim()
-        .replace(/^```(?:json)?\s*/i, '')
-        .replace(/\s*```\s*$/i, '')
-        .trim();
-      const firstBrace = json.indexOf('{');
-      const lastBrace  = json.lastIndexOf('}');
-      if (firstBrace !== -1 && lastBrace > firstBrace) {
-        json = json.slice(firstBrace, lastBrace + 1);
+      if (failedSections.length > 0) {
+        merged._partialFailure = `Some sections could not be generated: ${failedSections.join(', ')}`;
+        console.warn('[Recommendations] Partial result, failed sections:', failedSections);
+        window.dispatchEvent(new CustomEvent('rec-parse-error', {
+          detail: { message: `Partial results — failed to generate: ${failedSections.join(', ')}` }
+        }));
       }
 
-      let parsed;
-      try {
-        parsed = JSON.parse(json);
-      } catch (parseErr) {
-        console.error('[Recommendations] JSON parse failed:', parseErr.message);
-        console.error('[Recommendations] JSON that failed to parse:', json.substring(0, 500));
-        return null;
-      }
-      console.log('[Recommendations] Parsed successfully:', !!parsed);
+      console.log('[Recommendations] Merged result keys:', Object.keys(merged));
 
-      localStorage.setItem(RECS_KEY, JSON.stringify(parsed));
+      localStorage.setItem(RECS_KEY, JSON.stringify(merged));
       localStorage.setItem(META_KEY, JSON.stringify({
         gameCount:   games.length,
         generatedAt: new Date().toISOString()
       }));
 
-      return parsed;
+      _notify('Recommendations ready!');
+      return merged;
+
     } catch (err) {
       console.error('[Recommendations] Fatal error:', err.message, err.stack);
       throw err;

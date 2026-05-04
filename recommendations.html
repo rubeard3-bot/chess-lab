@@ -257,16 +257,20 @@
 
     /* ---- init ---- */
     function init() {
+      window.addEventListener('rec-parse-error', e => showToast(e.detail.message));
+
       const recs  = Recommendations.loadRecommendations();
       const games = Storage.loadAllGames();
 
-      if (!recs || games.length === 0) {
+      if (!recs && games.length === 0) {
         document.getElementById('rec-content').classList.add('hidden');
         document.getElementById('rec-empty').classList.remove('hidden');
         return;
       }
 
-      renderRecommendations(recs);
+      document.getElementById('rec-empty').classList.add('hidden');
+      document.getElementById('rec-content').classList.remove('hidden');
+      if (recs) renderRecommendations(recs);
     }
 
     /* ---- master render ---- */
