@@ -106,6 +106,20 @@
       <span class="spinner"></span> Loading games…
     </div>
 
+    <!-- Mass Import Bar -->
+    <div id="mass-import-bar" class="mass-import-bar hidden">
+      <label class="mass-select-all-label" for="select-all-cb">
+        <input type="checkbox" id="select-all-cb">
+        Select All
+      </label>
+      <span id="mass-selected-count" class="mass-selected-count">0 games selected</span>
+      <div class="mass-import-btns">
+        <button id="import-last-5-btn" class="import-quick-btn">Import Last 5</button>
+        <button id="import-last-10-btn" class="import-quick-btn">Import Last 10</button>
+        <button id="import-selected-btn" class="import-selected-btn" disabled>Import &amp; Analyze Selected</button>
+      </div>
+    </div>
+
     <!-- Game list -->
     <div id="import-game-list" class="import-game-list"></div>
 
@@ -141,16 +155,21 @@
       let tcFilter       = 'all';
       let resultFilter   = 'all';
       let analyzedHashes = new Set();
+      let selectedHashes = new Set();
 
       /* ---- elements ---- */
-      const elNoConn     = document.getElementById('import-no-connection');
-      const elControls   = document.getElementById('import-controls');
-      const elLoading    = document.getElementById('import-loading');
-      const elGameList   = document.getElementById('import-game-list');
-      const elLoadMore   = document.getElementById('import-load-more-wrap');
-      const elEmpty      = document.getElementById('import-empty');
-      const elMonthSel   = document.getElementById('import-month-select');
-      const elUsername   = document.getElementById('import-username-display');
+      const elNoConn          = document.getElementById('import-no-connection');
+      const elControls        = document.getElementById('import-controls');
+      const elLoading         = document.getElementById('import-loading');
+      const elGameList        = document.getElementById('import-game-list');
+      const elLoadMore        = document.getElementById('import-load-more-wrap');
+      const elEmpty           = document.getElementById('import-empty');
+      const elMonthSel        = document.getElementById('import-month-select');
+      const elUsername        = document.getElementById('import-username-display');
+      const elMassBar         = document.getElementById('mass-import-bar');
+      const elSelectedCount   = document.getElementById('mass-selected-count');
+      const elImportSelBtn    = document.getElementById('import-selected-btn');
+      const elSelectAllCb     = document.getElementById('select-all-cb');
 
       /* ---- toast ---- */
       const toast = document.getElementById('import-toast');
@@ -231,8 +250,61 @@
         return { year: parts[parts.length - 2], month: parts[parts.length - 1] };
       }
 
+      /* ---- selection ---- */
+      function toggleSelection(hash) {
+        if (selectedHashes.has(hash)) {
+          selectedHashes.delete(hash);
+        } else {
+          selectedHashes.add(hash);
+        }
+        const isNowSelected = selectedHashes.has(hash);
+        elGameList.querySelectorAll('.import-card').forEach(card => {
+          const cb = card.querySelector('.import-card-cb');
+          if (cb && cb.dataset.hash === hash) {
+            card.classList.toggle('import-card-selected', isNowSelected);
+            cb.checked = isNowSelected;
+          }
+        });
+        updateSelectionUI();
+      }
+
+      function updateSelectionUI() {
+        const count = selectedHashes.size;
+        elSelectedCount.textContent = count === 1 ? '1 game selected' : `${count} games selected`;
+        elImportSelBtn.disabled = count === 0;
+
+        const visibleSlice = filteredGames.slice(0, visibleCount);
+        const visibleSelected = visibleSlice.filter(g => selectedHashes.has(pgnHash(g.pgn || '')));
+        if (visibleSelected.length === 0) {
+          elSelectAllCb.checked       = false;
+          elSelectAllCb.indeterminate = false;
+        } else if (visibleSelected.length === visibleSlice.length) {
+          elSelectAllCb.checked       = true;
+          elSelectAllCb.indeterminate = false;
+        } else {
+          elSelectAllCb.checked       = false;
+          elSelectAllCb.indeterminate = true;
+        }
+      }
+
+      /* ---- mass import launch ---- */
+      function startMassImport(gameObjects) {
+        if (!localStorage.getItem('csa_api_key')) { showApiKeyWarning(); return; }
+        if (gameObjects.length === 0) { showToast('No games to import.'); return; }
+        const queue = gameObjects.map(g => ({ pgn: g.pgn || '', color: getPlayerColor(g) }));
+        sessionStorage.setItem('csa_import_queue', JSON.stringify(queue));
+        sessionStorage.setItem('csa_import_index', '0');
+        window.location.href = 'analyzer.html';
+      }
+
+      function startQuickImport(n) {
+        if (filteredGames.length === 0) { showToast('No games loaded yet.'); return; }
+        startMassImport(filteredGames.slice(0, n));
+      }
+
       /* ---- filter & render ---- */
       function applyFilters() {
+        selectedHashes.clear();
         filteredGames = allGames.filter(g => {
           if (tcFilter !== 'all' && g.time_class !== tcFilter) return false;
           if (resultFilter !== 'all' && getResult(g) !== resultFilter) return false;
@@ -254,13 +326,17 @@
 
         if (filteredGames.length === 0) {
           elEmpty.classList.remove('hidden');
+          elMassBar.classList.add('hidden');
           return;
         }
 
+        elMassBar.classList.remove('hidden');
+
         const slice = filteredGames.slice(0, visibleCount);
         const frag  = document.createDocumentFragment();
+        const resultLabels = { win: 'Win', loss: 'Loss', draw: 'Draw' };
 
-        slice.forEach((game, idx) => {
+        slice.forEach(game => {
           const result   = getResult(game);
           const opponent = getOpponent(game);
           const opening  = extractOpening(game.pgn || '');
@@ -268,13 +344,13 @@
           const color    = getPlayerColor(game);
           const hash     = pgnHash(game.pgn || '');
           const analyzed = analyzedHashes.has(hash);
+          const isSelected = selectedHashes.has(hash);
 
           const card = document.createElement('div');
-          card.className = `import-card import-card-${result}`;
-
-          const resultLabels = { win: 'Win', loss: 'Loss', draw: 'Draw' };
+          card.className = `import-card import-card-${result}${isSelected ? ' import-card-selected' : ''}`;
 
           card.innerHTML = `
+            <input type="checkbox" class="import-card-cb" data-hash="${hash}"${isSelected ? ' checked' : ''}>
             <span class="import-result-badge badge-${result}">${resultLabels[result]}</span>
             <div class="import-card-main">
               <div class="import-card-opponent">
@@ -293,16 +369,20 @@
             </div>
           `;
 
-          // Attach click via closure so we never store the PGN in a DOM attribute
-          card.querySelector('.import-analyze-btn').addEventListener('click', () => {
-            if (!localStorage.getItem('csa_api_key')) {
-              showApiKeyWarning();
-              return;
-            }
+          card.querySelector('.import-card-cb').addEventListener('click', e => {
+            e.stopPropagation();
+            toggleSelection(hash);
+          });
+
+          card.querySelector('.import-analyze-btn').addEventListener('click', e => {
+            e.stopPropagation();
+            if (!localStorage.getItem('csa_api_key')) { showApiKeyWarning(); return; }
             sessionStorage.setItem('pending_pgn', game.pgn || '');
             sessionStorage.setItem('pending_color', color);
             window.location.href = 'analyzer.html';
           });
+
+          card.addEventListener('click', () => toggleSelection(hash));
 
           frag.appendChild(card);
         });
@@ -312,6 +392,8 @@
         if (visibleCount < filteredGames.length) {
           elLoadMore.classList.remove('hidden');
         }
+
+        updateSelectionUI();
       }
 
       function escHtml(s) {
@@ -328,6 +410,8 @@
         elGameList.innerHTML = '';
         elEmpty.classList.add('hidden');
         elLoadMore.classList.add('hidden');
+        elMassBar.classList.add('hidden');
+        selectedHashes.clear();
 
         const { year, month } = archiveToYearMonth(url);
         const games = await ChessCom.fetchRecentGames(username, year, month);
@@ -411,6 +495,26 @@
         visibleCount += PAGE_SIZE;
         renderGames();
       });
+
+      elSelectAllCb.addEventListener('change', e => {
+        const visibleSlice = filteredGames.slice(0, visibleCount);
+        if (e.target.checked) {
+          visibleSlice.forEach(g => selectedHashes.add(pgnHash(g.pgn || '')));
+        } else {
+          visibleSlice.forEach(g => selectedHashes.delete(pgnHash(g.pgn || '')));
+        }
+        renderGames();
+      });
+
+      elImportSelBtn.addEventListener('click', () => {
+        const selected = filteredGames
+          .slice(0, visibleCount)
+          .filter(g => selectedHashes.has(pgnHash(g.pgn || '')));
+        startMassImport(selected);
+      });
+
+      document.getElementById('import-last-5-btn').addEventListener('click',  () => startQuickImport(5));
+      document.getElementById('import-last-10-btn').addEventListener('click', () => startQuickImport(10));
 
       init();
 

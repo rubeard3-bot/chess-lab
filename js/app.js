@@ -6,6 +6,11 @@ const App = (() => {
 
   let playerColor = 'white';
 
+  /* ---- mass import state ---- */
+  let massImportQueue             = null;
+  let massImportIndex             = 0;
+  let massImportCountdownInterval = null;
+
   const state = {
     currentPly:     0,
     fens:           [],
@@ -86,7 +91,189 @@ const App = (() => {
       return;
     }
 
+    if (checkMassImportQueue()) return;
     checkPendingPgn();
+  }
+
+  /* ------------------------------------------------------------------ */
+  /*  MASS IMPORT                                                         */
+  /* ------------------------------------------------------------------ */
+
+  function checkMassImportQueue() {
+    const queueJson = sessionStorage.getItem('csa_import_queue');
+    if (!queueJson) return false;
+
+    let queue, index;
+    try {
+      queue = JSON.parse(queueJson);
+      index = parseInt(sessionStorage.getItem('csa_import_index') || '0', 10);
+    } catch (e) {
+      clearMassImport();
+      return false;
+    }
+
+    if (!Array.isArray(queue) || queue.length === 0 || index >= queue.length) {
+      clearMassImport();
+      return false;
+    }
+
+    if (!Storage.getApiKey()) {
+      clearMassImport();
+      window.location.href = 'index.html?needsKey=true';
+      return true;
+    }
+
+    massImportQueue = queue;
+    massImportIndex = index;
+
+    showMassImportBanner();
+
+    const { pgn, color } = queue[index];
+    const textarea = document.getElementById('pgn-input');
+    if (!textarea) return false;
+    textarea.value = pgn;
+    applyPlayerColor(color === 'black' ? 'black' : 'white');
+
+    const topbar = document.getElementById('topbar');
+    if (topbar) topbar.classList.remove('collapsed');
+    const newGameBtn = document.getElementById('new-game-btn');
+    if (newGameBtn) newGameBtn.classList.add('hidden');
+
+    setTimeout(handleAnalyze, 500);
+    return true;
+  }
+
+  function createMassImportBanner() {
+    if (document.getElementById('mass-import-banner')) return;
+    const banner = document.createElement('div');
+    banner.id = 'mass-import-banner';
+    banner.className = 'mass-import-banner';
+    banner.innerHTML = `
+      <span class="mass-banner-label" id="mass-banner-label"></span>
+      <div class="mass-banner-progress-wrap">
+        <div class="mass-banner-progress-bar" id="mass-banner-bar" style="width:0%"></div>
+      </div>
+      <span class="mass-banner-status" id="mass-banner-status"></span>
+      <button class="mass-banner-btn mass-banner-skip" id="mass-banner-skip">Skip this game</button>
+      <button class="mass-banner-btn mass-banner-stop" id="mass-banner-stop">Stop import</button>
+    `;
+    document.body.prepend(banner);
+    document.body.style.paddingTop = '50px';
+
+    document.getElementById('mass-banner-skip').addEventListener('click', () => {
+      clearMassImportCountdown();
+      advanceMassImport();
+    });
+
+    document.getElementById('mass-banner-stop').addEventListener('click', () => {
+      const btn = document.getElementById('mass-banner-stop');
+      if (btn && btn.dataset.done) {
+        removeMassImportBanner();
+        return;
+      }
+      clearMassImportCountdown();
+      clearMassImport();
+      removeMassImportBanner();
+    });
+  }
+
+  function showMassImportBanner() {
+    createMassImportBanner();
+    const total   = massImportQueue.length;
+    const current = massImportIndex + 1;
+    updateBannerProgress(current, total, `Analyzing game ${current} of ${total}...`);
+  }
+
+  function updateBannerProgress(current, total, statusText) {
+    const label  = document.getElementById('mass-banner-label');
+    const bar    = document.getElementById('mass-banner-bar');
+    const status = document.getElementById('mass-banner-status');
+    if (label)  label.textContent    = `Mass Import: Game ${current} of ${total}`;
+    if (bar)    bar.style.width      = `${Math.round((current / total) * 100)}%`;
+    if (status) status.textContent   = statusText || '';
+  }
+
+  function removeMassImportBanner() {
+    const banner = document.getElementById('mass-import-banner');
+    if (banner) banner.remove();
+    document.body.style.paddingTop = '';
+  }
+
+  function clearMassImportCountdown() {
+    if (massImportCountdownInterval) {
+      clearInterval(massImportCountdownInterval);
+      massImportCountdownInterval = null;
+    }
+  }
+
+  function clearMassImport() {
+    sessionStorage.removeItem('csa_import_queue');
+    sessionStorage.removeItem('csa_import_index');
+    massImportQueue = null;
+    massImportIndex = 0;
+    clearMassImportCountdown();
+  }
+
+  function advanceMassImport() {
+    const nextIndex = massImportIndex + 1;
+    if (nextIndex >= massImportQueue.length) {
+      const total = massImportQueue.length;
+      clearMassImport();
+
+      const label  = document.getElementById('mass-banner-label');
+      const bar    = document.getElementById('mass-banner-bar');
+      const status = document.getElementById('mass-banner-status');
+      const skip   = document.getElementById('mass-banner-skip');
+      const stop   = document.getElementById('mass-banner-stop');
+      if (label)  label.textContent  = `All ${total} game${total !== 1 ? 's' : ''} analyzed!`;
+      if (bar)    bar.style.width    = '100%';
+      if (status) status.innerHTML   =
+        `<a href="recommendations.html" style="color:var(--accent);font-weight:600">View updated recommendations →</a>`;
+      if (skip)   skip.style.display = 'none';
+      if (stop) {
+        stop.textContent  = 'Dismiss';
+        stop.className    = 'mass-banner-btn mass-banner-done';
+        stop.dataset.done = '1';
+      }
+
+      if (typeof Recommendations !== 'undefined') {
+        Recommendations.generateRecommendations().then(recs => {
+          if (recs) localStorage.setItem('csa_recommendations', JSON.stringify(recs));
+        }).catch(() => {});
+      }
+    } else {
+      sessionStorage.setItem('csa_import_index', String(nextIndex));
+      window.location.reload();
+    }
+  }
+
+  function onMassImportGameComplete() {
+    if (!massImportQueue) return;
+    const total   = massImportQueue.length;
+    const current = massImportIndex + 1;
+
+    if (current >= total) {
+      advanceMassImport();
+      return;
+    }
+
+    let remaining = 3;
+    const statusEl = document.getElementById('mass-banner-status');
+    const refresh  = () => {
+      if (statusEl) statusEl.textContent =
+        `Game ${current} of ${total} analyzed — analyzing next game in ${remaining}s...`;
+    };
+    refresh();
+
+    massImportCountdownInterval = setInterval(() => {
+      remaining--;
+      if (remaining <= 0) {
+        clearMassImportCountdown();
+        advanceMassImport();
+      } else {
+        refresh();
+      }
+    }, 1000);
   }
 
   function checkPendingPgn() {
@@ -429,6 +616,11 @@ const App = (() => {
     const gameId     = Storage.saveGame(pgn, parsed.metadata, analysis, fensToSave, playerColor);
     loadGameIntoApp(pgn, parsed.metadata, parsed.verboseHistory, analysis, gameId);
     collapseTopbar();
+
+    if (massImportQueue) {
+      onMassImportGameComplete();
+      return;
+    }
 
     // Phase 2: async cross-game recommendations (non-blocking)
     if (typeof Recommendations !== 'undefined') {

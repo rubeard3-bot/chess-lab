@@ -2420,6 +2420,190 @@ body.import-page {
 .import-toast.show { opacity: 1; transform: translateY(0); }
 
 /* ============================================================
+   MASS IMPORT — import.html bar
+   ============================================================ */
+.mass-import-bar {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+.mass-import-bar.hidden { display: none; }
+
+.mass-select-all-label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--text2);
+  white-space: nowrap;
+  user-select: none;
+}
+.mass-select-all-label input[type="checkbox"] {
+  width: 15px;
+  height: 15px;
+  accent-color: var(--accent);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.mass-selected-count {
+  font-size: 13px;
+  color: var(--text2);
+  flex: 1;
+  white-space: nowrap;
+}
+
+.mass-import-btns {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.import-quick-btn {
+  padding: 5px 11px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: var(--text2);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  transition: border-color var(--trans), color var(--trans);
+  white-space: nowrap;
+  letter-spacing: 0.02em;
+}
+.import-quick-btn:hover {
+  border-color: rgba(127,166,80,0.45);
+  color: var(--accent);
+}
+
+.import-selected-btn {
+  padding: 6px 14px;
+  background: var(--accent);
+  border: none;
+  border-radius: 6px;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background var(--trans), opacity var(--trans);
+  white-space: nowrap;
+}
+.import-selected-btn:hover:not(:disabled) { background: #8fb85e; }
+.import-selected-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* Selected card highlight */
+.import-card-selected {
+  border-left-color: var(--accent) !important;
+  background: rgba(127,166,80,0.07) !important;
+}
+.import-card-selected:hover {
+  background: rgba(127,166,80,0.12) !important;
+}
+
+/* Per-card checkbox */
+.import-card-cb {
+  width: 15px;
+  height: 15px;
+  accent-color: var(--accent);
+  cursor: pointer;
+  flex-shrink: 0;
+  align-self: center;
+}
+
+/* ============================================================
+   MASS IMPORT BANNER — analyzer.html (injected by app.js)
+   ============================================================ */
+.mass-import-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 850;
+  background: #0c1525;
+  border-bottom: 2px solid var(--accent);
+  padding: 9px 20px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: nowrap;
+  min-height: 50px;
+}
+
+.mass-banner-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.mass-banner-progress-wrap {
+  width: 140px;
+  height: 5px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 3px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.mass-banner-progress-bar {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 3px;
+  transition: width 0.4s ease;
+}
+
+.mass-banner-status {
+  font-size: 12px;
+  color: var(--text2);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mass-banner-btn {
+  padding: 4px 11px;
+  border-radius: 5px;
+  font-size: 11px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background var(--trans), color var(--trans), border-color var(--trans);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.mass-banner-skip {
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.2);
+  color: var(--text2);
+}
+.mass-banner-skip:hover { border-color: var(--accent2); color: var(--accent2); }
+.mass-banner-stop {
+  background: transparent;
+  border: 1px solid rgba(224,82,82,0.3);
+  color: #f08080;
+}
+.mass-banner-stop:hover { background: rgba(224,82,82,0.1); }
+.mass-banner-done {
+  background: transparent;
+  border: 1px solid rgba(127,166,80,0.4);
+  color: var(--accent);
+}
+.mass-banner-done:hover { background: rgba(127,166,80,0.1); }
+
+/* ============================================================
    ANALYZER PAGE  (analyzer.html)
    ============================================================ */
 
