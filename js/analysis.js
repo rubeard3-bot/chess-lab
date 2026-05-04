@@ -1,5 +1,7 @@
 const Analysis = (() => {
-  const API_URL = 'https://api.anthropic.com/v1/messages';
+  const API_URL = window.location.hostname === 'localhost'
+    ? 'http://localhost:4000/api/analyze'
+    : 'https://YOUR_RAILWAY_URL/api/analyze';
   const MODEL   = 'claude-sonnet-4-5';
 
   /* ------------------------------------------------------------------ */
@@ -139,13 +141,6 @@ const Analysis = (() => {
   /* ------------------------------------------------------------------ */
 
   async function callClaude(metadata, classifiedMoves, pastGames, playerColor) {
-    const apiKey = Storage.getApiKey();
-    if (!apiKey) {
-      const err = new Error('No API key stored.');
-      err.code  = 'NO_API_KEY';
-      throw err;
-    }
-
     const w = metadata.white  || 'White';
     const b = metadata.black  || 'Black';
     const d = metadata.date   || 'Unknown date';
@@ -216,14 +211,9 @@ RULES for moveExplanations — include EVERY ${playerPlies} ply (${playerName}'s
     let response;
     try {
       response = await fetch(API_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type':                              'application/json',
-          'x-api-key':                                 apiKey,
-          'anthropic-version':                         '2023-06-01',
-          'anthropic-dangerous-direct-browser-access': 'true'
-        },
-        body: JSON.stringify({
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({
           model:      MODEL,
           max_tokens: 8000,
           messages:   [{ role: 'user', content: prompt }]
