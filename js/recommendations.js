@@ -32,6 +32,7 @@ const Recommendations = (() => {
     if (!apiKey) return null;
 
     const gamesSummary = games.map(g => ({
+      gameId:           'csa_game_' + g.id,
       date:             g.savedAt ? g.savedAt.slice(0, 10) : '',
       playerColor:      g.playerColor || 'white',
       openingName:      g.analysis?.opening?.name || '',
@@ -66,6 +67,8 @@ const Recommendations = (() => {
 
 Games data: ${JSON.stringify(gamesSummary)}
 
+When citing specific games as examples, always include the gameId field in your response so the user can link back to that game. Include gameIds in the examples array as objects: { 'gameId': 'csa_game_...', 'description': '...' }
+
 Return ONLY valid JSON with no markdown:
 {
   "overallAssessment": "<3-4 sentences about the player's current level, style, and biggest opportunities for improvement>",
@@ -80,7 +83,7 @@ Return ONLY valid JSON with no markdown:
       "severity": "<critical|major|moderate>",
       "frequency": "<how many times across how many games>",
       "description": "<3-4 sentences explaining the pattern in detail>",
-      "examples": ["<specific move from specific game that shows this weakness>"],
+      "examples": [{ "gameId": "<the csa_game_... id>", "move": "<specific move>", "description": "<what happened>" }],
       "studyPlan": {
         "priority": "<1-5, 1 being most urgent>",
         "timeRecommended": "<e.g. 30 mins per day for 2 weeks>",
@@ -100,7 +103,8 @@ Return ONLY valid JSON with no markdown:
         "averageAccuracy": 0,
         "commonMistake": "<the most frequent deviation or error>",
         "recommendation": "<keep/modify/replace and why>",
-        "studyResources": [{ "name": "...", "url": "..." }]
+        "studyResources": [{ "name": "...", "url": "..." }],
+        "gameExamples": [{ "gameId": "<csa_game_... id>", "description": "<what happened in this game>" }]
       }
     ]
   },
@@ -114,14 +118,16 @@ Return ONLY valid JSON with no markdown:
       "pattern": "<e.g. Missing back rank mates>",
       "occurrences": 0,
       "description": "<2 sentences>",
-      "drills": ["<specific puzzle type to practice>"]
+      "drills": ["<specific puzzle type to practice>"],
+      "gameExamples": [{ "gameId": "<csa_game_... id>", "description": "<what happened in this game>" }]
     }
   ],
   "improvements": [
     {
       "area": "<what improved>",
       "evidence": "<specific comparison across games showing improvement>",
-      "message": "<encouraging one sentence>"
+      "message": "<encouraging one sentence>",
+      "gameId": "<csa_game_... id of the game that best shows this improvement>"
     }
   ],
   "weeklyStudyPlan": {

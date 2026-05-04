@@ -5,6 +5,23 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>My Recommendations — Chess Lab</title>
   <link rel="stylesheet" href="css/styles.css">
+  <style>
+    .rec-game-refs { margin-top: 10px; }
+    .rec-game-refs-label { font-size: 0.72rem; color: #888; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 5px; }
+    .rec-game-ref-card { display: flex; align-items: center; gap: 10px; background: rgba(0,0,0,0.28); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 8px 12px; margin-top: 5px; text-decoration: none; color: inherit; transition: filter 0.15s ease; }
+    .rec-game-ref-card:hover { filter: brightness(1.18); }
+    .rec-game-ref-icon { font-size: 1rem; flex-shrink: 0; opacity: 0.75; }
+    .rec-game-ref-body { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+    .rec-game-ref-desc { font-size: 0.82rem; color: #ddd; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .rec-game-ref-meta { font-size: 0.72rem; color: #777; }
+    .rec-game-ref-right { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; flex-shrink: 0; }
+    .rec-game-ref-acc { font-size: 0.7rem; font-weight: 700; padding: 2px 6px; border-radius: 4px; }
+    .acc-good    { background: rgba(76,175,80,0.15);   color: #4caf50; }
+    .acc-ok      { background: rgba(255,179,0,0.15);   color: #ffb300; }
+    .acc-poor    { background: rgba(239,83,80,0.15);   color: #ef5350; }
+    .acc-unknown { background: rgba(255,255,255,0.05); color: #666; }
+    .rec-game-ref-link { font-size: 0.72rem; color: #4caf50; font-weight: 600; }
+  </style>
 </head>
 <body class="rec-page">
 
@@ -195,6 +212,39 @@
         .replace(/'/g, '&#39;');
     }
 
+    function getGameInfo(gameId) {
+      const saved = localStorage.getItem(gameId);
+      if (!saved) return null;
+      try {
+        const game = JSON.parse(saved);
+        return {
+          opening:  game.analysis?.opening?.name || 'Unknown Opening',
+          date:     new Date(game.savedAt).toLocaleDateString(),
+          accuracy: game.analysis?.summary?.accuracy ?? null,
+          result:   game.metadata?.result || '?'
+        };
+      } catch (_) { return null; }
+    }
+
+    function renderGameRefCard(gameId, description) {
+      const info = getGameInfo(gameId);
+      const acc  = info ? Number(info.accuracy) : null;
+      const accClass = (acc == null || isNaN(acc)) ? 'acc-unknown'
+        : acc >= 80 ? 'acc-good' : acc >= 60 ? 'acc-ok' : 'acc-poor';
+      const accLabel = (acc != null && !isNaN(acc)) ? acc + '%' : '?%';
+      return `<a class="rec-game-ref-card" href="analyzer.html?gameId=${esc(gameId)}" target="_blank" rel="noopener noreferrer">
+        <span class="rec-game-ref-icon">♟</span>
+        <span class="rec-game-ref-body">
+          <span class="rec-game-ref-desc">${esc(description)}</span>
+          ${info ? `<span class="rec-game-ref-meta">${esc(info.opening)} · ${esc(info.date)}</span>` : ''}
+        </span>
+        <span class="rec-game-ref-right">
+          <span class="rec-game-ref-acc ${accClass}">${accLabel}</span>
+          <span class="rec-game-ref-link">View game →</span>
+        </span>
+      </a>`;
+    }
+
     let _toastTimer;
     function showToast(msg) {
       const el = document.getElementById('rec-toast');
@@ -283,7 +333,9 @@
         const sev      = (w.severity || 'moderate').toLowerCase();
         const sevLabel = { critical: 'Critical', major: 'Major', moderate: 'Moderate' }[sev] || esc(w.severity);
         const examples = (w.examples || []).map(e =>
-          `<div class="rec-example-line">${esc(e)}</div>`
+          typeof e === 'string'
+            ? `<div class="rec-example-line">${esc(e)}</div>`
+            : renderGameRefCard(e.gameId, e.description || e.move || '')
         ).join('');
 
         const sp = w.studyPlan;
@@ -311,7 +363,7 @@
     ${w.frequency ? `<span class="rec-freq-tag">${esc(w.frequency)}</span>` : ''}
   </div>
   <p class="rec-weakness-desc">${esc(w.description)}</p>
-  ${examples ? `<div class="rec-examples-block"><div class="rec-examples-label">Examples from your games</div>${examples}</div>` : ''}
+  ${examples ? `<div class="rec-examples-block"><div class="rec-examples-label">Referenced Games</div><div class="rec-game-refs">${examples}</div></div>` : ''}
   ${sp ? `
   <button class="rec-sp-toggle" onclick="toggleStudyPlan(this)">
     📚 Study Plan &nbsp;·&nbsp; Priority ${esc(String(sp.priority))} &nbsp;·&nbsp; ${esc(sp.timeRecommended)} <span class="rec-sp-arrow">▾</span>
@@ -351,6 +403,8 @@
             : `<span class="rec-resource-link">${esc(r.name)}</span>`
         ).join('');
 
+        const gameRefs = (o.gameExamples || []).map(e => renderGameRefCard(e.gameId, e.description || '')).join('');
+
         return `
 <div class="rec-opening-card">
   <div class="rec-opening-main">
@@ -361,6 +415,7 @@
     </div>
     ${o.commonMistake ? `<p class="rec-opening-mistake">Common mistake: ${esc(o.commonMistake)}</p>` : ''}
     ${links ? `<div class="rec-opening-links">${links}</div>` : ''}
+    ${gameRefs ? `<div class="rec-game-refs"><div class="rec-game-refs-label">Games</div>${gameRefs}</div>` : ''}
   </div>
   <span class="rec-opening-rec-badge ${esc(recType)}">${esc(recLabel)}</span>
 </div>`;
@@ -411,7 +466,8 @@
         return;
       }
       el.innerHTML = tactics.map(t => {
-        const drills = (t.drills || []).map(d => `<li class="rec-drill-item">${esc(d)}</li>`).join('');
+        const drills    = (t.drills || []).map(d => `<li class="rec-drill-item">${esc(d)}</li>`).join('');
+        const gameRefs  = (t.gameExamples || []).map(e => renderGameRefCard(e.gameId, e.description || '')).join('');
         return `
 <div class="rec-tactic-card">
   <div class="rec-tactic-header">
@@ -420,6 +476,7 @@
   </div>
   <p class="rec-tactic-desc">${esc(t.description)}</p>
   ${drills ? `<ul class="rec-drills-list">${drills}</ul>` : ''}
+  ${gameRefs ? `<div class="rec-game-refs"><div class="rec-game-refs-label">Referenced Games</div>${gameRefs}</div>` : ''}
 </div>`;
       }).join('');
     }
@@ -437,6 +494,7 @@
   <div class="rec-improvement-area">${esc(imp.area)}</div>
   <p class="rec-improvement-evidence">${esc(imp.evidence)}</p>
   <p class="rec-improvement-msg">${esc(imp.message)}</p>
+  ${imp.gameId ? `<div class="rec-game-refs">${renderGameRefCard(imp.gameId, imp.area)}</div>` : ''}
 </div>`).join('');
     }
 
