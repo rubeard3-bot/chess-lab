@@ -95,12 +95,6 @@
 
     </div>
 
-    <!-- API key missing warning -->
-    <div id="import-key-warning" class="import-key-warning hidden">
-      ⚠ You need to add your API key before analyzing.
-      <a href="index.html?needsKey=true">Go to Settings on the home page</a>
-    </div>
-
     <!-- Loading spinner -->
     <div id="import-loading" class="import-loading hidden">
       <span class="spinner"></span> Loading games…
@@ -289,7 +283,6 @@
 
       /* ---- mass import launch ---- */
       function startMassImport(gameObjects) {
-        if (!localStorage.getItem('csa_api_key')) { showApiKeyWarning(); return; }
         if (gameObjects.length === 0) { showToast('No games to import.'); return; }
         const queue = gameObjects.map(g => ({ pgn: g.pgn || '', color: getPlayerColor(g) }));
         sessionStorage.setItem('csa_import_queue', JSON.stringify(queue));
@@ -312,11 +305,6 @@
         });
         visibleCount = PAGE_SIZE;
         renderGames();
-      }
-
-      function showApiKeyWarning() {
-        const el = document.getElementById('import-key-warning');
-        if (el) el.classList.remove('hidden');
       }
 
       function renderGames() {
@@ -376,7 +364,6 @@
 
           card.querySelector('.import-analyze-btn').addEventListener('click', e => {
             e.stopPropagation();
-            if (!localStorage.getItem('csa_api_key')) { showApiKeyWarning(); return; }
             sessionStorage.setItem('pending_pgn', game.pgn || '');
             sessionStorage.setItem('pending_color', color);
             window.location.href = 'analyzer.html';

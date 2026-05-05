@@ -306,47 +306,11 @@ const App = (() => {
   }
 
   /* ------------------------------------------------------------------ */
-  /*  API KEY MODAL                                                       */
+  /*  API KEY MODAL (removed — Railway backend handles the key)          */
   /* ------------------------------------------------------------------ */
 
   function setupApiKeyModal() {
-    const saveBtn    = document.getElementById('api-key-save');
-    const input      = document.getElementById('api-key-input');
-    const changeLink = document.getElementById('change-api-key-link');
-
-    saveBtn.addEventListener('click', () => {
-      const key = (input.value || '').trim();
-      if (!key || !key.startsWith('sk-')) {
-        input.style.borderColor = 'var(--danger)';
-        return;
-      }
-      input.style.borderColor = '';
-      Storage.setApiKey(key);
-      hideApiKeyModal();
-    });
-
-    input.addEventListener('keydown', e => {
-      if (e.key === 'Enter') saveBtn.click();
-      input.style.borderColor = '';
-    });
-
-    changeLink.addEventListener('click', e => {
-      e.preventDefault();
-      input.value = Storage.getApiKey();
-      showApiKeyModal();
-    });
-  }
-
-  function showApiKeyModal() {
-    const modal = document.getElementById('api-key-modal');
-    if (modal) modal.classList.remove('hidden');
-    const input = document.getElementById('api-key-input');
-    if (input) setTimeout(() => input.focus(), 50);
-  }
-
-  function hideApiKeyModal() {
-    const modal = document.getElementById('api-key-modal');
-    if (modal) modal.classList.add('hidden');
+    // no-op: API key management moved to Railway backend
   }
 
   /* ------------------------------------------------------------------ */

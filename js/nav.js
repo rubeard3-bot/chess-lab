@@ -68,12 +68,12 @@
       });
     });
 
-    // Settings / API Key — non-analyzer pages redirect to home settings
+    // Settings — non-analyzer pages go to home
     const settingsLink = document.getElementById('change-api-key-link');
     if (settingsLink && currentPage !== 'analyzer') {
       settingsLink.addEventListener('click', () => {
         closeDrawer();
-        window.location.href = 'index.html?needsKey=true';
+        window.location.href = 'index.html';
       });
     }
   }
