@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Opening Explorer — Chess Lab</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <style>
+    .hidden { display: none !important; }
+
+    /* ── Page shell ──────────────────────────────────────────────────── */
+    body.openings-page {
+      min-height: 100vh;
+      overflow-y: auto;
+    }
+    .open-container {
+      max-width: 1260px;
+      margin: 0 auto;
+      padding: 0 20px 48px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    /* ── Header ──────────────────────────────────────────────────────── */
+    .open-header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 16px 0 10px;
+      border-bottom: 1px solid var(--border);
+    }
+    .open-back-btn {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 6px 12px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--card);
+      color: var(--text2);
+      font-size: 13px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: border-color 0.15s, color 0.15s;
+      white-space: nowrap;
+    }
+    .open-back-btn:hover { border-color: rgba(255,255,255,0.2); color: var(--text); text-decoration: none; }
+    .open-title-group {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+    }
+    .open-icon { font-size: 24px; line-height: 1; }
+    .open-title { font-size: 20px; font-weight: 800; color: var(--text); }
+    .open-header-spacer { min-width: 80px; }
+
+    /* ── Search ──────────────────────────────────────────────────────── */
+    #search-wrap {
+      position: relative;
+    }
+    #search-input {
+      width: 100%;
+      padding: 10px 16px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 14px;
+      outline: none;
+      font-family: inherit;
+      transition: border-color 0.15s;
+    }
+    #search-input:focus { border-color: var(--accent); }
+    #search-input::placeholder { color: var(--text2); }
+    #search-dropdown {
+      position: absolute;
+      top: calc(100% + 4px);
+      left: 0; right: 0;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      z-index: 200;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+      overflow: hidden;
+    }
+    #search-dropdown.hidden { display: none; }
+    .sd-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 16px;
+      cursor: pointer;
+      border-bottom: 1px solid var(--border);
+      transition: background 0.12s;
+    }
+    .sd-item:last-child { border-bottom: none; }
+    .sd-item:hover { background: var(--card); }
+    .sd-name { font-size: 14px; font-weight: 600; color: var(--text); }
+    .sd-eco  { font-size: 12px; font-weight: 700; font-family: monospace; color: var(--accent2); }
+
+    /* ── Two-column layout ───────────────────────────────────────────── */
+    .open-main {
+      display: flex;
+      gap: 18px;
+      align-items: flex-start;
+    }
+    .open-left {
+      width: 420px;
+      min-width: 420px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .open-right {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    /* ── Board ───────────────────────────────────────────────────────── */
+    #board-wrap {
+      position: relative;
+      width: 420px;
+      height: 420px;
+      flex-shrink: 0;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    #opening-canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      cursor: default;
+    }
+    #board-wrap.practice-glow {
+      box-shadow: 0 0 0 3px rgba(127,166,80,0.55), 0 0 18px rgba(127,166,80,0.25);
+    }
+
+    /* ── Board controls ──────────────────────────────────────────────── */
+    .ob-controls {
+      display: flex;
+      gap: 6px;
+    }
+    .ob-btn {
+      flex: 1;
+      padding: 7px 10px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text2);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s, color 0.15s;
+      font-family: inherit;
+      text-align: center;
+    }
+    .ob-btn:hover { background: #1a3a60; border-color: rgba(255,255,255,0.2); color: var(--text); }
+
+    /* ── Move history ────────────────────────────────────────────────── */
+    #opening-move-history {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 8px 12px;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      min-height: 36px;
+      line-height: 1.9;
+      overflow-x: auto;
+      white-space: nowrap;
+    }
+    .oh-num  { color: var(--text2); margin-right: 2px; }
+    .oh-san  { color: var(--text); padding: 1px 4px; border-radius: 3px; cursor: pointer; transition: background 0.12s; }
+    .oh-san:hover  { background: rgba(255,255,255,0.07); }
+    .oh-active { background: rgba(127,166,80,0.20); color: var(--accent); }
+    .oh-empty  { color: var(--text2); font-family: inherit; font-size: 12px; }
+
+    /* ── Source toggle ───────────────────────────────────────────────── */
+    .ob-source-row {
+      display: flex;
+      gap: 6px;
+    }
+    .ob-source-row .pill-toggle { flex: 1; justify-content: center; }
+
+    /* ── Move tree ───────────────────────────────────────────────────── */
+    #move-tree {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .mt-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+      transition: background 0.12s;
+    }
+    .mt-row:last-child { border-bottom: none; }
+    .mt-row:hover { background: rgba(255,255,255,0.045); }
+    .mt-san {
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--accent);
+      min-width: 44px;
+      flex-shrink: 0;
+    }
+    .mt-bars { flex: 1; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+    .mt-bar-inner {
+      display: flex;
+      height: 8px;
+      border-radius: 4px;
+      overflow: hidden;
+      background: rgba(255,255,255,0.06);
+    }
+    .mt-bw { background: #e8d5b4; }
+    .mt-bd { background: #888; }
+    .mt-bb { background: #2a2a2a; border: 1px solid rgba(255,255,255,0.1); }
+    .mt-pcts { font-size: 10px; color: var(--text2); font-family: monospace; }
+    .mt-games {
+      font-size: 11px;
+      color: var(--text2);
+      min-width: 32px;
+      text-align: right;
+      flex-shrink: 0;
+    }
+    .mt-loading, .mt-empty {
+      padding: 14px 16px;
+      color: var(--text2);
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* ── Right panels ────────────────────────────────────────────────── */
+    .ob-panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .ob-panel-title {
+      padding: 10px 14px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text2);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .ob-opening-name {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: none;
+      letter-spacing: 0;
+      color: var(--accent);
+    }
+
+    /* ── Trouble spots ───────────────────────────────────────────────── */
+    #trouble-spots { padding: 6px 8px; }
+    .ts-card {
+      border-left: 3px solid var(--danger);
+      background: rgba(224,82,82,0.07);
+      border-radius: 4px;
+      padding: 8px 12px;
+      margin-bottom: 6px;
+      cursor: pointer;
+      transition: background 0.12s;
+    }
+    .ts-card:last-child { margin-bottom: 0; }
+    .ts-card:hover { background: rgba(224,82,82,0.14); }
+    .ts-name   { font-size: 13px; font-weight: 700; color: var(--text); }
+    .ts-record { font-size: 12px; color: var(--text2); margin-top: 2px; }
+    .ts-acc    { font-size: 11px; color: var(--text2); }
+    .ts-empty  { color: var(--text2); font-size: 13px; padding: 10px 14px; margin: 0; }
+
+    /* ── Win stats ───────────────────────────────────────────────────── */
+    #win-stats-panel { padding: 12px 14px; }
+    .ws-bar {
+      display: flex;
+      height: 22px;
+      border-radius: 4px;
+      overflow: hidden;
+      margin-bottom: 6px;
+    }
+    .ws-w { background: #ddd; color: #333; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; overflow:hidden; }
+    .ws-d { background: #888; color: #eee; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; overflow:hidden; }
+    .ws-b { background: #222; color: #ccc; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; border:1px solid rgba(255,255,255,0.08); overflow:hidden; }
+    .ws-labels {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      margin-bottom: 6px;
+    }
+    .ws-lw { color: #ccc; }
+    .ws-ld { color: #aaa; }
+    .ws-lb { color: #999; }
+    .ws-meta {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      color: var(--text2);
+    }
+    .ws-meta strong { color: var(--accent); }
+    .ws-empty { color: var(--text2); font-size: 13px; margin: 0; padding: 4px 0; }
+
+    /* ── Theory ──────────────────────────────────────────────────────── */
+    #theory-text {
+      padding: 12px 14px;
+      font-size: 14px;
+      line-height: 1.75;
+      color: var(--text2);
+    }
+    .theory-loading {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--text2);
+      font-size: 13px;
+    }
+
+    /* ── Practice panel ──────────────────────────────────────────────── */
+    .ob-practice-body { padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; }
+    #practice-status { background: rgba(127,166,80,0.08); border-radius: 5px; padding: 8px 12px; }
+    .ob-ps-text { font-size: 13px; font-weight: 600; }
+    .ps-yours   { color: var(--accent); }
+    .ps-thinking { color: var(--text2); }
+    .ps-done    { color: var(--warn); }
+    #practice-color-toggle { display: flex; gap: 6px; }
+    #practice-color-toggle .pill-toggle { flex: 1; justify-content: center; }
+    #practice-score { font-size: 12px; color: var(--text2); text-align: center; }
+    .ob-prac-btns { display: flex; flex-direction: column; gap: 7px; }
+    .ob-prac-btn {
+      padding: 9px 16px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      text-align: center;
+      transition: background 0.15s, border-color 0.15s, opacity 0.15s;
+      border: 1px solid transparent;
+    }
+    .ob-prac-primary {
+      background: rgba(127,166,80,0.18);
+      border-color: rgba(127,166,80,0.40);
+      color: #a0d070;
+    }
+    .ob-prac-primary:hover { background: rgba(127,166,80,0.28); }
+    .ob-prac-primary.prac-active { background: rgba(224,82,82,0.15); border-color: rgba(224,82,82,0.40); color: #f08080; }
+    .ob-prac-secondary {
+      background: var(--card);
+      border-color: var(--border);
+      color: var(--text2);
+    }
+    .ob-prac-secondary:hover { border-color: var(--accent2); color: var(--accent2); }
+
+    /* ── Practice toast ──────────────────────────────────────────────── */
+    .ob-toast {
+      position: fixed;
+      bottom: 28px;
+      left: 50%;
+      transform: translateX(-50%) translateY(12px);
+      padding: 10px 18px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      z-index: 900;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s, transform 0.25s;
+      max-width: 440px;
+      text-align: center;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+    }
+    .ob-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    .pt-success { background: rgba(127,166,80,0.9);  color: #fff; }
+    .pt-warning { background: rgba(224,153,82,0.9);  color: #fff; }
+    .pt-error   { background: rgba(224,82,82,0.9);   color: #fff; }
+
+    /* ── Shared pill-toggle (matches existing styles.css) ─────────────── */
+    .pill-toggle {
+      display: flex; align-items: center; gap: 6px;
+      padding: 6px 14px; border-radius: 20px;
+      border: 1px solid var(--border); background: var(--card);
+      color: var(--text2); font-size: 12px; font-weight: 600;
+      cursor: pointer; transition: all 0.15s;
+      font-family: inherit; user-select: none;
+    }
+    .pill-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; opacity: 0.55; flex-shrink: 0; }
+    .pill-toggle.active { border-color: var(--accent); background: rgba(127,166,80,0.12); color: var(--accent); }
+    .pill-toggle:not(.active):hover { border-color: rgba(255,255,255,0.18); color: var(--text); }
+
+    /* ── Responsive ──────────────────────────────────────────────────── */
+    @media (max-width: 900px) {
+      .open-main { flex-direction: column; }
+      .open-left { width: 100%; min-width: 0; }
+      #board-wrap { width: 100%; height: auto; aspect-ratio: 1; }
+      #opening-canvas { width: 100%; height: 100%; }
+    }
+  </style>
+</head>
+<body class="openings-page">
+
+<!-- Nav Drawer Overlay -->
+<div id="nav-overlay" class="nav-overlay hidden"></div>
+
+<!-- Hamburger Nav Drawer -->
+<div id="nav-drawer" class="nav-drawer">
+  <div class="nav-drawer-header">
+    <span class="nav-drawer-brand">♟ Chess Lab</span>
+    <button id="nav-drawer-close" class="nav-drawer-close" aria-label="Close menu">✕</button>
+  </div>
+  <nav class="nav-drawer-nav">
+    <a href="index.html"          class="nav-item"><span class="nav-item-icon">🏠</span><span>Home</span></a>
+    <a href="analyzer.html"       class="nav-item"><span class="nav-item-icon">♟</span><span>Game Analyzer</span></a>
+    <a href="archive.html"        class="nav-item"><span class="nav-item-icon">📂</span><span>Game Archive</span></a>
+    <a href="practice.html"       class="nav-item"><span class="nav-item-icon">♜</span><span>Practice Board</span></a>
+    <a href="recommendations.html" class="nav-item"><span class="nav-item-icon">🎯</span><span>My Recommendations</span></a>
+    <button class="nav-item nav-item-btn" id="nav-progress-btn">
+      <span class="nav-item-icon">📈</span><span>My Progress</span>
+      <span class="nav-coming-soon">Soon</span>
+    </button>
+    <a href="openings.html" class="nav-item nav-item-active"><span class="nav-item-icon">📖</span><span>Opening Explorer</span></a>
+  </nav>
+  <div class="nav-drawer-footer">
+    <button class="nav-item nav-item-btn" id="change-api-key-link">
+      <span class="nav-item-icon">⚙</span><span>Settings / API Key</span>
+    </button>
+  </div>
+</div>
+
+<div id="az-toast" class="az-toast"></div>
+<div id="practice-toast" class="ob-toast" role="status" aria-live="polite"></div>
+
+<div class="open-container">
+
+  <!-- Header -->
+  <div class="open-header">
+    <button id="hamburger-btn" class="hamburger-btn" aria-label="Open menu">☰</button>
+    <a href="index.html" class="open-back-btn">← Home</a>
+    <div class="open-title-group">
+      <span class="open-icon">📖</span>
+      <span class="open-title">Opening Explorer</span>
+    </div>
+    <div class="open-header-spacer"></div>
+  </div>
+
+  <!-- Search -->
+  <div id="search-wrap">
+    <input
+      id="search-input"
+      type="text"
+      placeholder="Search by opening name (Caro-Kann) or ECO code (B13)…"
+      autocomplete="off"
+      spellcheck="false"
+    >
+    <div id="search-dropdown" class="hidden"></div>
+  </div>
+
+  <!-- Two-column main -->
+  <div class="open-main">
+
+    <!-- ── Left column ─────────────────────────────────────────────── -->
+    <div class="open-left">
+
+      <!-- Board -->
+      <div id="board-wrap">
+        <canvas id="opening-canvas" width="420" height="420"></canvas>
+      </div>
+
+      <!-- Board nav controls -->
+      <div class="ob-controls">
+        <button id="nav-back"    class="ob-btn" title="Back one move">◀</button>
+        <button id="nav-forward" class="ob-btn" title="Forward one move">▶</button>
+        <button id="nav-reset"   class="ob-btn" title="Reset to opening start">↺ Start</button>
+        <button id="nav-flip"    class="ob-btn" title="Flip board">⇅ Flip</button>
+      </div>
+
+      <!-- Move history -->
+      <div id="opening-move-history">
+        <span class="oh-empty">Starting position</span>
+      </div>
+
+      <!-- Masters / Players toggle -->
+      <div class="ob-source-row">
+        <button id="tog-masters" class="pill-toggle active">
+          <span class="pill-dot"></span>Masters
+        </button>
+        <button id="tog-players" class="pill-toggle">
+          <span class="pill-dot"></span>Players 1500–1700
+        </button>
+      </div>
+
+      <!-- Move tree -->
+      <div id="move-tree">
+        <div class="mt-empty">Select an opening or navigate to see moves</div>
+      </div>
+
+    </div><!-- /open-left -->
+
+    <!-- ── Right column ────────────────────────────────────────────── -->
+    <div class="open-right">
+
+      <!-- Trouble spots -->
+      <div class="ob-panel">
+        <div class="ob-panel-title">Your Trouble Spots</div>
+        <div id="trouble-spots">
+          <p class="ts-empty">Analyze some games to see your trouble spots.</p>
+        </div>
+      </div>
+
+      <!-- Win stats -->
+      <div class="ob-panel">
+        <div class="ob-panel-title">Win Statistics</div>
+        <div id="win-stats-panel">
+          <p class="ws-empty">Select an opening to see statistics.</p>
+        </div>
+      </div>
+
+      <!-- Theory -->
+      <div class="ob-panel">
+        <div class="ob-panel-title">
+          Theory
+          <span id="opening-name-display" class="ob-opening-name"></span>
+        </div>
+        <div id="theory-text">Select an opening to see the theory explanation.</div>
+      </div>
+
+      <!-- Practice -->
+      <div class="ob-panel">
+        <div class="ob-panel-title">Practice</div>
+        <div class="ob-practice-body">
+          <div id="practice-status" class="hidden">
+            <div id="practice-status-text" class="ob-ps-text"></div>
+          </div>
+          <div id="practice-color-toggle" class="hidden">
+            <button id="pct-white" class="pill-toggle active"><span class="pill-dot"></span>Play as White</button>
+            <button id="pct-black" class="pill-toggle"><span class="pill-dot"></span>Play as Black</button>
+          </div>
+          <div id="practice-score" class="hidden">
+            <span id="practice-score-text"></span>
+          </div>
+          <div class="ob-prac-btns">
+            <button id="practice-btn" class="ob-prac-btn ob-prac-primary">Practice This Line</button>
+            <button id="export-btn"   class="ob-prac-btn ob-prac-secondary">Export to Practice Board →</button>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /open-right -->
+
+  </div><!-- /open-main -->
+</div><!-- /open-container -->
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+<script src="js/storage.js"></script>
+<script src="js/nav.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    initNav('openings');
+    /* Settings link on this page → go home */
+    const sl = document.getElementById('change-api-key-link');
+    if (sl) sl.addEventListener('click', function () { window.location.href = 'index.html'; });
+  });
+</script>
+<script src="js/openings.js"></script>
+</body>
+</html>

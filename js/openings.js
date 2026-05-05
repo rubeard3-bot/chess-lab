@@ -1,0 +1,801 @@
+(function () {
+  'use strict';
+
+  /* ── Constants ──────────────────────────────────────────────────────── */
+  const RAILWAY    = 'https://chess-lab-production.up.railway.app';
+  const MASTERS_EP = 'https://explorer.lichess.ovh/masters';
+  const PLAYERS_EP = 'https://explorer.lichess.ovh/lichess';
+
+  const LIGHT = '#f0d9b5';
+  const DARK  = '#b58863';
+  const PX    = 420;
+  const SQ    = PX / 8;  // 52.5
+
+  const PIECE_URLS = {
+    wK:'https://lichess1.org/assets/piece/cburnett/wK.svg',
+    wQ:'https://lichess1.org/assets/piece/cburnett/wQ.svg',
+    wR:'https://lichess1.org/assets/piece/cburnett/wR.svg',
+    wB:'https://lichess1.org/assets/piece/cburnett/wB.svg',
+    wN:'https://lichess1.org/assets/piece/cburnett/wN.svg',
+    wP:'https://lichess1.org/assets/piece/cburnett/wP.svg',
+    bK:'https://lichess1.org/assets/piece/cburnett/bK.svg',
+    bQ:'https://lichess1.org/assets/piece/cburnett/bQ.svg',
+    bR:'https://lichess1.org/assets/piece/cburnett/bR.svg',
+    bB:'https://lichess1.org/assets/piece/cburnett/bB.svg',
+    bN:'https://lichess1.org/assets/piece/cburnett/bN.svg',
+    bP:'https://lichess1.org/assets/piece/cburnett/bP.svg',
+  };
+
+  const SYM = {
+    wK:'♔',wQ:'♕',wR:'♖',wB:'♗',wN:'♘',wP:'♙',
+    bK:'♚',bQ:'♛',bR:'♜',bB:'♝',bN:'♞',bP:'♟'
+  };
+
+  const OPENINGS = [
+    { name:'Caro-Kann Defense',     eco:'B10', ecoRange:'B10–B19', moves:['e4','c6'] },
+    { name:"Queen's Gambit",        eco:'D06', ecoRange:'D06–D69', moves:['d4','d5','c4'] },
+    { name:'Sicilian Defense',      eco:'B20', ecoRange:'B20–B99', moves:['e4','c5'] },
+    { name:'French Defense',        eco:'C00', ecoRange:'C00–C19', moves:['e4','e6'] },
+    { name:"King's Indian Defense", eco:'E60', ecoRange:'E60–E99', moves:['d4','Nf6','c4','g6'] },
+    { name:'Ruy Lopez',             eco:'C60', ecoRange:'C60–C99', moves:['e4','e5','Nf3','Nc6','Bb5'] },
+    { name:'Italian Game',          eco:'C50', ecoRange:'C50–C59', moves:['e4','e5','Nf3','Nc6','Bc4'] },
+    { name:'English Opening',       eco:'A10', ecoRange:'A10–A39', moves:['c4'] },
+    { name:'London System',         eco:'D02', ecoRange:'D02',     moves:['d4','d5','Nf3','Nf6','Bf4'] },
+    { name:'Nimzo-Indian Defense',  eco:'E20', ecoRange:'E20–E59', moves:['d4','Nf6','c4','e6','Nc3','Bb4'] },
+  ];
+
+  const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+
+  /* ── State ──────────────────────────────────────────────────────────── */
+  const pieceImages  = {};
+  let historyFens    = [START_FEN];
+  let historySans    = [];
+  let historyFromTo  = [];
+  let moveIdx        = 0;
+  let flipped        = false;
+  let sourceToggle   = 'masters';
+  let practiceMode   = false;
+  let practiceColor  = 'w';
+  let selSq          = null;
+  let legDests       = [];
+  let currentOpening = null;
+  let lichessData    = null;
+  let practiceMoveCount = 0;
+  let practiceMainCount = 0;
+  let practiceWaiting   = false;
+  let _loadToken        = 0;
+
+  /* ── Canvas ─────────────────────────────────────────────────────────── */
+  const canvas = document.getElementById('opening-canvas');
+  const ctx    = canvas.getContext('2d');
+
+  /* ── Piece images ───────────────────────────────────────────────────── */
+  function loadPieceImages() {
+    return Promise.all(
+      Object.entries(PIECE_URLS).map(([k, url]) =>
+        new Promise(resolve => {
+          const img = new Image();
+          img.onload  = () => { pieceImages[k] = img; resolve(); };
+          img.onerror = () => resolve();
+          img.src     = url;
+        })
+      )
+    );
+  }
+
+  /* ── Position helpers ───────────────────────────────────────────────── */
+  function currentFen()   { return historyFens[moveIdx]; }
+  function currentChess() { return new Chess(historyFens[moveIdx]); }
+
+  /* ── Coordinate helpers ─────────────────────────────────────────────── */
+  function sqToCanvas(sq) {
+    const file = sq.charCodeAt(0) - 97;
+    const rank = parseInt(sq[1]) - 1;
+    const col  = flipped ? 7 - file : file;
+    const row  = flipped ? rank : 7 - rank;
+    return { x: col * SQ, y: row * SQ };
+  }
+
+  function canvasToSq(cx, cy) {
+    const col = Math.floor(cx / SQ);
+    const row = Math.floor(cy / SQ);
+    if (col < 0 || col > 7 || row < 0 || row > 7) return null;
+    const file = flipped ? 7 - col : col;
+    const rank = flipped ? row : 7 - row;
+    return String.fromCharCode(97 + file) + (rank + 1);
+  }
+
+  /* ── Board rendering ────────────────────────────────────────────────── */
+  function render() {
+    const chess = currentChess();
+    ctx.clearRect(0, 0, PX, PX);
+
+    for (let row = 0; row < 8; row++) {
+      for (let col = 0; col < 8; col++) {
+        ctx.fillStyle = (row + col) % 2 === 0 ? LIGHT : DARK;
+        ctx.fillRect(col * SQ, row * SQ, SQ, SQ);
+      }
+    }
+
+    if (moveIdx > 0 && historyFromTo[moveIdx - 1]) {
+      const { from, to } = historyFromTo[moveIdx - 1];
+      [from, to].forEach(sq => {
+        const { x, y } = sqToCanvas(sq);
+        ctx.fillStyle = 'rgba(255,200,0,0.40)';
+        ctx.fillRect(x, y, SQ, SQ);
+      });
+    }
+
+    if (practiceMode && selSq) {
+      const { x, y } = sqToCanvas(selSq);
+      ctx.fillStyle = 'rgba(80,160,255,0.42)';
+      ctx.fillRect(x, y, SQ, SQ);
+    }
+
+    if (practiceMode) {
+      legDests.forEach(sq => {
+        const { x, y } = sqToCanvas(sq);
+        const cx = x + SQ / 2, cy = y + SQ / 2;
+        ctx.save();
+        if (chess.get(sq)) {
+          ctx.strokeStyle = 'rgba(0,0,0,0.30)';
+          ctx.lineWidth   = SQ * 0.09;
+          ctx.beginPath(); ctx.arc(cx, cy, SQ * 0.46, 0, Math.PI * 2); ctx.stroke();
+        } else {
+          ctx.fillStyle = 'rgba(0,0,0,0.22)';
+          ctx.beginPath(); ctx.arc(cx, cy, SQ * 0.155, 0, Math.PI * 2); ctx.fill();
+        }
+        ctx.restore();
+      });
+    }
+
+    chess.board().forEach((row, ri) => {
+      row.forEach((p, ci) => {
+        if (!p) return;
+        const key  = p.color + p.type.toUpperCase();
+        const col  = flipped ? 7 - ci : ci;
+        const drow = flipped ? 7 - ri : ri;
+        const x    = col * SQ;
+        const y    = drow * SQ;
+        if (pieceImages[key]) {
+          ctx.drawImage(pieceImages[key], x, y, SQ, SQ);
+        } else {
+          const sym = SYM[key];
+          if (!sym) return;
+          const pcx = x + SQ / 2, pcy = y + SQ / 2;
+          const fs  = Math.floor(SQ * 0.70);
+          ctx.font = `${fs}px "Segoe UI Emoji","Apple Color Emoji",serif`;
+          ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          ctx.fillStyle = 'rgba(0,0,0,0.28)';
+          ctx.fillText(sym, pcx + 1.5, pcy + 1.5);
+          ctx.fillStyle = p.color === 'w' ? '#fff' : '#1a1a1a';
+          ctx.fillText(sym, pcx, pcy);
+        }
+      });
+    });
+
+    const fs = Math.max(8, Math.floor(SQ * 0.17));
+    ctx.font = `600 ${fs}px "Segoe UI",sans-serif`;
+    for (let row = 0; row < 8; row++) {
+      const rank = flipped ? row + 1 : 8 - row;
+      ctx.fillStyle    = row % 2 === 0 ? DARK : LIGHT;
+      ctx.textAlign    = 'left';
+      ctx.textBaseline = 'top';
+      ctx.fillText(String(rank), 2, row * SQ + 2);
+    }
+    for (let col = 0; col < 8; col++) {
+      const file = String.fromCharCode(97 + (flipped ? 7 - col : col));
+      ctx.fillStyle    = col % 2 !== 0 ? DARK : LIGHT;
+      ctx.textAlign    = 'right';
+      ctx.textBaseline = 'bottom';
+      ctx.fillText(file, (col + 1) * SQ - 2, PX - 2);
+    }
+  }
+
+  /* ── UCI → SAN ──────────────────────────────────────────────────────── */
+  function uciToSan(uci, chess) {
+    try {
+      const obj = { from: uci.slice(0, 2), to: uci.slice(2, 4) };
+      if (uci[4]) obj.promotion = uci[4];
+      const m = chess.move(obj);
+      if (!m) return uci.slice(0, 4);
+      chess.undo();
+      return m.san;
+    } catch (_) { return uci.slice(0, 4); }
+  }
+
+  /* ── Move history display ───────────────────────────────────────────── */
+  function renderMoveHistory() {
+    const el = document.getElementById('opening-move-history');
+    if (!historySans.length) {
+      el.innerHTML = '<span class="oh-empty">Starting position</span>';
+      return;
+    }
+    let html = '';
+    for (let i = 0; i < historySans.length; i++) {
+      const active = (i + 1 === moveIdx) ? ' oh-active' : '';
+      if (i % 2 === 0) html += `<span class="oh-num">${Math.floor(i / 2) + 1}.</span>`;
+      html += `<span class="oh-san${active}" data-idx="${i + 1}">${historySans[i]}</span> `;
+    }
+    el.innerHTML = html;
+    el.querySelector('.oh-active')?.scrollIntoView({ block: 'nearest' });
+  }
+
+  /* ── Win stats panel ────────────────────────────────────────────────── */
+  function renderWinStats(data) {
+    const el = document.getElementById('win-stats-panel');
+    if (!data) { el.innerHTML = '<p class="ws-empty">No data available.</p>'; return; }
+    const total = (data.white || 0) + (data.draws || 0) + (data.black || 0);
+    if (!total) { el.innerHTML = '<p class="ws-empty">No games in database for this position.</p>'; return; }
+    const wPct = (data.white / total * 100).toFixed(1);
+    const dPct = (data.draws  / total * 100).toFixed(1);
+    const bPct = (data.black  / total * 100).toFixed(1);
+    const gStr = total > 999999 ? (total / 1e6).toFixed(1) + 'M'
+               : total > 999    ? Math.round(total / 1000) + 'k'
+               : String(total);
+    const chess  = currentChess();
+    const topSan = data.moves?.length ? uciToSan(data.moves[0].uci, chess) : '';
+    el.innerHTML = `
+      <div class="ws-bar">
+        <div class="ws-w" style="width:${wPct}%">${parseFloat(wPct) >= 9 ? wPct + '%' : ''}</div>
+        <div class="ws-d" style="width:${dPct}%">${parseFloat(dPct) >= 9 ? dPct + '%' : ''}</div>
+        <div class="ws-b" style="width:${bPct}%">${parseFloat(bPct) >= 9 ? bPct + '%' : ''}</div>
+      </div>
+      <div class="ws-labels">
+        <span class="ws-lw">White ${wPct}%</span>
+        <span class="ws-ld">Draw ${dPct}%</span>
+        <span class="ws-lb">Black ${bPct}%</span>
+      </div>
+      <div class="ws-meta">
+        <span>${gStr} games</span>
+        ${topSan ? `<span>Top: <strong>${topSan}</strong></span>` : ''}
+      </div>`;
+  }
+
+  /* ── Move tree ──────────────────────────────────────────────────────── */
+  function renderMoveTree(data) {
+    const el = document.getElementById('move-tree');
+    if (!data?.moves?.length) {
+      el.innerHTML = '<div class="mt-empty">No moves found for this position.</div>';
+      return;
+    }
+    const chess = currentChess();
+    el.innerHTML = data.moves.map(m => {
+      const mTotal = (m.white || 0) + (m.draws || 0) + (m.black || 0);
+      if (!mTotal) return '';
+      const san  = uciToSan(m.uci, chess);
+      const wPct = Math.round(m.white / mTotal * 100);
+      const dPct = Math.round(m.draws  / mTotal * 100);
+      const bPct = Math.round(m.black  / mTotal * 100);
+      const gStr = mTotal > 999 ? Math.round(mTotal / 1000) + 'k' : mTotal;
+      return `<div class="mt-row" data-uci="${m.uci}" data-san="${san}">
+        <span class="mt-san">${san}</span>
+        <div class="mt-bars">
+          <div class="mt-bar-inner">
+            <div class="mt-bw" style="width:${wPct}%"></div>
+            <div class="mt-bd" style="width:${dPct}%"></div>
+            <div class="mt-bb" style="width:${bPct}%"></div>
+          </div>
+          <span class="mt-pcts">${wPct} / ${dPct} / ${bPct}</span>
+        </div>
+        <span class="mt-games">${gStr}</span>
+      </div>`;
+    }).join('');
+
+    el.querySelectorAll('.mt-row').forEach(row => {
+      row.addEventListener('click', () => {
+        if (practiceMode) return;
+        playMove(row.dataset.uci, row.dataset.san);
+      });
+    });
+  }
+
+  /* ── Lichess API ────────────────────────────────────────────────────── */
+  async function fetchMasterMoves(fen) {
+    try {
+      const r = await fetch(`${MASTERS_EP}?fen=${encodeURIComponent(fen)}&moves=10`);
+      return r.ok ? r.json() : null;
+    } catch (_) { return null; }
+  }
+
+  async function fetchPlayerMoves(fen) {
+    try {
+      const r = await fetch(`${PLAYERS_EP}?fen=${encodeURIComponent(fen)}&speeds=rapid,classical&ratings=1500,1600,1700&moves=10`);
+      return r.ok ? r.json() : null;
+    } catch (_) { return null; }
+  }
+
+  /* ── Theory API ─────────────────────────────────────────────────────── */
+  async function getTheoryExplanation(fen, moves, openingName) {
+    const key = 'csa_theory_' + fen.replace(/\s+/g, '_').slice(0, 60);
+    const cached = sessionStorage.getItem(key);
+    if (cached) return cached;
+    try {
+      const r = await fetch(RAILWAY + '/api/theory', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ fen, moves, openingName })
+      });
+      if (!r.ok) return null;
+      const d = await r.json();
+      if (d.explanation) { sessionStorage.setItem(key, d.explanation); return d.explanation; }
+      return null;
+    } catch (_) { return null; }
+  }
+
+  /* ── Load position data (Lichess + theory) ──────────────────────────── */
+  async function loadPositionData() {
+    const fen   = currentFen();
+    const token = ++_loadToken;
+
+    document.getElementById('move-tree').innerHTML  = '<div class="mt-loading"><span class="spinner"></span> Loading…</div>';
+    document.getElementById('theory-text').innerHTML = '<div class="theory-loading"><span class="spinner"></span> Loading explanation…</div>';
+
+    const data = sourceToggle === 'masters'
+      ? await fetchMasterMoves(fen)
+      : await fetchPlayerMoves(fen);
+    if (token !== _loadToken) return;
+
+    lichessData = data;
+    renderMoveTree(data);
+    renderWinStats(data);
+
+    const openingName = currentOpening?.name || 'Chess Opening';
+    const explanation = await getTheoryExplanation(fen, historySans.slice(0, moveIdx), openingName);
+    if (token !== _loadToken) return;
+
+    document.getElementById('theory-text').textContent =
+      explanation || 'No theory explanation available for this position.';
+  }
+
+  /* ── Play a move ────────────────────────────────────────────────────── */
+  function playMove(uci, san) {
+    const from  = uci.slice(0, 2);
+    const to    = uci.slice(2, 4);
+    const promo = uci[4];
+    const chess = currentChess();
+    const obj   = { from, to };
+    if (promo) obj.promotion = promo;
+    const m = chess.move(obj);
+    if (!m) return false;
+
+    historyFens   = historyFens.slice(0, moveIdx + 1);
+    historySans   = historySans.slice(0, moveIdx);
+    historyFromTo = historyFromTo.slice(0, moveIdx);
+
+    historyFens.push(chess.fen());
+    historySans.push(san || m.san);
+    historyFromTo.push({ from, to });
+    moveIdx++;
+
+    selSq = null; legDests = [];
+    render();
+    renderMoveHistory();
+    loadPositionData();
+    return true;
+  }
+
+  /* ── Navigation ─────────────────────────────────────────────────────── */
+  function goBack() {
+    if (moveIdx <= 0) return;
+    moveIdx--;
+    selSq = null; legDests = [];
+    render(); renderMoveHistory(); loadPositionData();
+  }
+
+  function goForward() {
+    if (moveIdx >= historySans.length) return;
+    moveIdx++;
+    selSq = null; legDests = [];
+    render(); renderMoveHistory(); loadPositionData();
+  }
+
+  function goToMove(idx) {
+    if (idx < 0 || idx > historySans.length) return;
+    moveIdx = idx;
+    selSq = null; legDests = [];
+    render(); renderMoveHistory(); loadPositionData();
+  }
+
+  /* ── Load opening ───────────────────────────────────────────────────── */
+  function loadOpening(opening) {
+    currentOpening = opening;
+    const chess    = new Chess();
+    const fens     = [chess.fen()];
+    const sans     = [];
+    const fromtos  = [];
+
+    for (const san of opening.moves) {
+      const m = chess.move(san);
+      if (!m) break;
+      fens.push(chess.fen());
+      sans.push(m.san);
+      fromtos.push({ from: m.from, to: m.to });
+    }
+
+    historyFens   = fens;
+    historySans   = sans;
+    historyFromTo = fromtos;
+    moveIdx       = sans.length;
+    selSq = null; legDests = [];
+
+    exitPracticeMode();
+    render();
+    renderMoveHistory();
+    loadPositionData();
+
+    document.getElementById('opening-name-display').textContent = opening.name;
+    document.getElementById('search-input').value               = opening.name;
+    document.getElementById('search-dropdown').classList.add('hidden');
+  }
+
+  /* ── Trouble spots ──────────────────────────────────────────────────── */
+  function renderTroubleSpots() {
+    const el = document.getElementById('trouble-spots');
+    let games = [];
+    try { if (typeof Storage !== 'undefined') games = Storage.loadAllGames(); } catch (_) {}
+
+    if (!games.length) {
+      el.innerHTML = '<p class="ts-empty">Analyze some games to see your trouble spots.</p>';
+      return;
+    }
+
+    const stats = {};
+    games.forEach(g => {
+      const name = g.analysis?.opening?.name;
+      if (!name) return;
+      if (!stats[name]) stats[name] = { name, w: 0, d: 0, l: 0, accs: [] };
+      const s       = stats[name];
+      const result  = g.metadata?.result || '*';
+      const isWhite = (g.playerColor || 'white') === 'white';
+      if      (result === '1-0')     isWhite ? s.w++ : s.l++;
+      else if (result === '0-1')     isWhite ? s.l++ : s.w++;
+      else if (result === '1/2-1/2') s.d++;
+      const acc = g.analysis?.summary?.accuracy;
+      if (typeof acc === 'number') s.accs.push(acc);
+    });
+
+    const trouble = Object.values(stats).filter(s => {
+      const tot = s.w + s.d + s.l;
+      if (!tot) return false;
+      const wr  = s.w / tot;
+      const avg = s.accs.length ? s.accs.reduce((a, b) => a + b, 0) / s.accs.length : null;
+      return wr < 0.40 || (avg !== null && avg < 70);
+    }).slice(0, 5);
+
+    if (!trouble.length) {
+      el.innerHTML = '<p class="ts-empty">No trouble spots detected — keep it up!</p>';
+      return;
+    }
+
+    el.innerHTML = trouble.map(s => {
+      const tot = s.w + s.d + s.l;
+      const wr  = Math.round(s.w / tot * 100);
+      const avg = s.accs.length
+        ? Math.round(s.accs.reduce((a, b) => a + b, 0) / s.accs.length)
+        : null;
+      return `<div class="ts-card" data-name="${s.name}">
+        <div class="ts-name">${s.name}</div>
+        <div class="ts-record">${s.w}W / ${s.d}D / ${s.l}L &nbsp;·&nbsp; ${wr}% wins</div>
+        ${avg !== null ? `<div class="ts-acc">Avg accuracy: ${avg}%</div>` : ''}
+      </div>`;
+    }).join('');
+
+    el.querySelectorAll('.ts-card').forEach(card => {
+      card.addEventListener('click', () => {
+        const name  = card.dataset.name;
+        const match = OPENINGS.find(o =>
+          name.toLowerCase().includes(o.name.toLowerCase().split(' ')[0].toLowerCase()) ||
+          o.name.toLowerCase().includes(name.toLowerCase().split(' ')[0].toLowerCase())
+        );
+        if (match) loadOpening(match);
+      });
+    });
+  }
+
+  /* ── Search ─────────────────────────────────────────────────────────── */
+  function setupSearch() {
+    const input = document.getElementById('search-input');
+    const drop  = document.getElementById('search-dropdown');
+
+    input.addEventListener('input', () => {
+      const q = input.value.toLowerCase().trim();
+      if (!q) { drop.classList.add('hidden'); return; }
+      const hits = OPENINGS.filter(o =>
+        o.name.toLowerCase().includes(q) ||
+        o.eco.toLowerCase().includes(q) ||
+        o.ecoRange.toLowerCase().includes(q)
+      );
+      if (!hits.length) { drop.classList.add('hidden'); return; }
+      drop.innerHTML = hits.map(o => {
+        const i = OPENINGS.indexOf(o);
+        return `<div class="sd-item" data-i="${i}">
+          <span class="sd-name">${o.name}</span>
+          <span class="sd-eco">${o.ecoRange}</span>
+        </div>`;
+      }).join('');
+      drop.classList.remove('hidden');
+      drop.querySelectorAll('.sd-item').forEach(item => {
+        item.addEventListener('click', () => loadOpening(OPENINGS[parseInt(item.dataset.i, 10)]));
+      });
+    });
+
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Escape') drop.classList.add('hidden');
+      if (e.key === 'Enter') { const f = drop.querySelector('.sd-item'); if (f) f.click(); }
+    });
+
+    document.addEventListener('click', e => {
+      if (!e.target.closest('#search-wrap')) drop.classList.add('hidden');
+    });
+  }
+
+  /* ── Navigation buttons ─────────────────────────────────────────────── */
+  function setupNavButtons() {
+    document.getElementById('nav-back').addEventListener('click', goBack);
+    document.getElementById('nav-forward').addEventListener('click', goForward);
+    document.getElementById('nav-reset').addEventListener('click', () => {
+      if (currentOpening) {
+        loadOpening(currentOpening);
+      } else {
+        historyFens = [START_FEN]; historySans = []; historyFromTo = []; moveIdx = 0;
+        selSq = null; legDests = [];
+        exitPracticeMode();
+        render(); renderMoveHistory(); loadPositionData();
+        document.getElementById('opening-name-display').textContent = '';
+      }
+    });
+    document.getElementById('nav-flip').addEventListener('click', () => { flipped = !flipped; render(); });
+
+    document.getElementById('opening-move-history').addEventListener('click', e => {
+      const span = e.target.closest('.oh-san');
+      if (span) goToMove(parseInt(span.dataset.idx, 10));
+    });
+  }
+
+  /* ── Source toggle ──────────────────────────────────────────────────── */
+  function setupSourceToggle() {
+    const mBtn = document.getElementById('tog-masters');
+    const pBtn = document.getElementById('tog-players');
+    mBtn.addEventListener('click', () => {
+      if (sourceToggle === 'masters') return;
+      sourceToggle = 'masters';
+      mBtn.classList.add('active'); pBtn.classList.remove('active');
+      loadPositionData();
+    });
+    pBtn.addEventListener('click', () => {
+      if (sourceToggle === 'players') return;
+      sourceToggle = 'players';
+      pBtn.classList.add('active'); mBtn.classList.remove('active');
+      loadPositionData();
+    });
+  }
+
+  /* ── Practice mode ──────────────────────────────────────────────────── */
+  function enterPracticeMode(color) {
+    practiceMode      = true;
+    practiceColor     = color;
+    practiceMoveCount = 0;
+    practiceMainCount = 0;
+    practiceWaiting   = false;
+    selSq = null; legDests = [];
+
+    document.getElementById('practice-btn').textContent = 'Exit Practice';
+    document.getElementById('practice-btn').classList.add('prac-active');
+    document.getElementById('board-wrap').classList.add('practice-glow');
+    document.getElementById('practice-status').classList.remove('hidden');
+    document.getElementById('practice-color-toggle').classList.remove('hidden');
+    document.getElementById('practice-score').classList.remove('hidden');
+
+    updatePracticeStatus();
+    updatePracticeScore();
+
+    const chess = currentChess();
+    if (chess.turn() !== practiceColor) {
+      practiceWaiting = true;
+      setTimeout(() => { practiceWaiting = false; playComputerMove(); }, 800);
+    }
+    render();
+  }
+
+  function exitPracticeMode() {
+    practiceMode = false;
+    selSq = null; legDests = [];
+    document.getElementById('practice-btn')?.classList.remove('prac-active');
+    const btn = document.getElementById('practice-btn');
+    if (btn) btn.textContent = 'Practice This Line';
+    document.getElementById('board-wrap')?.classList.remove('practice-glow');
+    document.getElementById('practice-status')?.classList.add('hidden');
+    document.getElementById('practice-color-toggle')?.classList.add('hidden');
+    document.getElementById('practice-score')?.classList.add('hidden');
+  }
+
+  function updatePracticeStatus() {
+    const el = document.getElementById('practice-status-text');
+    if (!el) return;
+    const chess = currentChess();
+    if (chess.game_over()) {
+      el.textContent = 'Game over!'; el.className = 'ob-ps-text ps-done';
+    } else if (chess.turn() === practiceColor) {
+      el.textContent = `Your turn — play as ${practiceColor === 'w' ? 'White' : 'Black'}`;
+      el.className   = 'ob-ps-text ps-yours';
+    } else {
+      el.textContent = 'Computer is thinking…'; el.className = 'ob-ps-text ps-thinking';
+    }
+  }
+
+  function updatePracticeScore() {
+    const el = document.getElementById('practice-score-text');
+    if (el) el.textContent = `Main line: ${practiceMainCount} / ${practiceMoveCount} moves`;
+  }
+
+  /* ── Board click (practice) ─────────────────────────────────────────── */
+  canvas.addEventListener('click', e => {
+    if (!practiceMode || practiceWaiting) return;
+    const rect = canvas.getBoundingClientRect();
+    const x    = (e.clientX - rect.left) * (PX / rect.width);
+    const y    = (e.clientY - rect.top)  * (PX / rect.height);
+    const sq   = canvasToSq(x, y);
+    if (sq) handlePracticeClick(sq);
+  });
+
+  function handlePracticeClick(sq) {
+    const chess = currentChess();
+    if (chess.game_over() || chess.turn() !== practiceColor) return;
+
+    if (selSq) {
+      if (legDests.includes(sq)) {
+        /* Capture position data before move for feedback */
+        const posData = lichessData;
+        const fromSq  = selSq;
+        const m       = chess.move({ from: selSq, to: sq, promotion: 'q' });
+        if (!m) { selSq = null; legDests = []; render(); return; }
+
+        practiceMoveCount++;
+        if (posData?.moves?.length) {
+          const movedUci = fromSq + sq;
+          const inDb     = posData.moves.some(mv => mv.uci.startsWith(movedUci));
+          const isMain   = movedUci === posData.moves[0].uci.slice(0, 4);
+          if (!inDb) {
+            showPracticeToast('This move is not in the master database.', 'error');
+          } else if (isMain) {
+            practiceMainCount++;
+            showPracticeToast('✓ Good move! That\'s the main line.', 'success');
+          } else {
+            const topSan = uciToSan(posData.moves[0].uci, currentChess());
+            showPracticeToast(`The main line is ${topSan}. You can still continue from here.`, 'warning');
+          }
+        } else {
+          practiceMainCount++;
+        }
+
+        updatePracticeScore();
+        playMove(fromSq + sq + (m.promotion || ''), m.san);
+        practiceWaiting = true;
+        updatePracticeStatus();
+
+        const c = currentChess();
+        if (!c.game_over() && c.turn() !== practiceColor) {
+          setTimeout(async () => {
+            await playComputerMove();
+            practiceWaiting = false;
+            updatePracticeStatus();
+          }, 800);
+        } else {
+          practiceWaiting = false;
+          updatePracticeStatus();
+        }
+        return;
+      }
+      const p = chess.get(sq);
+      if (p && p.color === practiceColor) {
+        selSq    = sq;
+        legDests = chess.moves({ square: sq, verbose: true }).map(mv => mv.to);
+        render(); return;
+      }
+      selSq = null; legDests = []; render();
+    } else {
+      const p = chess.get(sq);
+      if (p && p.color === practiceColor) {
+        selSq    = sq;
+        legDests = chess.moves({ square: sq, verbose: true }).map(mv => mv.to);
+        render();
+      }
+    }
+  }
+
+  async function playComputerMove() {
+    const chess = currentChess();
+    if (chess.game_over() || chess.turn() === practiceColor) return;
+
+    const data = sourceToggle === 'masters'
+      ? await fetchMasterMoves(currentFen())
+      : await fetchPlayerMoves(currentFen());
+
+    let uci;
+    if (data?.moves?.length) {
+      uci = data.moves[0].uci;
+    } else {
+      const moves = chess.moves({ verbose: true });
+      if (!moves.length) return;
+      uci = moves[0].from + moves[0].to;
+    }
+
+    const san = uciToSan(uci, currentChess());
+    playMove(uci, san);
+  }
+
+  /* ── Practice toast ─────────────────────────────────────────────────── */
+  function showPracticeToast(msg, type) {
+    const el = document.getElementById('practice-toast');
+    if (!el) return;
+    el.textContent = msg;
+    el.className   = `ob-toast pt-${type} show`;
+    clearTimeout(el._t);
+    el._t = setTimeout(() => el.classList.remove('show'), 3500);
+  }
+
+  /* ── Export to practice board ───────────────────────────────────────── */
+  function exportToPracticeBoard() {
+    sessionStorage.setItem('csa_opening_line', JSON.stringify({
+      moves:       historySans.slice(0, moveIdx),
+      fen:         currentFen(),
+      openingName: currentOpening?.name || 'Custom Line'
+    }));
+    window.location.href = 'practice.html';
+  }
+
+  /* ── Practice panel buttons ─────────────────────────────────────────── */
+  function setupPracticeButtons() {
+    document.getElementById('practice-btn').addEventListener('click', () => {
+      if (practiceMode) { exitPracticeMode(); render(); }
+      else {
+        const color = document.getElementById('pct-black').classList.contains('active') ? 'b' : 'w';
+        enterPracticeMode(color);
+      }
+    });
+
+    document.getElementById('export-btn').addEventListener('click', exportToPracticeBoard);
+
+    document.getElementById('pct-white').addEventListener('click', function () {
+      practiceColor = 'w';
+      this.classList.add('active');
+      document.getElementById('pct-black').classList.remove('active');
+      if (practiceMode) {
+        const chess = currentChess();
+        if (chess.turn() !== practiceColor && !chess.game_over()) {
+          practiceWaiting = true;
+          setTimeout(() => { practiceWaiting = false; playComputerMove(); }, 600);
+        }
+        updatePracticeStatus();
+      }
+    });
+
+    document.getElementById('pct-black').addEventListener('click', function () {
+      practiceColor = 'b';
+      this.classList.add('active');
+      document.getElementById('pct-white').classList.remove('active');
+      if (practiceMode) {
+        const chess = currentChess();
+        if (chess.turn() !== practiceColor && !chess.game_over()) {
+          practiceWaiting = true;
+          setTimeout(() => { practiceWaiting = false; playComputerMove(); }, 600);
+        }
+        updatePracticeStatus();
+      }
+    });
+  }
+
+  /* ── Init ───────────────────────────────────────────────────────────── */
+  setupSearch();
+  setupNavButtons();
+  setupSourceToggle();
+  setupPracticeButtons();
+  renderTroubleSpots();
+
+  loadPieceImages().then(() => {
+    render();
+    loadPositionData();
+  });
+
+})();

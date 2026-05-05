@@ -348,6 +348,63 @@ When citing specific games as examples, always include the gameId in examples ar
   }
 });
 
+/* ------------------------------------------------------------------ */
+/*  POST /api/theory                                                    */
+/* ------------------------------------------------------------------ */
+
+const theoryCache = new Map();
+
+app.post('/api/theory', async (req, res) => {
+  try {
+    const { fen, moves, openingName } = req.body;
+    if (!fen) return res.status(400).json({ error: 'FEN required' });
+
+    if (theoryCache.has(fen)) {
+      return res.json({ explanation: theoryCache.get(fen) });
+    }
+
+    const movesStr = Array.isArray(moves) && moves.length ? moves.join(' ') : 'Starting position';
+    const prompt =
+`You are a chess coach. Explain this chess opening position concisely.
+
+Opening: ${openingName || 'Chess Opening'}
+Moves played: ${movesStr}
+FEN: ${fen}
+
+In 3-4 sentences explain: the main strategic ideas, what each side wants to achieve, and the key themes or common plans. Be specific and educational. Plain text only — no JSON, no markdown.`;
+
+    const response = await fetch(CLAUDE_API_URL, {
+      method:  'POST',
+      headers: claudeHeaders(),
+      body:    JSON.stringify({
+        model:      MODEL,
+        max_tokens: 350,
+        messages:   [{ role: 'user', content: prompt }]
+      })
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      console.error('[/api/theory] Claude error:', errText.slice(0, 200));
+      return res.status(502).json({ error: 'AI service unavailable' });
+    }
+
+    const data        = await response.json();
+    const explanation = (data?.content?.[0]?.text || '').trim()
+      || 'No explanation available for this position.';
+
+    theoryCache.set(fen, explanation);
+    if (theoryCache.size > 200) {
+      theoryCache.delete(theoryCache.keys().next().value);
+    }
+
+    res.json({ explanation });
+  } catch (err) {
+    console.error('[/api/theory] error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`ChessLab server running on port ${PORT}`);
 });

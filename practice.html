@@ -544,6 +544,48 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
 <script src="js/nav.js"></script>
 <script>document.addEventListener('DOMContentLoaded', function () { initNav('practice'); });</script>
+<script>
+/* ── Opening Explorer line preload ─────────────────────────────────── */
+(function () {
+  var raw = sessionStorage.getItem('csa_opening_line');
+  if (!raw) return;
+  var data;
+  try { data = JSON.parse(raw); } catch (_) { return; }
+  if (!data || !data.moves || !data.moves.length) return;
+
+  /* Show dismissable banner (DOM is ready; scripts are at end of body) */
+  var banner = document.createElement('div');
+  banner.style.cssText = [
+    'background:rgba(127,166,80,0.12)',
+    'border:1px solid rgba(127,166,80,0.30)',
+    'border-radius:6px',
+    'padding:10px 16px',
+    'display:flex',
+    'align-items:center',
+    'justify-content:space-between',
+    'gap:12px',
+    'font-size:13px',
+    'margin-bottom:0'
+  ].join(';');
+  var nameStr = data.openingName || 'Opening Line';
+  var moveStr = data.moves.slice(0, 8).join(' ') + (data.moves.length > 8 ? '…' : '');
+  banner.innerHTML =
+    '<span style="color:#a0d070;font-weight:600">📖 ' + nameStr + ': <span style="font-weight:400;font-family:\'Courier New\',monospace">' + moveStr + '</span></span>' +
+    '<button onclick="this.parentElement.remove()" style="background:none;border:none;color:#a0d070;cursor:pointer;font-size:18px;line-height:1;padding:0 4px;font-family:inherit" aria-label="Dismiss">✕</button>';
+  var header = document.querySelector('.practice-header');
+  if (header) header.insertAdjacentElement('afterend', banner);
+
+  /* Wrap Chess constructor so practice-board starts at the opening position */
+  if (typeof window.Chess === 'undefined') return;
+  var _Orig = window.Chess;
+  window.Chess = function (fen) {
+    if (fen !== undefined) return new _Orig(fen);   /* analysis calls pass FEN — leave alone */
+    var inst = new _Orig();
+    data.moves.forEach(function (m) { try { inst.move(m); } catch (_) {} });
+    return inst;
+  };
+})();
+</script>
 <script src="js/practice-board.js"></script>
 </body>
 </html>
