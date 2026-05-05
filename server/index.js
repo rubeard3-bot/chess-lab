@@ -250,7 +250,8 @@ When citing specific games as examples, always include the gameId in examples ar
 
     const result1 = await callClaude(prompt1, 'Call1-Core');
 
-    await new Promise(resolve => setTimeout(resolve, 3000));
+    console.log('[Recommendations] Call1 complete, waiting 60s before Call2...');
+    await new Promise(resolve => setTimeout(resolve, 60000));
 
     /* -- Call 2 — Opening and Tactical Analysis ------------------------ */
     const prompt2 = preamble +
@@ -291,7 +292,8 @@ When citing specific games as examples, always include the gameId in examples ar
 
     const result2 = await callClaude(prompt2, 'Call2-OpenTactics');
 
-    await new Promise(resolve => setTimeout(resolve, 3000));
+    console.log('[Recommendations] Call2 complete, waiting 60s before Call3...');
+    await new Promise(resolve => setTimeout(resolve, 60000));
 
     /* -- Call 3 — Study Plan and Goals --------------------------------- */
     const prompt3 = preamble +
