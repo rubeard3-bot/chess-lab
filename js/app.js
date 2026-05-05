@@ -117,12 +117,6 @@ const App = (() => {
       return false;
     }
 
-    if (!Storage.getApiKey()) {
-      clearMassImport();
-      window.location.href = 'index.html?needsKey=true';
-      return true;
-    }
-
     massImportQueue = queue;
     massImportIndex = index;
 
@@ -281,14 +275,6 @@ const App = (() => {
     const color = sessionStorage.getItem('pending_color') || 'white';
 
     if (!pgn) {
-      if (!Storage.getApiKey()) {
-        window.location.href = 'index.html?needsKey=true';
-      }
-      return;
-    }
-
-    if (!Storage.getApiKey()) {
-      window.location.href = 'index.html?needsKey=true';
       return;
     }
 
@@ -563,8 +549,6 @@ const App = (() => {
 
     const parsed = Analysis.parsePGN(pgn);
     if (!parsed.valid) { showPgnError(parsed.error); return; }
-
-    if (!Storage.getApiKey()) { showApiKeyModal(); return; }
 
     // Auto-detect player color from PGN headers; fall back to toggle selection
     const detected = detectColorFromPgn(parsed.metadata);
