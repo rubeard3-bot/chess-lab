@@ -102,12 +102,6 @@
 
     </div>
 
-    <!-- API Key Warning -->
-    <div id="api-key-warning" class="api-key-warning hidden">
-      ⚠ API key required for game analysis —
-      <button class="api-key-warning-link" id="warning-open-settings">click ⚙ to add your key</button>
-    </div>
-
     <!-- Cards -->
     <div class="hub-cards">
 
@@ -386,7 +380,6 @@
       const saveBtn    = document.getElementById('settings-save-btn');
       const closeBtn   = document.getElementById('settings-close-btn');
       const settingsBtn = document.getElementById('settings-btn');
-      const warning    = document.getElementById('api-key-warning');
 
       function openModal() {
         input.value = localStorage.getItem('csa_api_key') || '';
@@ -396,16 +389,7 @@
       }
       function closeModal() { modal.classList.add('hidden'); }
 
-      function updateWarning() {
-        if (localStorage.getItem('csa_api_key')) {
-          warning.classList.add('hidden');
-        } else {
-          warning.classList.remove('hidden');
-        }
-      }
-
       settingsBtn.addEventListener('click', openModal);
-      document.getElementById('warning-open-settings').addEventListener('click', openModal);
       closeBtn.addEventListener('click', closeModal);
 
       modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
@@ -419,7 +403,6 @@
         localStorage.setItem('csa_api_key', key);
         input.style.borderColor = '';
         closeModal();
-        updateWarning();
       });
 
       input.addEventListener('keydown', e => {
@@ -431,13 +414,6 @@
       document.addEventListener('keydown', e => {
         if (e.key === 'Escape' && !modal.classList.contains('hidden')) closeModal();
       });
-
-      updateWarning();
-
-      // Auto-open if redirected here because key is missing
-      if (new URLSearchParams(window.location.search).get('needsKey') === 'true') {
-        openModal();
-      }
     })();
   </script>
   <script>

@@ -619,10 +619,6 @@ const App = (() => {
   }
 
   function handleAnalysisError(err) {
-    if (err.code === 'NO_API_KEY') {
-      showApiKeyModal();
-      return;
-    }
     if (err.code === 'ENGINE_ERROR') {
       UI.showError('Stockfish error: ' + err.message + '. Your browser may not support Web Workers from CDN.');
       return;
@@ -637,8 +633,7 @@ const App = (() => {
       return;
     }
     if (err.status === 401) {
-      UI.showError('Authentication failed (401). Your API key may be incorrect.');
-      showApiKeyModal();
+      UI.showError('Authentication failed (401). There may be a server configuration issue.');
       return;
     }
     if (err.status === 429) {
