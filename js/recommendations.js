@@ -5,7 +5,7 @@
 const Recommendations = (() => {
   const SERVER_URL = window.location.hostname === 'localhost'
     ? 'http://localhost:4000'
-    : 'https://YOUR_RAILWAY_URL';
+    : 'https://chess-lab-production.up.railway.app';
 
   const RECS_KEY = 'csa_recommendations';
   const META_KEY = 'csa_recommendations_meta';
