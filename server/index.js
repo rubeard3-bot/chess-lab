@@ -4,6 +4,7 @@ const rateLimit  = require('express-rate-limit');
 const fetch      = require('node-fetch');
 
 const app  = express();
+app.set('trust proxy', 1);
 const PORT = process.env.PORT || 4000;
 
 const CLAUDE_API_URL = 'https://api.anthropic.com/v1/messages';
