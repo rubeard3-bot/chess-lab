@@ -230,6 +230,9 @@
         </div>
 
       </div>
+      <div style="display:flex;justify-content:flex-end;padding:8px 12px 0">
+        <button class="hub-reset-btn" id="elo-reset-btn">🗑 Reset ELO</button>
+      </div>
     </div>
 
     <!-- Stats Bar -->
@@ -847,6 +850,12 @@
           if (streakEl) streakEl.textContent = streak > 0 ? streak + (streak === 1 ? ' day' : ' days') : '—';
         }
       })();
+
+      document.getElementById('elo-reset-btn').addEventListener('click', () => {
+        if (!confirm('This will reset your current ELO, goal ELO, and full ELO history. Are you sure?')) return;
+        [LS_CURRENT, LS_GOAL, LS_START, LS_HISTORY].forEach(k => localStorage.removeItem(k));
+        showSetup();
+      });
 
       document.getElementById('stat-reset-btn').addEventListener('click', () => {
         if (!confirm('Clear all analyzed game data? This cannot be undone.\n\nYour ELO tracker data will be kept.')) return;

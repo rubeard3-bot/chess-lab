@@ -84,6 +84,7 @@
         <div class="rec-page-meta">
           <span class="rec-last-updated" id="rec-last-updated"></span>
           <button id="rec-regenerate-btn" class="btn-primary rec-regen-btn">↺ Regenerate</button>
+          <button id="rec-reset-btn" class="hub-reset-btn">🗑 Reset</button>
         </div>
       </div>
     </div>
@@ -183,6 +184,16 @@
     document.addEventListener('DOMContentLoaded', function () {
       initNav('recommendations');
       init();
+
+      document.getElementById('rec-reset-btn').addEventListener('click', () => {
+        if (!confirm('This will clear all saved recommendations. You can regenerate them at any time. Are you sure?')) return;
+        localStorage.removeItem('csa_recommendations');
+        localStorage.removeItem('csa_recommendations_meta');
+        document.getElementById('rec-content').classList.add('hidden');
+        const emptyEl = document.getElementById('rec-empty');
+        emptyEl.querySelector('.rec-empty-sub').textContent = 'Your recommendations have been cleared. Use Regenerate to create new ones.';
+        emptyEl.classList.remove('hidden');
+      });
 
       document.getElementById('rec-regenerate-btn').addEventListener('click', async () => {
         const btn = document.getElementById('rec-regenerate-btn');
