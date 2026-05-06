@@ -463,6 +463,101 @@
       flex-shrink: 0;
     }
 
+    /* ── Mode toggle ─────────────────────────────────────────────────── */
+    .mode-toggle-row {
+      display: flex;
+      gap: 6px;
+      padding: 2px 0;
+    }
+    .mode-toggle-row .pill-toggle { flex: 1; justify-content: center; font-size: 13px; font-weight: 700; }
+
+    /* ── Trainer left panel ───────────────────────────────────────────── */
+    .tr-section-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: var(--text2);
+      margin-bottom: 4px;
+    }
+    .tr-pill-row {
+      display: flex;
+      gap: 5px;
+      margin-bottom: 10px;
+    }
+    .tr-pill-row .pill-toggle { flex: 1; justify-content: center; font-size: 12px; padding: 5px 8px; }
+    .tr-line-picker { margin-bottom: 10px; }
+    #tr-line-select {
+      width: 100%;
+      padding: 8px 12px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      font-size: 13px;
+      outline: none;
+      font-family: inherit;
+      cursor: pointer;
+    }
+    #tr-line-select:focus { border-color: var(--accent); }
+    .tr-start-btn { width: 100%; margin-top: 2px; }
+    #train-setup-panel, #train-drill-panel, #train-summary-panel {
+      display: flex; flex-direction: column; gap: 8px;
+    }
+    .tr-drill-status {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 8px 12px;
+    }
+    .tr-line-name {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 2px;
+      word-break: break-word;
+    }
+    .tr-progress { font-size: 11px; color: var(--text2); }
+    .tr-feedback {
+      border-radius: 6px;
+      padding: 9px 12px;
+      font-size: 13px;
+      font-weight: 600;
+      min-height: 40px;
+      display: flex;
+      align-items: center;
+      transition: background 0.2s, border-color 0.2s, color 0.2s;
+      border: 1px solid transparent;
+    }
+    .tr-fb-idle    { background: var(--panel); border-color: var(--border); color: var(--text2); }
+    .tr-fb-correct { background: rgba(127,166,80,0.14); border-color: rgba(127,166,80,0.4); color: #a0d070; }
+    .tr-fb-warn    { background: rgba(224,153,82,0.12); border-color: rgba(224,153,82,0.4); color: #e09952; }
+    .tr-fb-error   { background: rgba(224,82,82,0.12);  border-color: rgba(224,82,82,0.4);  color: #f08080; }
+    .tr-drill-btns { display: flex; flex-direction: column; gap: 6px; }
+    .tr-drill-btn-row { display: flex; gap: 6px; }
+    .tr-drill-btn-row .ob-btn { flex: 1; }
+    .tr-summary-title {
+      font-size: 15px;
+      font-weight: 800;
+      color: var(--text);
+      text-align: center;
+      padding-top: 4px;
+    }
+    .tr-summary-pct {
+      font-size: 36px;
+      font-weight: 900;
+      color: var(--accent);
+      text-align: center;
+      line-height: 1.1;
+    }
+    .tr-summary-detail {
+      font-size: 13px;
+      color: var(--text2);
+      text-align: center;
+      line-height: 1.7;
+    }
+    .tr-summary-btns { display: flex; flex-direction: column; gap: 6px; }
+
     /* ── Responsive ──────────────────────────────────────────────────── */
     @media (max-width: 900px) {
       .open-main { flex-direction: column; }
@@ -530,6 +625,12 @@
     <div id="search-dropdown" class="hidden"></div>
   </div>
 
+  <!-- Mode toggle -->
+  <div class="mode-toggle-row">
+    <button id="mode-explore" class="pill-toggle active"><span class="pill-dot"></span>Explore</button>
+    <button id="mode-train"   class="pill-toggle"><span class="pill-dot"></span>Train</button>
+  </div>
+
   <!-- Two-column main -->
   <div class="open-main">
 
@@ -556,30 +657,130 @@
         <button id="nav-flip"    class="ob-btn" title="Flip board">⇅ Flip</button>
       </div>
 
-      <!-- Move history -->
-      <div id="opening-move-history">
-        <span class="oh-empty">Starting position</span>
-      </div>
+      <!-- ── Explore-mode left content ─────────────────────────────── -->
+      <div id="explore-left-content">
 
-      <!-- Masters / Players toggle -->
-      <div class="ob-source-row">
-        <button id="tog-masters" class="pill-toggle active">
-          <span class="pill-dot"></span>Masters
-        </button>
-        <button id="tog-players" class="pill-toggle">
-          <span class="pill-dot"></span>Players 1500–1700
-        </button>
-      </div>
+        <!-- Move history -->
+        <div id="opening-move-history">
+          <span class="oh-empty">Starting position</span>
+        </div>
 
-      <!-- Move tree -->
-      <div id="move-tree">
-        <div class="mt-empty">Select an opening or navigate to see moves</div>
-      </div>
+        <!-- Masters / Players toggle -->
+        <div class="ob-source-row">
+          <button id="tog-masters" class="pill-toggle active">
+            <span class="pill-dot"></span>Masters
+          </button>
+          <button id="tog-players" class="pill-toggle">
+            <span class="pill-dot"></span>Players 1500–1700
+          </button>
+        </div>
+
+        <!-- Move tree -->
+        <div id="move-tree">
+          <div class="mt-empty">Select an opening or navigate to see moves</div>
+        </div>
+
+      </div><!-- /explore-left-content -->
+
+      <!-- ── Train-mode left content ────────────────────────────────── -->
+      <div id="train-left-content" class="hidden">
+
+        <!-- Setup panel -->
+        <div id="train-setup-panel">
+          <div class="tr-section-label">Play as</div>
+          <div class="tr-pill-row">
+            <button id="tr-white" class="pill-toggle active"><span class="pill-dot"></span>White</button>
+            <button id="tr-black" class="pill-toggle"><span class="pill-dot"></span>Black</button>
+            <button id="tr-both"  class="pill-toggle"><span class="pill-dot"></span>Both</button>
+          </div>
+
+          <div class="tr-section-label">Drill mode</div>
+          <div class="tr-pill-row">
+            <button id="tr-mode-pick"    class="pill-toggle active"><span class="pill-dot"></span>Pick Line</button>
+            <button id="tr-mode-shuffle" class="pill-toggle"><span class="pill-dot"></span>Shuffle</button>
+            <button id="tr-mode-weak"    class="pill-toggle"><span class="pill-dot"></span>Weak Spots</button>
+          </div>
+
+          <div id="tr-line-picker" class="tr-line-picker">
+            <select id="tr-line-select">
+              <option value="">Select an opening first…</option>
+            </select>
+          </div>
+
+          <button id="tr-start-btn" class="ob-prac-btn ob-prac-primary tr-start-btn">Start Drilling</button>
+        </div>
+
+        <!-- Drill panel -->
+        <div id="train-drill-panel" class="hidden">
+          <div class="tr-drill-status">
+            <div id="tr-line-name" class="tr-line-name">—</div>
+            <div id="tr-progress"  class="tr-progress">Line 1 of 1</div>
+          </div>
+
+          <div id="tr-feedback" class="tr-feedback tr-fb-idle">
+            <span id="tr-feedback-text">Make your move</span>
+          </div>
+
+          <div class="tr-drill-btns">
+            <div class="tr-drill-btn-row">
+              <button id="tr-hint-btn"   class="ob-btn tr-action-btn">Hint</button>
+              <button id="tr-reveal-btn" class="ob-btn tr-action-btn">Show Answer</button>
+            </div>
+            <button id="tr-next-btn" class="ob-prac-btn ob-prac-primary hidden">Next Line →</button>
+            <button id="tr-end-btn"  class="ob-prac-btn ob-prac-secondary">End Session</button>
+          </div>
+        </div>
+
+        <!-- Summary panel -->
+        <div id="train-summary-panel" class="hidden">
+          <div class="tr-summary-title">Session Complete</div>
+          <div id="tr-summary-pct"    class="tr-summary-pct">—</div>
+          <div id="tr-summary-detail" class="tr-summary-detail">—</div>
+          <div class="tr-summary-btns">
+            <button id="tr-drill-weak-btn" class="ob-prac-btn ob-prac-primary">Drill Weak Spots</button>
+            <button id="tr-back-btn"       class="ob-prac-btn ob-prac-secondary">Back to Explorer</button>
+          </div>
+        </div>
+
+      </div><!-- /train-left-content -->
 
     </div><!-- /open-left -->
 
     <!-- ── Right column ────────────────────────────────────────────── -->
     <div class="open-right">
+
+      <!-- ── Train mode right panel ────────────────────────────────── -->
+      <div id="train-right-panel" class="hidden">
+
+        <!-- Current line -->
+        <div class="ob-panel">
+          <div class="ob-panel-title">
+            Drilling
+            <span id="tr-opening-name" class="ob-opening-name"></span>
+          </div>
+          <div id="tr-current-line-display" class="ob-opening-status-body">
+            <span class="os-neutral">Waiting to start…</span>
+          </div>
+        </div>
+
+        <!-- Why this move -->
+        <div class="ob-panel">
+          <div class="ob-panel-title">Why This Move</div>
+          <div id="tr-theory-text" style="padding:12px 14px;font-size:14px;line-height:1.75;color:var(--text2)">
+            Make a move to see the theory explanation.
+          </div>
+        </div>
+
+        <!-- Lines tree -->
+        <div class="ob-panel">
+          <div class="ob-panel-title" style="justify-content:space-between">
+            <span>Lines in this Opening</span>
+            <button id="tr-lines-toggle" class="ob-btn" style="flex:none;padding:3px 8px;font-size:11px;border-radius:4px">Show</button>
+          </div>
+          <div id="tr-lines-tree" class="hidden" style="padding:6px 12px;font-size:12px;font-family:'Courier New',monospace;color:var(--text2);line-height:1.9;max-height:280px;overflow-y:auto"></div>
+        </div>
+
+      </div><!-- /train-right-panel -->
 
       <!-- Trouble spots -->
       <div class="ob-panel">

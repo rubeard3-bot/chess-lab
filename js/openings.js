@@ -65,6 +65,18 @@
   let practiceWaiting   = false;
   let _loadToken        = 0;
 
+  /* ── Trainer state ──────────────────────────────────────────────────── */
+  let trainerMode      = false;
+  let trainerSetup     = { color: 'w', drillMode: 'pick' };
+  let trainerLineTree  = null;
+  let trainerLineList  = [];
+  let trainerSession   = null;
+  let trainerDrill     = null;
+  let trainerWaiting   = false;
+  let trainerHighlights = []; // [{ sq, style: 'amber'|'red-from'|'red-to' }]
+
+  const TRAINER_LS_SCORES = 'csa_opening_scores';
+
   /* ── Canvas ─────────────────────────────────────────────────────────── */
   const canvas = document.getElementById('opening-canvas');
   const ctx    = canvas.getContext('2d');
@@ -137,6 +149,15 @@
         ctx.fillRect(x, y, SQ, SQ);
       });
     }
+
+    /* trainer highlights (hint / reveal) */
+    trainerHighlights.forEach(({ sq, style }) => {
+      const { x, y } = sqToCanvas(sq);
+      if (style === 'amber')    ctx.fillStyle = 'rgba(224,153,82,0.55)';
+      else if (style === 'red-from') ctx.fillStyle = 'rgba(224,82,82,0.45)';
+      else if (style === 'red-to')   ctx.fillStyle = 'rgba(224,82,82,0.62)';
+      ctx.fillRect(x, y, SQ, SQ);
+    });
 
     /* selected square — shown in both free and practice mode */
     if (selSq) {
@@ -391,6 +412,16 @@
     }
     const turn = chess.turn();
     dot.className = `turn-dot ${turn === 'w' ? 'white' : 'black'}`;
+    if (trainerMode) {
+      if (trainerWaiting) {
+        text.textContent = 'Computer playing…';
+      } else if (!trainerDrill || trainerDrill.done) {
+        text.textContent = `${turn === 'w' ? 'White' : 'Black'} to move`;
+      } else {
+        text.textContent = `Your turn — ${turn === 'w' ? 'White' : 'Black'} to move`;
+      }
+      return;
+    }
     if (practiceMode) {
       text.textContent = turn === practiceColor
         ? `Your turn — ${turn === 'w' ? 'White' : 'Black'} to move`
@@ -489,8 +520,34 @@
     return true;
   }
 
+  /* ── Play a move (trainer — no Lichess reload) ──────────────────────── */
+  function playTrainerMove(uci, san) {
+    const from  = uci.slice(0, 2);
+    const to    = uci.slice(2, 4);
+    const promo = uci[4];
+    const chess = currentChess();
+    const obj   = { from, to };
+    if (promo) obj.promotion = promo;
+    const m = chess.move(obj);
+    if (!m) return false;
+    historyFens   = historyFens.slice(0, moveIdx + 1);
+    historySans   = historySans.slice(0, moveIdx);
+    historyFromTo = historyFromTo.slice(0, moveIdx);
+    historyFens.push(chess.fen());
+    historySans.push(san || m.san);
+    historyFromTo.push({ from, to });
+    moveIdx++;
+    selSq = null; legDests = [];
+    render();
+    renderMoveHistory();
+    return true;
+  }
+
   /* ── Navigation ─────────────────────────────────────────────────────── */
+  function isDrillActive() { return trainerMode && trainerDrill && !trainerDrill.done; }
+
   function goBack() {
+    if (isDrillActive()) return;
     if (moveIdx <= 0) return;
     moveIdx--;
     selSq = null; legDests = [];
@@ -498,6 +555,7 @@
   }
 
   function goForward() {
+    if (isDrillActive()) return;
     if (moveIdx >= historySans.length) return;
     moveIdx++;
     selSq = null; legDests = [];
@@ -505,6 +563,7 @@
   }
 
   function goToMove(idx) {
+    if (isDrillActive()) return;
     if (idx < 0 || idx > historySans.length) return;
     moveIdx = idx;
     selSq = null; legDests = [];
@@ -542,6 +601,19 @@
     document.getElementById('opening-name-display').textContent = opening.name;
     document.getElementById('search-input').value               = opening.name;
     document.getElementById('search-dropdown').classList.add('hidden');
+
+    /* If trainer mode is active, reload the line tree for the new opening */
+    if (trainerMode) {
+      trainerDrill   = null;
+      trainerSession = null;
+      clearTrainerHighlights();
+      showTrainPanel('setup');
+      trainerLoadLineTree(opening);
+      document.getElementById('tr-current-line-display').innerHTML =
+        '<span class="os-neutral">Waiting to start…</span>';
+      document.getElementById('tr-theory-text').textContent =
+        'Make a move to see the theory explanation.';
+    }
   }
 
   /* ── Unified board interaction (free exploration + practice) ────────── */
@@ -556,6 +628,9 @@
   });
 
   function handleBoardClick(sq) {
+    /* Route to trainer when trainer mode is active */
+    if (trainerMode) { handleTrainerClick(sq); return; }
+
     const chess = currentChess();
     if (chess.game_over()) { console.log('[Openings] Ignoring click — game over'); return; }
     const turn = chess.turn();
@@ -940,11 +1015,534 @@
     });
   }
 
+  /* ═══════════════════════════════════════════════════════════════════════
+     TRAINER
+     ═══════════════════════════════════════════════════════════════════════ */
+
+  /* ── localStorage helpers ───────────────────────────────────────────── */
+  function trainerLoadScores() {
+    try { return JSON.parse(localStorage.getItem(TRAINER_LS_SCORES) || '{}'); }
+    catch (_) { return {}; }
+  }
+
+  function trainerSaveScore(key, correct, eco) {
+    const scores = trainerLoadScores();
+    if (!scores[key]) scores[key] = { correct: 0, wrong: 0 };
+    if (correct) scores[key].correct++; else scores[key].wrong++;
+    if (eco)     scores[key].eco = eco;
+    scores[key].lastDrilled = Date.now();
+    localStorage.setItem(TRAINER_LS_SCORES, JSON.stringify(scores));
+  }
+
+  /* ── Panel visibility ───────────────────────────────────────────────── */
+  function showTrainPanel(which) {
+    document.getElementById('train-setup-panel').classList.toggle('hidden',   which !== 'setup');
+    document.getElementById('train-drill-panel').classList.toggle('hidden',   which !== 'drill');
+    document.getElementById('train-summary-panel').classList.toggle('hidden', which !== 'summary');
+  }
+
+  /* ── Feedback helper ────────────────────────────────────────────────── */
+  function setTrainerFeedback(type, msg) {
+    const fb  = document.getElementById('tr-feedback');
+    const txt = document.getElementById('tr-feedback-text');
+    if (!fb || !txt) return;
+    fb.className     = `tr-feedback tr-fb-${type}`;
+    txt.textContent  = msg;
+  }
+
+  /* ── Trainer highlight helpers ──────────────────────────────────────── */
+  function clearTrainerHighlights() { trainerHighlights = []; }
+
+  /* ── Mode enter / exit ──────────────────────────────────────────────── */
+  function enterTrainerMode() {
+    trainerMode = true;
+    practiceMode = false;
+    selSq = null; legDests = [];
+    document.getElementById('explore-left-content').classList.add('hidden');
+    document.getElementById('train-left-content').classList.remove('hidden');
+    document.getElementById('train-right-panel').classList.remove('hidden');
+    document.getElementById('mode-explore').classList.remove('active');
+    document.getElementById('mode-train').classList.add('active');
+    showTrainPanel('setup');
+    if (currentOpening) trainerLoadLineTree(currentOpening);
+    render();
+    updateTurnIndicator();
+  }
+
+  function exitTrainerMode() {
+    trainerMode    = false;
+    trainerDrill   = null;
+    trainerSession = null;
+    trainerWaiting = false;
+    clearTrainerHighlights();
+    selSq = null; legDests = [];
+    document.getElementById('explore-left-content').classList.remove('hidden');
+    document.getElementById('train-left-content').classList.add('hidden');
+    document.getElementById('train-right-panel').classList.add('hidden');
+    document.getElementById('mode-explore').classList.add('active');
+    document.getElementById('mode-train').classList.remove('active');
+    if (currentOpening) loadOpening(currentOpening);
+    else {
+      historyFens = [START_FEN]; historySans = []; historyFromTo = []; moveIdx = 0;
+      render(); renderMoveHistory(); updateTurnIndicator(); loadPositionData();
+    }
+  }
+
+  /* ── Build line tree from Lichess ───────────────────────────────────── */
+  async function trainerLoadLineTree(opening) {
+    const chess = new Chess();
+    for (const san of opening.moves) { if (!chess.move(san)) break; }
+    const startFen = chess.fen();
+    const eco      = opening.eco || '';
+
+    document.getElementById('tr-line-select').innerHTML = '<option>Loading lines…</option>';
+    document.getElementById('tr-opening-name').textContent = opening.name;
+
+    trainerLineTree = await trainerBuildNode(startFen, 0, new Set());
+    trainerLineList = trainerFlattenTree(trainerLineTree, opening.name, eco);
+
+    const sel = document.getElementById('tr-line-select');
+    if (trainerLineList.length) {
+      sel.innerHTML = trainerLineList.map((l, i) =>
+        `<option value="${i}">${l.displayName}</option>`
+      ).join('');
+    } else {
+      sel.innerHTML = '<option value="">No lines found — try a different opening</option>';
+    }
+
+    trainerRenderLinesTree();
+  }
+
+  async function trainerBuildNode(fen, depth, seen) {
+    const MAX_DEPTH  = 4;
+    const MAX_NODES  = 50;
+    if (depth >= MAX_DEPTH || seen.size >= MAX_NODES) return { fen, moves: [] };
+    if (seen.has(fen)) return { fen, moves: [] };
+    seen.add(fen);
+
+    const data = sourceToggle === 'masters'
+      ? await fetchMasterMoves(fen)
+      : await fetchPlayerMoves(fen);
+
+    if (!data?.moves?.length) return { fen, moves: [] };
+
+    const top = data.moves
+      .filter(m => (m.white || 0) + (m.draws || 0) + (m.black || 0) > 0)
+      .slice(0, 3);
+
+    const results = [];
+    for (const m of top) {
+      const c   = new Chess(fen);
+      const obj = { from: m.uci.slice(0, 2), to: m.uci.slice(2, 4) };
+      if (m.uci[4]) obj.promotion = m.uci[4];
+      const moved = c.move(obj);
+      if (!moved) continue;
+      await new Promise(r => setTimeout(r, 60)); // light rate-limit
+      const child = await trainerBuildNode(c.fen(), depth + 1, seen);
+      results.push({ uci: m.uci, san: moved.san, node: child });
+    }
+    return { fen, moves: results };
+  }
+
+  function trainerFlattenTree(root, openingName, eco) {
+    const lines = [];
+    function walk(node, path) {
+      if (!node.moves.length) {
+        if (path.length > 0) {
+          const sanStr  = path.map(m => m.san).join(' ');
+          const rawKey  = (openingName + '_' + sanStr).toLowerCase()
+                            .replace(/[^a-z0-9]+/g, '-');
+          lines.push({
+            key:         rawKey,
+            moves:       path.slice(),
+            displayName: `${openingName}: ${sanStr}`,
+            eco
+          });
+        }
+        return;
+      }
+      for (const mv of node.moves) {
+        walk(mv.node, path.concat({ uci: mv.uci, san: mv.san }));
+      }
+    }
+    walk(root, []);
+    return lines;
+  }
+
+  /* ── Lines tree in right panel ──────────────────────────────────────── */
+  function trainerRenderLinesTree() {
+    const el = document.getElementById('tr-lines-tree');
+    if (!trainerLineList.length) { el.textContent = 'No lines loaded.'; return; }
+    el.innerHTML = trainerLineList.map((l, i) =>
+      `<div data-tr-line="${i}" style="cursor:pointer;padding:2px 0;border-bottom:1px solid var(--border)">${l.displayName}</div>`
+    ).join('');
+  }
+
+  /* ── Session start ──────────────────────────────────────────────────── */
+  function trainerStartSession() {
+    if (!currentOpening) {
+      showPracticeToast('Select an opening first!', 'warning'); return;
+    }
+    let lines = trainerLineList.slice();
+    if (!lines.length) {
+      showPracticeToast('No lines found — try a different opening.', 'warning'); return;
+    }
+
+    const mode = trainerSetup.drillMode;
+    if (mode === 'shuffle') {
+      for (let i = lines.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [lines[i], lines[j]] = [lines[j], lines[i]];
+      }
+    } else if (mode === 'pick') {
+      const idx = parseInt(document.getElementById('tr-line-select').value, 10);
+      if (!isNaN(idx) && lines[idx]) lines = [lines[idx]];
+    } else if (mode === 'weak') {
+      const scores = trainerLoadScores();
+      lines.sort((a, b) => {
+        const sa = scores[a.key] || { correct: 0, wrong: 0 };
+        const sb = scores[b.key] || { correct: 0, wrong: 0 };
+        return (sb.wrong - sb.correct) - (sa.wrong - sa.correct);
+      });
+    }
+
+    trainerSession = { lines, idx: 0, correct: 0, total: 0 };
+    showTrainPanel('drill');
+    trainerDrillLine();
+  }
+
+  /* ── Drill a single line ────────────────────────────────────────────── */
+  function trainerDrillLine() {
+    if (!trainerSession || trainerSession.idx >= trainerSession.lines.length) {
+      trainerShowSummary(); return;
+    }
+
+    const line  = trainerSession.lines[trainerSession.idx];
+    const total = trainerSession.lines.length;
+    const cur   = trainerSession.idx + 1;
+
+    document.getElementById('tr-line-name').textContent = line.displayName;
+    document.getElementById('tr-progress').textContent  = `Line ${cur} of ${total}`;
+    setTrainerFeedback('idle', 'Make your move');
+    document.getElementById('tr-next-btn').classList.add('hidden');
+    document.getElementById('tr-hint-btn').disabled   = false;
+    document.getElementById('tr-reveal-btn').disabled = false;
+
+    document.getElementById('tr-current-line-display').innerHTML =
+      `<div class="os-status"><span class="os-inbook">${line.displayName}</span></div>`;
+    document.getElementById('tr-theory-text').textContent = 'Make your move to see the theory.';
+
+    trainerDrill = {
+      line,
+      moveIdx:    0,
+      attempts:   0,
+      done:       false,
+      hintShown:  false,
+      openingEco: line.eco || currentOpening?.eco || ''
+    };
+    clearTrainerHighlights();
+
+    /* Reset board to opening start position */
+    const oc = new Chess();
+    for (const san of currentOpening.moves) { if (!oc.move(san)) break; }
+    historyFens   = [oc.fen()];
+    historySans   = [];
+    historyFromTo = [];
+    moveIdx       = 0;
+    selSq = null; legDests = [];
+    render();
+    renderMoveHistory();
+    updateTurnIndicator();
+
+    trainerWaiting = false;
+    trainerAdvanceComputer();
+  }
+
+  /* ── Computer auto-plays its moves in the line ──────────────────────── */
+  async function trainerAdvanceComputer() {
+    if (!trainerDrill || trainerDrill.done) return;
+    if (trainerSetup.color === 'both') {
+      setTrainerFeedback('idle', 'Your turn — find the next move!');
+      updateTurnIndicator();
+      return;
+    }
+
+    const line      = trainerDrill.line;
+    const userColor = trainerSetup.color;
+
+    while (trainerDrill.moveIdx < line.moves.length) {
+      const turn = currentChess().turn();
+      if (turn === userColor) break;
+
+      trainerWaiting = true;
+      updateTurnIndicator();
+      render();
+      await new Promise(r => setTimeout(r, 600));
+
+      if (!trainerDrill || trainerDrill.done) return; // guard against session end
+      const mv = line.moves[trainerDrill.moveIdx];
+      playTrainerMove(mv.uci, mv.san);
+      trainerDrill.moveIdx++;
+    }
+
+    trainerWaiting = false;
+
+    if (trainerDrill.moveIdx >= line.moves.length) {
+      trainerLineDone(); return;
+    }
+
+    setTrainerFeedback('idle', 'Your turn — find the best move!');
+    updateTurnIndicator();
+    render();
+  }
+
+  /* ── Handle a click on the board in trainer mode ────────────────────── */
+  function handleTrainerClick(sq) {
+    if (!trainerDrill || trainerDrill.done || trainerWaiting) return;
+    if (trainerDrill.moveIdx >= trainerDrill.line.moves.length) return;
+
+    const chess     = currentChess();
+    const turn      = chess.turn();
+    const userColor = trainerSetup.color;
+    const canPlay   = userColor === 'both' ? true : turn === userColor;
+    if (!canPlay) return;
+
+    if (selSq) {
+      if (legDests.includes(sq)) {
+        const fromSq       = selSq;
+        selSq = null; legDests = [];
+
+        const correctMove = trainerDrill.line.moves[trainerDrill.moveIdx];
+        const userUci4    = fromSq + sq;
+        const correctUci4 = correctMove.uci.slice(0, 4);
+
+        if (userUci4 === correctUci4) {
+          /* ── CORRECT ── */
+          clearTrainerHighlights();
+          playTrainerMove(correctMove.uci, correctMove.san);
+          trainerDrill.moveIdx++;
+          trainerDrill.attempts  = 0;
+          trainerDrill.hintShown = false;
+
+          trainerSaveScore(trainerDrill.line.key, true, trainerDrill.openingEco);
+          if (trainerSession) { trainerSession.correct++; trainerSession.total++; }
+
+          setTrainerFeedback('correct', 'Correct!');
+          trainerFetchTheory(currentFen(), historySans.slice(0, moveIdx), currentOpening?.name);
+
+          if (trainerDrill.moveIdx >= trainerDrill.line.moves.length) {
+            setTimeout(() => trainerLineDone(), 800);
+          } else {
+            setTimeout(() => trainerAdvanceComputer(), 800);
+          }
+        } else {
+          /* ── WRONG ── */
+          trainerDrill.attempts++;
+
+          if (trainerDrill.attempts === 1) {
+            /* First attempt: highlight correct destination in amber */
+            clearTrainerHighlights();
+            trainerHighlights.push({ sq: correctUci4.slice(2, 4), style: 'amber' });
+            setTrainerFeedback('warn', 'Not quite — try again. Think about what that square controls.');
+          } else {
+            /* Second attempt: reveal piece + square, show answer */
+            trainerSaveScore(trainerDrill.line.key, false, trainerDrill.openingEco);
+            if (trainerSession) trainerSession.total++;
+            clearTrainerHighlights();
+            trainerHighlights.push({ sq: correctUci4.slice(0, 2), style: 'red-from' });
+            trainerHighlights.push({ sq: correctUci4.slice(2, 4), style: 'red-to'   });
+            setTrainerFeedback('error', `The correct move was ${correctMove.san}`);
+            document.getElementById('tr-next-btn').classList.remove('hidden');
+            document.getElementById('tr-hint-btn').disabled   = true;
+            document.getElementById('tr-reveal-btn').disabled = true;
+            trainerFetchTheory(currentFen(), historySans.slice(0, moveIdx), currentOpening?.name);
+          }
+          render();
+        }
+        return;
+      }
+
+      /* Clicked a different own piece — re-select */
+      const p = chess.get(sq);
+      const canSel = userColor === 'both' ? p?.color === turn : p?.color === userColor;
+      if (p && canSel) {
+        selSq    = sq;
+        legDests = chess.moves({ square: sq, verbose: true }).map(mv => mv.to);
+        render(); return;
+      }
+      selSq = null; legDests = []; render();
+    } else {
+      const p = chess.get(sq);
+      const canSel = userColor === 'both' ? p?.color === turn : p?.color === userColor;
+      if (p && canSel) {
+        selSq    = sq;
+        legDests = chess.moves({ square: sq, verbose: true }).map(mv => mv.to);
+        render();
+      }
+    }
+  }
+
+  /* ── Line done (all moves played) ──────────────────────────────────── */
+  function trainerLineDone() {
+    if (!trainerDrill) return;
+    trainerDrill.done = true;
+    selSq = null; legDests = [];
+    clearTrainerHighlights();
+    setTrainerFeedback('correct', 'Line complete! Well done!');
+    document.getElementById('tr-next-btn').classList.remove('hidden');
+    render();
+    updateTurnIndicator();
+  }
+
+  /* ── Hint button ────────────────────────────────────────────────────── */
+  function trainerShowHint() {
+    if (!trainerDrill || trainerDrill.done) return;
+    const mv = trainerDrill.line.moves[trainerDrill.moveIdx];
+    clearTrainerHighlights();
+    trainerHighlights.push({ sq: mv.uci.slice(2, 4), style: 'amber' });
+    trainerDrill.hintShown = true;
+    setTrainerFeedback('warn', 'Hint: try moving a piece to the highlighted square.');
+    render();
+  }
+
+  /* ── Reveal answer button ───────────────────────────────────────────── */
+  function trainerRevealAnswer() {
+    if (!trainerDrill || trainerDrill.done) return;
+    const mv = trainerDrill.line.moves[trainerDrill.moveIdx];
+    trainerSaveScore(trainerDrill.line.key, false, trainerDrill.openingEco);
+    if (trainerSession) trainerSession.total++;
+    clearTrainerHighlights();
+    trainerHighlights.push({ sq: mv.uci.slice(0, 2), style: 'red-from' });
+    trainerHighlights.push({ sq: mv.uci.slice(2, 4), style: 'red-to'   });
+    setTrainerFeedback('error', `The correct move is ${mv.san}`);
+    document.getElementById('tr-next-btn').classList.remove('hidden');
+    document.getElementById('tr-hint-btn').disabled   = true;
+    document.getElementById('tr-reveal-btn').disabled = true;
+    trainerFetchTheory(currentFen(), historySans.slice(0, moveIdx), currentOpening?.name);
+    render();
+  }
+
+  /* ── Theory fetch for trainer ───────────────────────────────────────── */
+  async function trainerFetchTheory(fen, moves, openingName) {
+    const el = document.getElementById('tr-theory-text');
+    if (!el) return;
+    el.innerHTML = '<div class="theory-loading"><span class="spinner"></span> Loading explanation…</div>';
+    const text = await getTheoryExplanation(fen, moves, openingName || 'Chess Opening');
+    el.textContent = text || 'No theory explanation available for this position.';
+  }
+
+  /* ── Session summary ────────────────────────────────────────────────── */
+  function trainerShowSummary() {
+    showTrainPanel('summary');
+    if (!trainerSession) return;
+
+    const { correct, total, lines } = trainerSession;
+    const pct    = total > 0 ? Math.round(correct / total * 100) : 0;
+    const scores = trainerLoadScores();
+    let mastered = 0, needsWork = 0;
+    lines.forEach(l => {
+      const s = scores[l.key];
+      if (!s) return;
+      if (s.correct > 0 && s.wrong === 0) mastered++;
+      else if (s.wrong > 0) needsWork++;
+    });
+
+    document.getElementById('tr-summary-pct').textContent = `${pct}%`;
+    document.getElementById('tr-summary-detail').innerHTML =
+      `${correct} of ${total} moves correct<br>${mastered} lines mastered · ${needsWork} need work`;
+  }
+
+  /* ── Wire up trainer buttons ────────────────────────────────────────── */
+  function setupTrainer() {
+    /* Mode toggle */
+    document.getElementById('mode-explore').addEventListener('click', () => {
+      if (!trainerMode) return;
+      exitTrainerMode();
+    });
+    document.getElementById('mode-train').addEventListener('click', () => {
+      if (trainerMode) return;
+      enterTrainerMode();
+    });
+
+    /* Side selector */
+    ['tr-white', 'tr-black', 'tr-both'].forEach(id => {
+      document.getElementById(id).addEventListener('click', function () {
+        ['tr-white', 'tr-black', 'tr-both'].forEach(i =>
+          document.getElementById(i).classList.remove('active')
+        );
+        this.classList.add('active');
+        trainerSetup.color = id === 'tr-white' ? 'w' : id === 'tr-black' ? 'b' : 'both';
+      });
+    });
+
+    /* Drill mode selector */
+    const drillBtns = {
+      'tr-mode-pick':    'pick',
+      'tr-mode-shuffle': 'shuffle',
+      'tr-mode-weak':    'weak'
+    };
+    Object.entries(drillBtns).forEach(([id, mode]) => {
+      document.getElementById(id).addEventListener('click', function () {
+        Object.keys(drillBtns).forEach(i => document.getElementById(i).classList.remove('active'));
+        this.classList.add('active');
+        trainerSetup.drillMode = mode;
+        document.getElementById('tr-line-picker').classList.toggle('hidden', mode !== 'pick');
+      });
+    });
+
+    document.getElementById('tr-start-btn').addEventListener('click', trainerStartSession);
+    document.getElementById('tr-hint-btn').addEventListener('click', trainerShowHint);
+    document.getElementById('tr-reveal-btn').addEventListener('click', trainerRevealAnswer);
+    document.getElementById('tr-next-btn').addEventListener('click', () => {
+      clearTrainerHighlights();
+      trainerDrill = null;
+      if (trainerSession) trainerSession.idx++;
+      trainerDrillLine();
+    });
+    document.getElementById('tr-end-btn').addEventListener('click', () => {
+      trainerDrill   = null;
+      trainerWaiting = false;
+      clearTrainerHighlights();
+      trainerShowSummary();
+    });
+    document.getElementById('tr-drill-weak-btn').addEventListener('click', () => {
+      trainerSetup.drillMode = 'weak';
+      ['tr-mode-pick', 'tr-mode-shuffle', 'tr-mode-weak'].forEach(i =>
+        document.getElementById(i).classList.remove('active')
+      );
+      document.getElementById('tr-mode-weak').classList.add('active');
+      document.getElementById('tr-line-picker').classList.add('hidden');
+      trainerStartSession();
+    });
+    document.getElementById('tr-back-btn').addEventListener('click', () => {
+      showTrainPanel('setup');
+      trainerSession = null;
+      trainerDrill   = null;
+      clearTrainerHighlights();
+      if (currentOpening) {
+        const oc = new Chess();
+        for (const san of currentOpening.moves) { if (!oc.move(san)) break; }
+        historyFens = [oc.fen()]; historySans = []; historyFromTo = []; moveIdx = 0;
+        selSq = null; legDests = [];
+        render(); renderMoveHistory(); updateTurnIndicator();
+      }
+    });
+
+    /* Lines tree toggle */
+    document.getElementById('tr-lines-toggle').addEventListener('click', function () {
+      const tree = document.getElementById('tr-lines-tree');
+      const now  = tree.classList.contains('hidden');
+      tree.classList.toggle('hidden', !now);
+      this.textContent = now ? 'Hide' : 'Show';
+    });
+  }
+
   /* ── Init ───────────────────────────────────────────────────────────── */
   setupSearch();
   setupNavButtons();
   setupSourceToggle();
   setupPracticeButtons();
+  setupTrainer();
   renderTroubleSpots();
   updateTurnIndicator();
 

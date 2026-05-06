@@ -10,7 +10,10 @@
       "Bash(curl *)",
       "Bash(Get-ChildItem -Recurse -File \"C:\\\\Users\\\\russe\\\\my-projects\\\\chess_analyzer\")",
       "Bash(Select-Object FullName)",
-      "Bash(Sort-Object FullName)"
+      "Bash(Sort-Object FullName)",
+      "Bash(node *)",
+      "Bash(Select-String -Path \"C:\\\\Users\\\\russe\\\\my-projects\\\\chess_analyzer\\\\openings.html\" -Pattern \"\\(open-left|open-right|open-main|train-left|train-right|explore-left\\)\")",
+      "Bash(Select-Object LineNumber, Line)"
     ]
   }
 }
