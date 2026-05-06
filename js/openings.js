@@ -9,7 +9,7 @@
   const LIGHT = '#f0d9b5';
   const DARK  = '#b58863';
   const PX    = 420;
-  const SQ    = PX / 8;  // 52.5
+  const SQ    = PX / 8;
 
   const PIECE_URLS = {
     wK:'https://lichess1.org/assets/piece/cburnett/wK.svg',
@@ -47,19 +47,19 @@
   const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 
   /* ── State ──────────────────────────────────────────────────────────── */
-  const pieceImages  = {};
-  let historyFens    = [START_FEN];
-  let historySans    = [];
-  let historyFromTo  = [];
-  let moveIdx        = 0;
-  let flipped        = false;
-  let sourceToggle   = 'masters';
-  let practiceMode   = false;
-  let practiceColor  = 'w';
-  let selSq          = null;
-  let legDests       = [];
-  let currentOpening = null;
-  let lichessData    = null;
+  const pieceImages     = {};
+  let historyFens       = [START_FEN];
+  let historySans       = [];
+  let historyFromTo     = [];
+  let moveIdx           = 0;
+  let flipped           = false;
+  let sourceToggle      = 'masters';
+  let practiceMode      = false;
+  let practiceColor     = 'w';
+  let selSq             = null;
+  let legDests          = [];
+  let currentOpening    = null;
+  let lichessData       = null;
   let practiceMoveCount = 0;
   let practiceMainCount = 0;
   let practiceWaiting   = false;
@@ -105,11 +105,22 @@
     return String.fromCharCode(97 + file) + (rank + 1);
   }
 
+  /* Append promotion suffix when a pawn reaches the back rank */
+  function buildUCI(fromSq, toSq) {
+    const chess = currentChess();
+    const piece = chess.get(fromSq);
+    if (piece && piece.type === 'p' && (toSq[1] === '8' || toSq[1] === '1')) {
+      return fromSq + toSq + 'q';
+    }
+    return fromSq + toSq;
+  }
+
   /* ── Board rendering ────────────────────────────────────────────────── */
   function render() {
     const chess = currentChess();
     ctx.clearRect(0, 0, PX, PX);
 
+    /* squares */
     for (let row = 0; row < 8; row++) {
       for (let col = 0; col < 8; col++) {
         ctx.fillStyle = (row + col) % 2 === 0 ? LIGHT : DARK;
@@ -117,6 +128,7 @@
       }
     }
 
+    /* last-move highlight */
     if (moveIdx > 0 && historyFromTo[moveIdx - 1]) {
       const { from, to } = historyFromTo[moveIdx - 1];
       [from, to].forEach(sq => {
@@ -126,29 +138,30 @@
       });
     }
 
-    if (practiceMode && selSq) {
+    /* selected square — shown in both free and practice mode */
+    if (selSq) {
       const { x, y } = sqToCanvas(selSq);
       ctx.fillStyle = 'rgba(80,160,255,0.42)';
       ctx.fillRect(x, y, SQ, SQ);
     }
 
-    if (practiceMode) {
-      legDests.forEach(sq => {
-        const { x, y } = sqToCanvas(sq);
-        const cx = x + SQ / 2, cy = y + SQ / 2;
-        ctx.save();
-        if (chess.get(sq)) {
-          ctx.strokeStyle = 'rgba(0,0,0,0.30)';
-          ctx.lineWidth   = SQ * 0.09;
-          ctx.beginPath(); ctx.arc(cx, cy, SQ * 0.46, 0, Math.PI * 2); ctx.stroke();
-        } else {
-          ctx.fillStyle = 'rgba(0,0,0,0.22)';
-          ctx.beginPath(); ctx.arc(cx, cy, SQ * 0.155, 0, Math.PI * 2); ctx.fill();
-        }
-        ctx.restore();
-      });
-    }
+    /* legal-move dots — shown in both modes */
+    legDests.forEach(sq => {
+      const { x, y } = sqToCanvas(sq);
+      const cx = x + SQ / 2, cy = y + SQ / 2;
+      ctx.save();
+      if (chess.get(sq)) {
+        ctx.strokeStyle = 'rgba(0,0,0,0.30)';
+        ctx.lineWidth   = SQ * 0.09;
+        ctx.beginPath(); ctx.arc(cx, cy, SQ * 0.46, 0, Math.PI * 2); ctx.stroke();
+      } else {
+        ctx.fillStyle = 'rgba(0,0,0,0.22)';
+        ctx.beginPath(); ctx.arc(cx, cy, SQ * 0.155, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.restore();
+    });
 
+    /* pieces */
     chess.board().forEach((row, ri) => {
       row.forEach((p, ci) => {
         if (!p) return;
@@ -174,6 +187,7 @@
       });
     });
 
+    /* rank / file labels */
     const fs = Math.max(8, Math.floor(SQ * 0.17));
     ctx.font = `600 ${fs}px "Segoe UI",sans-serif`;
     for (let row = 0; row < 8; row++) {
@@ -252,6 +266,80 @@
       </div>`;
   }
 
+  /* ── Opening status panel ───────────────────────────────────────────── */
+  function renderOpeningStatus(data) {
+    const el = document.getElementById('opening-status-body');
+    if (!el) return;
+
+    const moves = historySans.slice(0, moveIdx);
+
+    /* Build move sequence string */
+    let movesHtml = '';
+    if (moves.length) {
+      let seq = '';
+      moves.forEach((san, i) => {
+        if (i % 2 === 0) seq += `${Math.floor(i / 2) + 1}. `;
+        seq += san + ' ';
+      });
+      movesHtml = `<div class="os-moves">${seq.trim()}</div>`;
+    }
+
+    /* In-book / out-of-book status */
+    let statusHtml;
+    if (!moves.length) {
+      statusHtml = '<span class="os-neutral">Starting position</span>';
+    } else if (data?.opening?.name || data?.moves?.length) {
+      const name = data?.opening?.name || currentOpening?.name || '';
+      if (name) {
+        document.getElementById('opening-name-display').textContent = name;
+        if (!currentOpening?.name) currentOpening = { ...(currentOpening || {}), name };
+      }
+      statusHtml = `<span class="os-inbook">In book${name ? ` — ${name}` : ''}</span>`;
+    } else {
+      statusHtml = '<span class="os-outbook">Out of book — you\'ve left the main lines</span>';
+    }
+
+    el.innerHTML = `<div class="os-status">${statusHtml}</div>${movesHtml}`;
+  }
+
+  /* ── Best moves panel ───────────────────────────────────────────────── */
+  function renderBestMoves(data) {
+    const el = document.getElementById('best-moves-panel');
+    if (!el) return;
+
+    const chess  = currentChess();
+    const turnEl = document.getElementById('best-moves-turn');
+    if (turnEl) turnEl.textContent = `for ${chess.turn() === 'w' ? 'White' : 'Black'}`;
+
+    if (!data?.moves?.length) {
+      el.innerHTML = '<div class="mt-empty">No moves in database for this position.</div>';
+      return;
+    }
+
+    el.innerHTML = data.moves.slice(0, 3).map((m, i) => {
+      const san   = uciToSan(m.uci, chess);
+      const total = (m.white || 0) + (m.draws || 0) + (m.black || 0);
+      if (!total) return '';
+      const wPct = Math.round(m.white / total * 100);
+      const dPct = Math.round(m.draws  / total * 100);
+      const bPct = Math.round(m.black  / total * 100);
+      const gStr = total > 999 ? Math.round(total / 1000) + 'k' : total;
+      return `<div class="bm-row${i === 0 ? ' bm-top' : ''}">
+        <span class="bm-rank${i === 0 ? ' bm-rank-top' : ''}">${i + 1}</span>
+        <span class="bm-san">${san}</span>
+        <div class="mt-bars" style="flex:1;min-width:0">
+          <div class="mt-bar-inner">
+            <div class="mt-bw" style="width:${wPct}%"></div>
+            <div class="mt-bd" style="width:${dPct}%"></div>
+            <div class="mt-bb" style="width:${bPct}%"></div>
+          </div>
+          <span class="mt-pcts">${wPct} / ${dPct} / ${bPct}</span>
+        </div>
+        <span class="mt-games">${gStr}</span>
+      </div>`;
+    }).join('');
+  }
+
   /* ── Move tree ──────────────────────────────────────────────────────── */
   function renderMoveTree(data) {
     const el = document.getElementById('move-tree');
@@ -288,6 +376,28 @@
         playMove(row.dataset.uci, row.dataset.san);
       });
     });
+  }
+
+  /* ── Turn indicator ─────────────────────────────────────────────────── */
+  function updateTurnIndicator() {
+    const dot  = document.getElementById('turn-dot');
+    const text = document.getElementById('turn-text');
+    if (!dot || !text) return;
+    const chess = currentChess();
+    if (chess.game_over()) {
+      dot.className    = 'turn-dot';
+      text.textContent = chess.in_checkmate() ? 'Checkmate!' : 'Game over';
+      return;
+    }
+    const turn = chess.turn();
+    dot.className = `turn-dot ${turn === 'w' ? 'white' : 'black'}`;
+    if (practiceMode) {
+      text.textContent = turn === practiceColor
+        ? `Your turn — ${turn === 'w' ? 'White' : 'Black'} to move`
+        : 'Computer thinking…';
+    } else {
+      text.textContent = `${turn === 'w' ? 'White' : 'Black'} to move`;
+    }
   }
 
   /* ── Lichess API ────────────────────────────────────────────────────── */
@@ -328,8 +438,9 @@
     const fen   = currentFen();
     const token = ++_loadToken;
 
-    document.getElementById('move-tree').innerHTML  = '<div class="mt-loading"><span class="spinner"></span> Loading…</div>';
-    document.getElementById('theory-text').innerHTML = '<div class="theory-loading"><span class="spinner"></span> Loading explanation…</div>';
+    document.getElementById('move-tree').innerHTML        = '<div class="mt-loading"><span class="spinner"></span> Loading…</div>';
+    document.getElementById('theory-text').innerHTML      = '<div class="theory-loading"><span class="spinner"></span> Loading explanation…</div>';
+    document.getElementById('best-moves-panel').innerHTML = '<div class="mt-loading"><span class="spinner"></span> Loading…</div>';
 
     const data = sourceToggle === 'masters'
       ? await fetchMasterMoves(fen)
@@ -339,9 +450,12 @@
     lichessData = data;
     renderMoveTree(data);
     renderWinStats(data);
+    renderOpeningStatus(data);
+    renderBestMoves(data);
+    updateTurnIndicator();
 
-    const openingName = currentOpening?.name || 'Chess Opening';
-    const explanation = await getTheoryExplanation(fen, historySans.slice(0, moveIdx), openingName);
+    const openingName  = currentOpening?.name || 'Chess Opening';
+    const explanation  = await getTheoryExplanation(fen, historySans.slice(0, moveIdx), openingName);
     if (token !== _loadToken) return;
 
     document.getElementById('theory-text').textContent =
@@ -380,21 +494,21 @@
     if (moveIdx <= 0) return;
     moveIdx--;
     selSq = null; legDests = [];
-    render(); renderMoveHistory(); loadPositionData();
+    render(); renderMoveHistory(); updateTurnIndicator(); loadPositionData();
   }
 
   function goForward() {
     if (moveIdx >= historySans.length) return;
     moveIdx++;
     selSq = null; legDests = [];
-    render(); renderMoveHistory(); loadPositionData();
+    render(); renderMoveHistory(); updateTurnIndicator(); loadPositionData();
   }
 
   function goToMove(idx) {
     if (idx < 0 || idx > historySans.length) return;
     moveIdx = idx;
     selSq = null; legDests = [];
-    render(); renderMoveHistory(); loadPositionData();
+    render(); renderMoveHistory(); updateTurnIndicator(); loadPositionData();
   }
 
   /* ── Load opening ───────────────────────────────────────────────────── */
@@ -422,11 +536,201 @@
     exitPracticeMode();
     render();
     renderMoveHistory();
+    updateTurnIndicator();
     loadPositionData();
 
     document.getElementById('opening-name-display').textContent = opening.name;
     document.getElementById('search-input').value               = opening.name;
     document.getElementById('search-dropdown').classList.add('hidden');
+  }
+
+  /* ── Unified board click handler (free exploration + practice) ──────── */
+  canvas.addEventListener('click', e => {
+    if (practiceMode && practiceWaiting) return;
+    const rect = canvas.getBoundingClientRect();
+    const x    = (e.clientX - rect.left) * (PX / rect.width);
+    const y    = (e.clientY - rect.top)  * (PX / rect.height);
+    const sq   = canvasToSq(x, y);
+    if (sq) handleBoardClick(sq);
+  });
+
+  function handleBoardClick(sq) {
+    const chess = currentChess();
+    if (chess.game_over()) return;
+    const turn = chess.turn();
+
+    /* In practice mode, block interaction when it's the computer's turn */
+    if (practiceMode && turn !== practiceColor) return;
+
+    if (selSq) {
+      /* ── Destination clicked ── */
+      if (legDests.includes(sq)) {
+        const fromSq = selSq;
+        selSq = null; legDests = [];
+
+        if (practiceMode) {
+          /* Snapshot Lichess data for this position (before the move) for feedback */
+          const posData   = lichessData;
+          const tempChess = currentChess();
+          const m         = tempChess.move({ from: fromSq, to: sq, promotion: 'q' });
+          if (!m) { render(); return; }
+
+          practiceMoveCount++;
+          if (posData?.moves?.length) {
+            const movedUci = fromSq + sq;
+            const isTop = posData.moves[0].uci.slice(0, 4) === movedUci;
+            const inDb  = posData.moves.some(mv => mv.uci.slice(0, 4) === movedUci);
+            if (isTop) {
+              practiceMainCount++;
+              showPracticeToast('✓ Main line!', 'success');
+            } else if (inDb) {
+              const topSan = uciToSan(posData.moves[0].uci, currentChess());
+              showPracticeToast(`Good move — main line is ${topSan}`, 'warning');
+            } else {
+              const topSan = posData.moves.length ? uciToSan(posData.moves[0].uci, currentChess()) : '?';
+              showPracticeToast(`Out of book — main line was ${topSan}`, 'error');
+            }
+          } else {
+            practiceMainCount++;
+          }
+
+          updatePracticeScore();
+          playMove(fromSq + sq + (m.promotion || ''), m.san);
+          practiceWaiting = true;
+          updatePracticeStatus();
+          updateTurnIndicator();
+
+          const c = currentChess();
+          if (!c.game_over() && c.turn() !== practiceColor) {
+            setTimeout(async () => {
+              await playComputerMove();
+              practiceWaiting = false;
+              updatePracticeStatus();
+              updateTurnIndicator();
+            }, 800);
+          } else {
+            practiceWaiting = false;
+            updatePracticeStatus();
+            updateTurnIndicator();
+          }
+        } else {
+          /* Free exploration — just play */
+          playMove(buildUCI(fromSq, sq), null);
+        }
+        return;
+      }
+
+      /* Clicked a different piece of the moveable color — re-select */
+      const p      = chess.get(sq);
+      const canSel = practiceMode ? p?.color === practiceColor : p?.color === turn;
+      if (p && canSel) {
+        selSq    = sq;
+        legDests = chess.moves({ square: sq, verbose: true }).map(mv => mv.to);
+        render();
+        return;
+      }
+      selSq = null; legDests = []; render();
+    } else {
+      /* ── First click — select a piece ── */
+      const p      = chess.get(sq);
+      const canSel = practiceMode ? p?.color === practiceColor : p?.color === turn;
+      if (p && canSel) {
+        selSq    = sq;
+        legDests = chess.moves({ square: sq, verbose: true }).map(mv => mv.to);
+        render();
+      }
+    }
+  }
+
+  /* ── Computer move (practice) ───────────────────────────────────────── */
+  async function playComputerMove() {
+    const chess = currentChess();
+    if (chess.game_over() || chess.turn() === practiceColor) return;
+
+    const data = sourceToggle === 'masters'
+      ? await fetchMasterMoves(currentFen())
+      : await fetchPlayerMoves(currentFen());
+
+    let uci;
+    if (data?.moves?.length) {
+      uci = data.moves[0].uci;
+    } else {
+      const moves = chess.moves({ verbose: true });
+      if (!moves.length) return;
+      uci = moves[0].from + moves[0].to;
+    }
+
+    const san = uciToSan(uci, currentChess());
+    playMove(uci, san);
+  }
+
+  /* ── Practice mode ──────────────────────────────────────────────────── */
+  function enterPracticeMode(color) {
+    practiceMode      = true;
+    practiceColor     = color;
+    practiceMoveCount = 0;
+    practiceMainCount = 0;
+    practiceWaiting   = false;
+    selSq = null; legDests = [];
+
+    document.getElementById('practice-btn').textContent = 'Exit Practice';
+    document.getElementById('practice-btn').classList.add('prac-active');
+    document.getElementById('board-wrap').classList.add('practice-glow');
+    document.getElementById('practice-status').classList.remove('hidden');
+    document.getElementById('practice-color-toggle').classList.remove('hidden');
+    document.getElementById('practice-score').classList.remove('hidden');
+
+    updatePracticeStatus();
+    updatePracticeScore();
+    updateTurnIndicator();
+
+    const chess = currentChess();
+    if (chess.turn() !== practiceColor) {
+      practiceWaiting = true;
+      setTimeout(() => { practiceWaiting = false; playComputerMove(); }, 800);
+    }
+    render();
+  }
+
+  function exitPracticeMode() {
+    practiceMode = false;
+    selSq = null; legDests = [];
+    const btn = document.getElementById('practice-btn');
+    if (btn) { btn.textContent = 'Practice This Line'; btn.classList.remove('prac-active'); }
+    document.getElementById('board-wrap')?.classList.remove('practice-glow');
+    document.getElementById('practice-status')?.classList.add('hidden');
+    document.getElementById('practice-color-toggle')?.classList.add('hidden');
+    document.getElementById('practice-score')?.classList.add('hidden');
+    updateTurnIndicator();
+  }
+
+  function updatePracticeStatus() {
+    const el = document.getElementById('practice-status-text');
+    if (!el) return;
+    const chess = currentChess();
+    if (chess.game_over()) {
+      el.textContent = 'Game over!'; el.className = 'ob-ps-text ps-done';
+    } else if (chess.turn() === practiceColor) {
+      el.textContent = `Your turn — play as ${practiceColor === 'w' ? 'White' : 'Black'}`;
+      el.className   = 'ob-ps-text ps-yours';
+    } else {
+      el.textContent = 'Computer is thinking…'; el.className = 'ob-ps-text ps-thinking';
+    }
+  }
+
+  function updatePracticeScore() {
+    const el = document.getElementById('practice-score-text');
+    if (el) el.textContent = `Main line: ${practiceMainCount} / ${practiceMoveCount} moves`;
+  }
+
+  /* ── Practice toast ─────────────────────────────────────────────────── */
+  function showPracticeToast(msg, type) {
+    const el = document.getElementById('practice-toast');
+    if (!el) return;
+    el.textContent = msg;
+    el.className   = `ob-toast pt-${type} show`;
+    clearTimeout(el._t);
+    el._t = setTimeout(() => el.classList.remove('show'), 3500);
   }
 
   /* ── Trouble spots ──────────────────────────────────────────────────── */
@@ -534,6 +838,7 @@
   function setupNavButtons() {
     document.getElementById('nav-back').addEventListener('click', goBack);
     document.getElementById('nav-forward').addEventListener('click', goForward);
+    document.getElementById('nav-undo').addEventListener('click', goBack);
     document.getElementById('nav-reset').addEventListener('click', () => {
       if (currentOpening) {
         loadOpening(currentOpening);
@@ -541,7 +846,7 @@
         historyFens = [START_FEN]; historySans = []; historyFromTo = []; moveIdx = 0;
         selSq = null; legDests = [];
         exitPracticeMode();
-        render(); renderMoveHistory(); loadPositionData();
+        render(); renderMoveHistory(); updateTurnIndicator(); loadPositionData();
         document.getElementById('opening-name-display').textContent = '';
       }
     });
@@ -569,170 +874,6 @@
       pBtn.classList.add('active'); mBtn.classList.remove('active');
       loadPositionData();
     });
-  }
-
-  /* ── Practice mode ──────────────────────────────────────────────────── */
-  function enterPracticeMode(color) {
-    practiceMode      = true;
-    practiceColor     = color;
-    practiceMoveCount = 0;
-    practiceMainCount = 0;
-    practiceWaiting   = false;
-    selSq = null; legDests = [];
-
-    document.getElementById('practice-btn').textContent = 'Exit Practice';
-    document.getElementById('practice-btn').classList.add('prac-active');
-    document.getElementById('board-wrap').classList.add('practice-glow');
-    document.getElementById('practice-status').classList.remove('hidden');
-    document.getElementById('practice-color-toggle').classList.remove('hidden');
-    document.getElementById('practice-score').classList.remove('hidden');
-
-    updatePracticeStatus();
-    updatePracticeScore();
-
-    const chess = currentChess();
-    if (chess.turn() !== practiceColor) {
-      practiceWaiting = true;
-      setTimeout(() => { practiceWaiting = false; playComputerMove(); }, 800);
-    }
-    render();
-  }
-
-  function exitPracticeMode() {
-    practiceMode = false;
-    selSq = null; legDests = [];
-    document.getElementById('practice-btn')?.classList.remove('prac-active');
-    const btn = document.getElementById('practice-btn');
-    if (btn) btn.textContent = 'Practice This Line';
-    document.getElementById('board-wrap')?.classList.remove('practice-glow');
-    document.getElementById('practice-status')?.classList.add('hidden');
-    document.getElementById('practice-color-toggle')?.classList.add('hidden');
-    document.getElementById('practice-score')?.classList.add('hidden');
-  }
-
-  function updatePracticeStatus() {
-    const el = document.getElementById('practice-status-text');
-    if (!el) return;
-    const chess = currentChess();
-    if (chess.game_over()) {
-      el.textContent = 'Game over!'; el.className = 'ob-ps-text ps-done';
-    } else if (chess.turn() === practiceColor) {
-      el.textContent = `Your turn — play as ${practiceColor === 'w' ? 'White' : 'Black'}`;
-      el.className   = 'ob-ps-text ps-yours';
-    } else {
-      el.textContent = 'Computer is thinking…'; el.className = 'ob-ps-text ps-thinking';
-    }
-  }
-
-  function updatePracticeScore() {
-    const el = document.getElementById('practice-score-text');
-    if (el) el.textContent = `Main line: ${practiceMainCount} / ${practiceMoveCount} moves`;
-  }
-
-  /* ── Board click (practice) ─────────────────────────────────────────── */
-  canvas.addEventListener('click', e => {
-    if (!practiceMode || practiceWaiting) return;
-    const rect = canvas.getBoundingClientRect();
-    const x    = (e.clientX - rect.left) * (PX / rect.width);
-    const y    = (e.clientY - rect.top)  * (PX / rect.height);
-    const sq   = canvasToSq(x, y);
-    if (sq) handlePracticeClick(sq);
-  });
-
-  function handlePracticeClick(sq) {
-    const chess = currentChess();
-    if (chess.game_over() || chess.turn() !== practiceColor) return;
-
-    if (selSq) {
-      if (legDests.includes(sq)) {
-        /* Capture position data before move for feedback */
-        const posData = lichessData;
-        const fromSq  = selSq;
-        const m       = chess.move({ from: selSq, to: sq, promotion: 'q' });
-        if (!m) { selSq = null; legDests = []; render(); return; }
-
-        practiceMoveCount++;
-        if (posData?.moves?.length) {
-          const movedUci = fromSq + sq;
-          const inDb     = posData.moves.some(mv => mv.uci.startsWith(movedUci));
-          const isMain   = movedUci === posData.moves[0].uci.slice(0, 4);
-          if (!inDb) {
-            showPracticeToast('This move is not in the master database.', 'error');
-          } else if (isMain) {
-            practiceMainCount++;
-            showPracticeToast('✓ Good move! That\'s the main line.', 'success');
-          } else {
-            const topSan = uciToSan(posData.moves[0].uci, currentChess());
-            showPracticeToast(`The main line is ${topSan}. You can still continue from here.`, 'warning');
-          }
-        } else {
-          practiceMainCount++;
-        }
-
-        updatePracticeScore();
-        playMove(fromSq + sq + (m.promotion || ''), m.san);
-        practiceWaiting = true;
-        updatePracticeStatus();
-
-        const c = currentChess();
-        if (!c.game_over() && c.turn() !== practiceColor) {
-          setTimeout(async () => {
-            await playComputerMove();
-            practiceWaiting = false;
-            updatePracticeStatus();
-          }, 800);
-        } else {
-          practiceWaiting = false;
-          updatePracticeStatus();
-        }
-        return;
-      }
-      const p = chess.get(sq);
-      if (p && p.color === practiceColor) {
-        selSq    = sq;
-        legDests = chess.moves({ square: sq, verbose: true }).map(mv => mv.to);
-        render(); return;
-      }
-      selSq = null; legDests = []; render();
-    } else {
-      const p = chess.get(sq);
-      if (p && p.color === practiceColor) {
-        selSq    = sq;
-        legDests = chess.moves({ square: sq, verbose: true }).map(mv => mv.to);
-        render();
-      }
-    }
-  }
-
-  async function playComputerMove() {
-    const chess = currentChess();
-    if (chess.game_over() || chess.turn() === practiceColor) return;
-
-    const data = sourceToggle === 'masters'
-      ? await fetchMasterMoves(currentFen())
-      : await fetchPlayerMoves(currentFen());
-
-    let uci;
-    if (data?.moves?.length) {
-      uci = data.moves[0].uci;
-    } else {
-      const moves = chess.moves({ verbose: true });
-      if (!moves.length) return;
-      uci = moves[0].from + moves[0].to;
-    }
-
-    const san = uciToSan(uci, currentChess());
-    playMove(uci, san);
-  }
-
-  /* ── Practice toast ─────────────────────────────────────────────────── */
-  function showPracticeToast(msg, type) {
-    const el = document.getElementById('practice-toast');
-    if (!el) return;
-    el.textContent = msg;
-    el.className   = `ob-toast pt-${type} show`;
-    clearTimeout(el._t);
-    el._t = setTimeout(() => el.classList.remove('show'), 3500);
   }
 
   /* ── Export to practice board ───────────────────────────────────────── */
@@ -768,6 +909,7 @@
           setTimeout(() => { practiceWaiting = false; playComputerMove(); }, 600);
         }
         updatePracticeStatus();
+        updateTurnIndicator();
       }
     });
 
@@ -782,6 +924,7 @@
           setTimeout(() => { practiceWaiting = false; playComputerMove(); }, 600);
         }
         updatePracticeStatus();
+        updateTurnIndicator();
       }
     });
   }
@@ -792,6 +935,7 @@
   setupSourceToggle();
   setupPracticeButtons();
   renderTroubleSpots();
+  updateTurnIndicator();
 
   loadPieceImages().then(() => {
     render();

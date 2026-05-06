@@ -135,7 +135,7 @@
       display: block;
       width: 100%;
       height: 100%;
-      cursor: default;
+      cursor: pointer;
     }
     #board-wrap.practice-glow {
       box-shadow: 0 0 0 3px rgba(127,166,80,0.55), 0 0 18px rgba(127,166,80,0.25);
@@ -405,6 +405,64 @@
     .pill-toggle.active { border-color: var(--accent); background: rgba(127,166,80,0.12); color: var(--accent); }
     .pill-toggle:not(.active):hover { border-color: rgba(255,255,255,0.18); color: var(--text); }
 
+    /* ── Turn indicator ─────────────────────────────────────────────────── */
+    .ob-turn-indicator {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 12px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+    }
+    .turn-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      background: var(--border);
+    }
+    .turn-dot.white { background: #e8d5b4; box-shadow: 0 0 0 1px rgba(0,0,0,0.3); }
+    .turn-dot.black { background: #2a2a2a; box-shadow: 0 0 0 1px rgba(255,255,255,0.25); }
+
+    /* ── Opening status ──────────────────────────────────────────────────── */
+    .ob-opening-status-body { padding: 10px 14px; display: flex; flex-direction: column; gap: 5px; }
+    .os-status  { font-size: 13px; font-weight: 600; }
+    .os-inbook  { color: var(--accent); }
+    .os-outbook { color: #e09050; }
+    .os-neutral { color: var(--text2); }
+    .os-moves {
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      color: var(--text2);
+      line-height: 1.65;
+      word-break: break-word;
+    }
+
+    /* ── Best moves ──────────────────────────────────────────────────────── */
+    .bm-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    .bm-row:last-child { border-bottom: none; }
+    .bm-top  { background: rgba(127,166,80,0.07); }
+    .bm-rank { font-size: 11px; color: var(--text2); min-width: 14px; font-family: monospace; }
+    .bm-rank-top { color: var(--accent); font-weight: 700; }
+    .bm-san  {
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--accent);
+      min-width: 44px;
+      flex-shrink: 0;
+    }
+
     /* ── Responsive ──────────────────────────────────────────────────── */
     @media (max-width: 900px) {
       .open-main { flex-direction: column; }
@@ -478,6 +536,12 @@
     <!-- ── Left column ─────────────────────────────────────────────── -->
     <div class="open-left">
 
+      <!-- Turn indicator -->
+      <div class="ob-turn-indicator">
+        <span id="turn-dot" class="turn-dot white"></span>
+        <span id="turn-text">White to move</span>
+      </div>
+
       <!-- Board -->
       <div id="board-wrap">
         <canvas id="opening-canvas" width="420" height="420"></canvas>
@@ -487,6 +551,7 @@
       <div class="ob-controls">
         <button id="nav-back"    class="ob-btn" title="Back one move">◀</button>
         <button id="nav-forward" class="ob-btn" title="Forward one move">▶</button>
+        <button id="nav-undo"    class="ob-btn" title="Undo last move">↩ Undo</button>
         <button id="nav-reset"   class="ob-btn" title="Reset to opening start">↺ Start</button>
         <button id="nav-flip"    class="ob-btn" title="Flip board">⇅ Flip</button>
       </div>
@@ -529,6 +594,25 @@
         <div class="ob-panel-title">Win Statistics</div>
         <div id="win-stats-panel">
           <p class="ws-empty">Select an opening to see statistics.</p>
+        </div>
+      </div>
+
+      <!-- Opening line status -->
+      <div class="ob-panel">
+        <div class="ob-panel-title">Opening Line</div>
+        <div id="opening-status-body" class="ob-opening-status-body">
+          <span class="os-neutral">Starting position</span>
+        </div>
+      </div>
+
+      <!-- Best moves for current side -->
+      <div class="ob-panel">
+        <div class="ob-panel-title">
+          Best Moves
+          <span id="best-moves-turn" class="ob-opening-name"></span>
+        </div>
+        <div id="best-moves-panel">
+          <div class="mt-empty">Select an opening or navigate to see moves</div>
         </div>
       </div>
 
