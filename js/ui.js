@@ -135,6 +135,7 @@ const UI = (() => {
     blunder:    { text: '??', cls: 'badge-blunder' },
     mistake:    { text: '?',  cls: 'badge-mistake' },
     inaccuracy: { text: '⁈', cls: 'badge-inaccuracy' },
+    miss:       { text: '!?', cls: 'badge-miss' },
     best:       { text: '!',  cls: 'badge-best' },
     excellent:  { text: '!',  cls: 'badge-excellent' }
   };
@@ -165,6 +166,7 @@ const UI = (() => {
         span.className       = 'move-san';
         span.dataset.ply     = plyNum;
         span.textContent     = move.san;
+        if (aData?.classification) span.classList.add('move-' + aData.classification);
 
         if (aData && CLASS_BADGE[aData.classification]) {
           const { text, cls } = CLASS_BADGE[aData.classification];
@@ -497,7 +499,7 @@ const UI = (() => {
 
     const clsLabel = {
       best: 'Best Move', excellent: 'Excellent', good: 'Good',
-      inaccuracy: 'Inaccuracy', mistake: 'Mistake', blunder: 'Blunder'
+      inaccuracy: 'Inaccuracy', mistake: 'Mistake', blunder: 'Blunder', miss: 'Miss'
     }[cls] || cls;
 
     const defaultExpl = isPositive
@@ -590,7 +592,7 @@ const UI = (() => {
     const alts = moveData?.alternateMoves;
     if (!alts || alts.length === 0) {
       const isCritical = moveData &&
-        (moveData.classification === 'blunder' || moveData.classification === 'mistake');
+        (moveData.classification === 'blunder' || moveData.classification === 'mistake' || moveData.classification === 'miss');
       content.innerHTML = `<p class="no-alternates">${
         isCritical
           ? 'No significant alternatives — this was the critical moment.'

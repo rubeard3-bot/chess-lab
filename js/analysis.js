@@ -71,17 +71,26 @@ const Analysis = (() => {
       const playedUci = move.from + move.to + (move.promotion || '');
       const isBest    = !!before.bestMoveUci && (playedUci === before.bestMoveUci);
 
-      // "Miss": blunder played from a position the mover was already winning (≥ 2 pawn advantage)
-      const isMiss = winPercentageLoss > 15
-        && (isWhiteMove ? before.eval >= 2.0 : before.eval <= -2.0);
+      // Win percent from the mover's perspective (not white's)
+      const winPercentBefore = isWhiteMove ? wpBefore : (100 - wpBefore);
+      const winPercentAfter  = isWhiteMove ? wpAfter  : (100 - wpAfter);
+
+      // Missed forced mate: engine had a forced mate available, player didn't find it
+      const missedForcedMate = before.isMate && before.mateIn > 0 && !isBest;
+
+      // Miss: clearly winning before, position still acceptable after, opportunity squandered
+      // OR: forced mate was available and the player didn't play the best move
+      const isMiss = missedForcedMate ||
+        (winPercentBefore >= 65 && winPercentAfter >= 50 &&
+         winPercentageLoss >= 5 && winPercentageLoss <= 15);
 
       let classification;
       if (isBest)                          classification = 'best';
       else if (winPercentageLoss <=  1)    classification = 'excellent';
       else if (winPercentageLoss <=  3)    classification = 'good';
+      else if (isMiss)                     classification = 'miss';
       else if (winPercentageLoss <=  7)    classification = 'inaccuracy';
       else if (winPercentageLoss <= 15)    classification = 'mistake';
-      else if (isMiss)                     classification = 'miss';
       else                                 classification = 'blunder';
 
       // evalLoss in pawns from mover's perspective (always <= 0, kept for UI display)
@@ -205,6 +214,7 @@ Return ONLY valid JSON with no markdown fences:
 
 RULES for moveExplanations — include EVERY ${playerPlies} ply (${playerName}'s moves):
 - blunder / mistake / inaccuracy: 2-3 sentences. Name the move played, name the best move (bestMoveSan), cite the eval change (evalBefore → eval). Explain WHY bestMoveSan is better — choose the most relevant reason: piece activity, king safety, pawn structure, tactical threat, or endgame technique. Explain what went wrong with the move played. Be specific, like a coach talking to a student.
+- miss: 2-3 sentences. Name the move played, name the best move (bestMoveSan), cite the eval change. Explain that the player was in a clearly winning position and missed a more decisive continuation. Describe what the engine recommended and why it was stronger. Tone: "You missed a winning continuation here" — the position did not collapse, but a real opportunity was squandered.
 - best / excellent / good: 1 sentence explaining what made the move strong.
 - Never write vague advice. Always reference the actual moves and eval numbers.`;
 

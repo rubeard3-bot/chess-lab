@@ -641,8 +641,11 @@ a:hover { text-decoration: underline; }
 .badge-blunder     { color: #f05555; }
 .badge-mistake     { color: #e09952; }
 .badge-inaccuracy  { color: #d4c038; }
+.badge-miss        { color: #F5A623; }
 .badge-best,
 .badge-excellent   { color: var(--accent); }
+
+.move-miss { background: rgba(245,166,35,0.08); }
 
 .placeholder-text {
   color: var(--text2);
@@ -886,6 +889,7 @@ a:hover { text-decoration: underline; }
 .coach-card-blunder    { background: rgba(224,82,82,0.12);  border-color: rgba(224,82,82,0.3); }
 .coach-card-mistake    { background: rgba(224,153,82,0.12); border-color: rgba(224,153,82,0.3); }
 .coach-card-inaccuracy { background: rgba(212,192,56,0.10); border-color: rgba(212,192,56,0.25); }
+.coach-card-miss       { background: rgba(245,166,35,0.10); border-color: rgba(245,166,35,0.25); }
 .coach-card-best,
 .coach-card-excellent,
 .coach-card-good       { background: rgba(127,166,80,0.10); border-color: rgba(127,166,80,0.2); }
@@ -910,6 +914,7 @@ a:hover { text-decoration: underline; }
 .coach-badge-blunder    { background: rgba(224,82,82,0.25);  color: #f08080; }
 .coach-badge-mistake    { background: rgba(224,153,82,0.25); color: #e09952; }
 .coach-badge-inaccuracy { background: rgba(212,192,56,0.25); color: #d4c038; }
+.coach-badge-miss       { background: rgba(245,166,35,0.25); color: #F5A623; }
 .coach-badge-excellent,
 .coach-badge-best       { background: rgba(127,166,80,0.25); color: #a0d070; }
 .coach-badge-good       { background: rgba(127,166,80,0.15); color: #8fb85e; }
