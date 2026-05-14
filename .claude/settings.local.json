@@ -13,7 +13,8 @@
       "Bash(Sort-Object FullName)",
       "Bash(node *)",
       "Bash(Select-String -Path \"C:\\\\Users\\\\russe\\\\my-projects\\\\chess_analyzer\\\\openings.html\" -Pattern \"\\(open-left|open-right|open-main|train-left|train-right|explore-left\\)\")",
-      "Bash(Select-Object LineNumber, Line)"
+      "Bash(Select-Object LineNumber, Line)",
+      "PowerShell(Get-ChildItem -Recurse \"C:\\\\Users\\\\russe\\\\my-projects\\\\chess_analyzer\" | Where-Object { !$_.PSIsContainer } | Select-Object FullName, Length | Sort-Object FullName | Format-Table -AutoSize)"
     ]
   }
 }

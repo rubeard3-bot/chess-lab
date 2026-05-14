@@ -2,7 +2,7 @@ const Analysis = (() => {
   const API_URL = window.location.hostname === 'localhost'
     ? 'http://localhost:4000/api/analyze'
     : 'https://chess-lab-production.up.railway.app/api/analyze';
-  const MODEL   = 'claude-sonnet-4-5';
+  const MODEL   = 'claude-sonnet-4-6';
 
   /* ------------------------------------------------------------------ */
   /*  STEP 1 — Parse PGN                                                  */

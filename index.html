@@ -34,27 +34,9 @@
         <span class="nav-coming-soon">Soon</span>
       </button>
     </nav>
-    <div class="nav-drawer-footer">
-      <button class="nav-item nav-item-btn" id="change-api-key-link">
-        <span class="nav-item-icon">⚙</span><span>Settings / API Key</span>
-      </button>
-    </div>
   </div>
 
-  <!-- Settings Modal -->
-  <div id="settings-modal" class="modal-overlay hidden">
-    <div class="modal">
-      <div class="modal-logo">⚙</div>
-      <h2>Settings</h2>
-      <label class="settings-input-label" for="settings-key-input">Anthropic API Key</label>
-      <input type="password" id="settings-key-input" placeholder="sk-ant-api03-…" autocomplete="off" spellcheck="false">
-      <button id="settings-save-btn" class="btn-primary" style="width:100%">Save Key</button>
-      <p class="modal-note">Your key is stored locally and never sent anywhere except Anthropic's API.</p>
-      <button id="settings-close-btn" class="settings-close-btn">✕ Close</button>
-    </div>
-  </div>
-
-  <div class="hub-container">
+<div class="hub-container">
 
     <!-- Header -->
     <header class="hub-header">
@@ -66,7 +48,6 @@
           <p class="hub-subtitle">Your personal chess coaching platform</p>
         </div>
       </div>
-      <button id="settings-btn" class="hub-settings-btn" title="Settings">⚙</button>
     </header>
 
     <!-- Chess.com Connection -->
@@ -372,50 +353,6 @@
         const refEl = document.getElementById('cc-ref-rating');
         if (refEl) refEl.classList.add('hidden');
         showDisconnected();
-      });
-    })();
-  </script>
-  <script>
-    /* ---- Settings modal ---- */
-    (function () {
-      const modal      = document.getElementById('settings-modal');
-      const input      = document.getElementById('settings-key-input');
-      const saveBtn    = document.getElementById('settings-save-btn');
-      const closeBtn   = document.getElementById('settings-close-btn');
-      const settingsBtn = document.getElementById('settings-btn');
-
-      function openModal() {
-        input.value = localStorage.getItem('csa_api_key') || '';
-        input.style.borderColor = '';
-        modal.classList.remove('hidden');
-        setTimeout(() => input.focus(), 50);
-      }
-      function closeModal() { modal.classList.add('hidden'); }
-
-      settingsBtn.addEventListener('click', openModal);
-      closeBtn.addEventListener('click', closeModal);
-
-      modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
-
-      saveBtn.addEventListener('click', () => {
-        const key = (input.value || '').trim();
-        if (!key || !key.startsWith('sk-')) {
-          input.style.borderColor = 'var(--danger)';
-          return;
-        }
-        localStorage.setItem('csa_api_key', key);
-        input.style.borderColor = '';
-        closeModal();
-      });
-
-      input.addEventListener('keydown', e => {
-        if (e.key === 'Enter')  saveBtn.click();
-        if (e.key === 'Escape') closeModal();
-        input.style.borderColor = '';
-      });
-
-      document.addEventListener('keydown', e => {
-        if (e.key === 'Escape' && !modal.classList.contains('hidden')) closeModal();
       });
     })();
   </script>

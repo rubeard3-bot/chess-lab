@@ -60,12 +60,15 @@
     }
 
     // Coming-soon buttons
-    ['nav-progress-btn', 'nav-openings-btn'].forEach(id => {
-      const btn = document.getElementById(id);
-      if (btn) btn.addEventListener('click', () => {
-        closeDrawer();
-        showNavToast('Coming soon! 🚀');
-      });
+    const progressBtn = document.getElementById('nav-progress-btn');
+    if (progressBtn) progressBtn.addEventListener('click', () => {
+      closeDrawer();
+      showNavToast('Coming soon! 🚀');
+    });
+
+    const openingsBtn = document.getElementById('nav-openings-btn');
+    if (openingsBtn) openingsBtn.addEventListener('click', () => {
+      window.location.href = 'openings.html';
     });
 
     // Settings — non-analyzer pages go to home
