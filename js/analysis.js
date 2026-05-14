@@ -281,7 +281,7 @@ RULES for moveExplanations — include EVERY ${playerPlies} ply (${playerName}'s
     });
 
     const explMap = {};
-    (claudeData.moveExplanations || []).forEach(e => {
+    (claudeData?.moveExplanations || []).forEach(e => {
       explMap[e.ply] = e.explanation;
     });
 
@@ -299,11 +299,11 @@ RULES for moveExplanations — include EVERY ${playerPlies} ply (${playerName}'s
         totalMoves:       classifiedMoves.length,
         playerColor,
         result:           metadata.result || '*',
-        strength:         claudeData.summary?.strength         || '',
-        weakness:         claudeData.summary?.weakness         || '',
-        recurringPattern: claudeData.summary?.recurringPattern || null
+        strength:         claudeData?.summary?.strength         || '',
+        weakness:         claudeData?.summary?.weakness         || '',
+        recurringPattern: claudeData?.summary?.recurringPattern || null
       },
-      opening: claudeData.opening || {},
+      opening: claudeData?.opening || {},
       moves
     };
   }

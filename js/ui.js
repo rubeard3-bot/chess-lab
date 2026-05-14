@@ -1,6 +1,16 @@
 const UI = (() => {
 
   /* ------------------------------------------------------------------ */
+  /*  COACH LOADING STATE — tracks last rendered move for post-Claude     */
+  /*  refresh, and gates renderMoveDetail while Claude is pending.        */
+  /* ------------------------------------------------------------------ */
+
+  let _coachLoading    = false;
+  let _lastPlayerColor = 'white';
+  let _lastCurrentPly  = 0;
+  let _lastMoveData    = null;
+
+  /* ------------------------------------------------------------------ */
   /*  HAMBURGER DRAWER                                                    */
   /* ------------------------------------------------------------------ */
 
@@ -388,7 +398,11 @@ const UI = (() => {
 
   function renderOpeningPanel(opening) {
     const panel = document.getElementById('panel-opening');
-    if (!panel || !opening) return;
+    if (!panel) return;
+    if (!opening || !opening.name) {
+      panel.classList.add('hidden');
+      return;
+    }
     panel.classList.remove('hidden');
 
     document.getElementById('opening-name-heading').textContent = opening.name || 'Unknown Opening';
@@ -444,9 +458,15 @@ const UI = (() => {
   }
 
   function renderMoveDetail(moveData, currentPly, playerColor) {
+    _lastPlayerColor = playerColor;
+    _lastCurrentPly  = currentPly;
+    _lastMoveData    = moveData;
+
     const panel   = document.getElementById('panel-move-detail');
     const content = document.getElementById('move-detail-content');
     if (!panel || !content) return;
+
+    if (_coachLoading) return;  // Loading placeholder shown — don't overwrite until Claude responds
 
     panel.classList.remove('hidden');
 
@@ -584,6 +604,53 @@ const UI = (() => {
          </div>`
       ).join('');
     }
+  }
+
+  /* ------------------------------------------------------------------ */
+  /*  COACH LOADING — shown while Railway/Claude call is in-flight       */
+  /* ------------------------------------------------------------------ */
+
+  function showCoachLoading() {
+    _coachLoading = true;
+
+    const content = document.getElementById('move-detail-content');
+    if (content) {
+      content.innerHTML =
+        '<div class="coach-loading-wrap">' +
+          '<div class="coach-loading-text">🔍 Your coach is reviewing your game…</div>' +
+          '<div class="coach-loading-dots"><span></span><span></span><span></span></div>' +
+        '</div>';
+    }
+
+    const whyBest = document.getElementById('panel-why-best');
+    if (whyBest) whyBest.classList.add('hidden');
+    const alts = document.getElementById('panel-alternates');
+    if (alts) alts.classList.add('hidden');
+
+    const strength = document.getElementById('strength-card');
+    if (strength) strength.innerHTML =
+      '<div class="insight-label">Strength</div>' +
+      '<div class="coach-loading-inline"><span></span><span></span><span></span></div>';
+    const weakness = document.getElementById('weakness-card');
+    if (weakness) weakness.innerHTML =
+      '<div class="insight-label">Weakness</div>' +
+      '<div class="coach-loading-inline"><span></span><span></span><span></span></div>';
+  }
+
+  function hideCoachLoading() {
+    _coachLoading = false;
+    renderMoveDetail(_lastMoveData, _lastCurrentPly, _lastPlayerColor);
+  }
+
+  function revealCoachingContent() {
+    ['move-detail-content', 'strength-card', 'weakness-card'].forEach(id => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.classList.remove('coach-fade-in');
+      void el.offsetHeight;
+      el.classList.add('coach-fade-in');
+      el.addEventListener('animationend', () => el.classList.remove('coach-fade-in'), { once: true });
+    });
   }
 
   function renderGameNotes(analysisData) {
@@ -837,6 +904,9 @@ const UI = (() => {
     hideAnalysisPanels,
     showProgress,
     hideProgress,
+    showCoachLoading,
+    hideCoachLoading,
+    revealCoachingContent,
     openSidebar,
     closeSidebar,
     showError,

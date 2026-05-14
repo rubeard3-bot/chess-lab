@@ -543,43 +543,70 @@ const App = (() => {
     const classifiedMoves = Analysis.classifyMoves(sfResults, parsed.verboseHistory);
     const accuracy        = Analysis.calculateAccuracy(classifiedMoves, playerColor);
 
-    // ---- Phase 3: Claude for natural language ----------------------
-    setAnalyzing(true, 'claude');
-
-    let claudeData;
-    try {
-      const pastGames = Storage.loadAllGames();
-      claudeData = await Analysis.callClaude(parsed.metadata, classifiedMoves, pastGames, playerColor);
-    } catch (err) {
-      setAnalyzing(false);
-      handleAnalysisError(err);
-      return;
-    }
-
-    setAnalyzing(false);
-
-    // ---- Phase 4: Merge and display --------------------------------
-    const analysis   = Analysis.buildAnalysis(classifiedMoves, accuracy, claudeData, parsed.metadata, playerColor);
-    const fensToSave = buildFens(parsed.verboseHistory);
-    const gameId     = Storage.saveGame(pgn, parsed.metadata, analysis, fensToSave, playerColor);
-    loadGameIntoApp(pgn, parsed.metadata, parsed.verboseHistory, analysis, gameId);
+    // ---- Phase 3: Render board immediately (before Claude) ---------
+    // Build a partial analysis with Stockfish data only (no explanations yet).
+    // The board, move list, eval bar, eval graph, and move classifications are
+    // all derived from Stockfish — they're available right now.
+    const partialAnalysis = Analysis.buildAnalysis(classifiedMoves, accuracy, null, parsed.metadata, playerColor);
+    const gameId          = Storage.saveGame(pgn, parsed.metadata, partialAnalysis, fens, playerColor);
+    loadGameIntoApp(pgn, parsed.metadata, parsed.verboseHistory, partialAnalysis, gameId);
     collapseTopbar();
+    setAnalyzing(false);
+    UI.showCoachLoading();
 
-    if (massImportQueue) {
-      onMassImportGameComplete();
-      return;
-    }
+    // ---- Phase 4: Claude in background (non-blocking) ---------------
+    // The user can click through moves and see Stockfish classifications
+    // while Claude is generating the coaching text.
+    const pastGames = Storage.loadAllGames();
+    Analysis.callClaude(parsed.metadata, classifiedMoves, pastGames, playerColor)
+      .then(claudeData => {
+        const fullAnalysis = Analysis.buildAnalysis(
+          classifiedMoves, accuracy, claudeData, parsed.metadata, playerColor
+        );
 
-    // Phase 2: async cross-game recommendations (non-blocking)
-    if (typeof Recommendations !== 'undefined') {
-      UI.showToast('Updating recommendations...');
-      Recommendations.generateRecommendations().then(recs => {
-        if (recs) {
-          localStorage.setItem('csa_recommendations', JSON.stringify(recs));
-          UI.renderPatternsSummary();
+        // Patch the already-saved game entry in-place (same ID, no new timestamp)
+        try {
+          const key    = 'csa_game_' + gameId;
+          const stored = JSON.parse(localStorage.getItem(key) || 'null');
+          if (stored) {
+            stored.analysis = fullAnalysis;
+            localStorage.setItem(key, JSON.stringify(stored));
+          }
+        } catch (_) {}
+
+        // Update live app state so future navigation picks up explanations
+        state.analysisData = fullAnalysis;
+
+        // Refresh all coaching panels with real Claude data
+        UI.hideCoachLoading();
+        UI.renderGameSummary(fullAnalysis.summary || {});
+        UI.renderOpeningPanel(fullAnalysis.opening || {});
+        UI.renderGameNotes(fullAnalysis);
+        const moveData = (fullAnalysis.moves || []).find(m => m.ply === state.currentPly) || null;
+        UI.renderMoveDetail(moveData, state.currentPly, playerColor);
+        UI.revealCoachingContent();
+
+        if (massImportQueue) {
+          onMassImportGameComplete();
+          return;
         }
-      }).catch(() => {});
-    }
+
+        // Cross-game recommendations (non-blocking)
+        if (typeof Recommendations !== 'undefined') {
+          UI.showToast('Updating recommendations...');
+          Recommendations.generateRecommendations().then(recs => {
+            if (recs) {
+              localStorage.setItem('csa_recommendations', JSON.stringify(recs));
+              UI.renderPatternsSummary();
+            }
+          }).catch(() => {});
+        }
+      })
+      .catch(err => {
+        UI.hideCoachLoading();
+        handleAnalysisError(err);
+        if (massImportQueue) onMassImportGameComplete();
+      });
   }
 
   function handleAnalysisError(err) {

@@ -95,6 +95,15 @@ async function callClaude(prompt, label) {
 
       if (!response.ok) {
         const errText = await response.text();
+        if (response.status === 429) {
+          console.warn(`[${label}] rate limited (429) on attempt ${attempt} — waiting 5 s before retry`);
+          if (attempt < 2) {
+            await new Promise(r => setTimeout(r, 5000));
+            continue;
+          }
+          console.error(`[${label}] rate limited twice, giving up`);
+          return null;
+        }
         console.error(`[${label}] API error:`, errText.substring(0, 500));
         if (attempt < 2) { console.log(`[${label}] retrying...`); continue; }
         return null;
@@ -248,11 +257,6 @@ When citing specific games as examples, always include the gameId in examples ar
   ]
 }`;
 
-    const result1 = await callClaude(prompt1, 'Call1-Core');
-
-    console.log('[Recommendations] Call1 complete, waiting 60s before Call2...');
-    await new Promise(resolve => setTimeout(resolve, 60000));
-
     /* -- Call 2 — Opening and Tactical Analysis ------------------------ */
     const prompt2 = preamble +
 `Return ONLY this JSON structure:
@@ -290,11 +294,6 @@ When citing specific games as examples, always include the gameId in examples ar
   ]
 }`;
 
-    const result2 = await callClaude(prompt2, 'Call2-OpenTactics');
-
-    console.log('[Recommendations] Call2 complete, waiting 60s before Call3...');
-    await new Promise(resolve => setTimeout(resolve, 60000));
-
     /* -- Call 3 — Study Plan and Goals --------------------------------- */
     const prompt3 = preamble +
 `Return ONLY this JSON structure:
@@ -320,7 +319,13 @@ When citing specific games as examples, always include the gameId in examples ar
   "coachMessage": "<A personal message from the coach to the player, 3-4 sentences, warm and encouraging but honest about what needs work>"
 }`;
 
-    const result3 = await callClaude(prompt3, 'Call3-StudyPlan');
+    /* -- Fire all 3 calls in parallel (Tier 2 rate limits have ample headroom) */
+    console.log('[Recommendations] Firing all 3 Claude calls in parallel...');
+    const [result1, result2, result3] = await Promise.all([
+      callClaude(prompt1, 'Call1-Core'),
+      callClaude(prompt2, 'Call2-OpenTactics'),
+      callClaude(prompt3, 'Call3-StudyPlan')
+    ]);
 
     /* -- Merge --------------------------------------------------------- */
     const failedSections = [
@@ -330,7 +335,7 @@ When citing specific games as examples, always include the gameId in examples ar
     ].filter(Boolean);
 
     if (failedSections.length === 3) {
-      return res.status(502).json({ error: 'All three Claude calls failed' });
+      return res.status(500).json({ error: 'All three Claude calls failed. Please try again.' });
     }
 
     const merged = Object.assign({}, result1 || {}, result2 || {}, result3 || {});
