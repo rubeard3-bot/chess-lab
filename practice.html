@@ -586,6 +586,14 @@
   };
 })();
 </script>
+<script>
+  try {
+    var _bl = localStorage.getItem('pf_board_light');
+    var _bd = localStorage.getItem('pf_board_dark');
+    if (_bl) window.BOARD_LIGHT = _bl;
+    if (_bd) window.BOARD_DARK  = _bd;
+  } catch (_) {}
+</script>
 <script src="js/practice-board.js"></script>
 </body>
 </html>

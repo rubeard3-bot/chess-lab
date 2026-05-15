@@ -105,6 +105,9 @@
         <a href="import.html" class="db-nav-item">
           <span class="db-nav-icon">📥</span>Import Games
         </a>
+        <a href="profile.html" class="db-nav-item">
+          <span class="db-nav-icon">👤</span>Profile &amp; Preferences
+        </a>
 
         <div class="db-nav-group-label" style="margin-top:12px">Study</div>
         <span class="db-nav-item db-nav-disabled">
@@ -281,8 +284,10 @@
     var LS_SCORES   = 'csa_opening_scores';
 
     /* ── Read stored values ── */
-    var username   = lsGet(LS_USERNAME) || '';
-    var currentElo = lsGetInt(LS_CURRENT);
+    var username    = lsGet(LS_USERNAME) || '';
+    var displayName = lsGet('pf_display_name') || '';
+    var avatarColor = lsGet('pf_avatar_color') || '';
+    var currentElo  = lsGetInt(LS_CURRENT);
     var goalElo    = lsGetInt(LS_GOAL);
     var startElo   = lsGetInt(LS_START);
     var eloHistory = lsGetJSON(LS_HISTORY) || [];
@@ -295,12 +300,16 @@
     var avatarEl    = document.getElementById('db-avatar');
     var usernameEl  = document.getElementById('db-username');
 
-    if (username) {
+    var displayedName = displayName || username;
+    if (displayedName) {
       if (usernameEl) {
-        safeText(usernameEl, username);
+        safeText(usernameEl, displayedName);
         usernameEl.style.color = '';
       }
-      if (avatarEl) avatarEl.textContent = username.charAt(0).toUpperCase();
+      if (avatarEl) {
+        avatarEl.textContent = displayedName.charAt(0).toUpperCase();
+        if (avatarColor) avatarEl.style.background = avatarColor;
+      }
     } else {
       if (usernameEl) {
         usernameEl.textContent = 'Connect chess.com';
@@ -393,7 +402,8 @@
                : hour >= 12 && hour <= 16 ? 'afternoon'
                : hour >= 17 && hour <= 23 ? 'evening'
                : 'night';
-      var name = username ? ', ' + username : '';
+      var greetName = displayName || username;
+      var name = greetName ? ', ' + greetName : '';
       safeText(document.getElementById('db-greeting'), 'Good ' + tod + name + '! 👋');
     })();
 

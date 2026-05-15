@@ -1,0 +1,1056 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Profile &amp; Preferences — Chess Lab</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <style>
+    html, body { height: 100%; overflow: hidden; background: #0d1321; }
+  </style>
+</head>
+<body class="pf-page">
+
+  <!-- Toast -->
+  <div id="pf-toast" class="pf-toast" role="status" aria-live="polite"></div>
+
+  <!-- Nav drawer overlay (nav.js requires these elements) -->
+  <div id="nav-overlay" class="nav-overlay hidden"></div>
+  <div id="nav-drawer" class="nav-drawer">
+    <div class="nav-drawer-header">
+      <span class="nav-drawer-brand">♟ Chess Lab</span>
+      <button id="nav-drawer-close" class="nav-drawer-close" aria-label="Close menu">✕</button>
+    </div>
+    <nav class="nav-drawer-nav">
+      <a href="index.html"           class="nav-item"><span class="nav-item-icon">🏠</span><span>Home</span></a>
+      <a href="analyzer.html"        class="nav-item"><span class="nav-item-icon">♟</span><span>Game Analyzer</span></a>
+      <a href="archive.html"         class="nav-item"><span class="nav-item-icon">📂</span><span>Game Archive</span></a>
+      <a href="practice.html"        class="nav-item"><span class="nav-item-icon">♜</span><span>Practice Board</span></a>
+      <a href="recommendations.html" class="nav-item"><span class="nav-item-icon">🎯</span><span>My Recommendations</span></a>
+      <a href="profile.html"         class="nav-item nav-item-active"><span class="nav-item-icon">👤</span><span>Profile</span></a>
+    </nav>
+  </div>
+  <button id="hamburger-btn" class="hamburger-btn" aria-label="Open menu" style="display:none">☰</button>
+
+  <!-- ═══ MAIN LAYOUT ═══ -->
+  <div class="pf-layout">
+
+    <!-- ── LEFT SIDEBAR (reuses db- classes) ── -->
+    <aside class="db-sidebar">
+
+      <!-- Logo -->
+      <div class="db-sidebar-logo">
+        <span class="db-logo-dot"></span>
+        <span class="db-logo-text">Chess Lab</span>
+      </div>
+
+      <!-- Profile -->
+      <div class="db-sidebar-profile">
+        <div class="db-profile-top">
+          <div class="db-avatar" id="pf-sb-avatar">?</div>
+          <div class="db-username" id="pf-sb-username">Set display name</div>
+        </div>
+        <div class="db-rating-row">
+          <span class="db-rating-value" id="pf-sb-rating"></span>
+          <span class="db-rating-label" id="pf-sb-rating-label"></span>
+        </div>
+        <div class="db-goal-bar-track">
+          <div class="db-goal-bar-fill" id="pf-sb-goal-fill" style="width:0%"></div>
+        </div>
+        <div class="db-goal-labels">
+          <span id="pf-sb-goal-now"></span>
+          <span id="pf-sb-goal-target"></span>
+        </div>
+      </div>
+
+      <!-- Nav -->
+      <nav class="db-sidebar-nav">
+        <div class="db-nav-group-label">Features</div>
+        <a href="index.html"           class="db-nav-item"><span class="db-nav-icon">🏠</span>Dashboard</a>
+        <a href="analyzer.html"        class="db-nav-item"><span class="db-nav-icon">♟</span>Analyzer</a>
+        <a href="openings.html"        class="db-nav-item"><span class="db-nav-icon">📖</span>Openings</a>
+        <a href="practice.html"        class="db-nav-item"><span class="db-nav-icon">⚡</span>Practice</a>
+        <a href="archive.html"         class="db-nav-item"><span class="db-nav-icon">📂</span>Archive</a>
+        <a href="recommendations.html" class="db-nav-item"><span class="db-nav-icon">🎯</span>Recommendations</a>
+        <a href="import.html"          class="db-nav-item"><span class="db-nav-icon">📥</span>Import Games</a>
+        <a href="profile.html"         class="db-nav-item db-nav-active"><span class="db-nav-icon">👤</span>Profile &amp; Preferences</a>
+      </nav>
+
+      <!-- Footer -->
+      <div class="db-sidebar-footer">
+        <div class="db-footer-status">
+          <span class="db-status-dot db-status-gray" id="pf-sb-status-dot"></span>
+          <span id="pf-sb-status-text">not connected</span>
+        </div>
+      </div>
+
+    </aside><!-- /sidebar -->
+
+    <!-- ── MAIN AREA ── -->
+    <main class="pf-main">
+
+      <!-- Topbar -->
+      <div class="pf-topbar">
+        <div class="pf-topbar-left">
+          <a href="index.html" class="pf-back-link">← Dashboard</a>
+          <span class="pf-topbar-divider">|</span>
+          <span class="pf-topbar-title">My Profile &amp; Preferences</span>
+        </div>
+        <div>
+          <button class="pf-save-btn" id="pf-save-btn">Save changes</button>
+        </div>
+      </div>
+
+      <!-- Content area: form left | coach chat right -->
+      <div class="pf-content-area">
+
+        <!-- ════ LEFT COLUMN: settings form ════ -->
+        <div class="pf-form-col">
+
+          <!-- ── SECTION 1: IDENTITY ── -->
+          <div class="pf-section">
+            <div class="pf-section-title">Identity</div>
+
+            <div class="pf-field">
+              <label class="pf-label" for="pf-display-name">What should we call you?</label>
+              <span class="pf-hint">Used in greetings and coach messages</span>
+              <input class="pf-input" type="text" id="pf-display-name"
+                     placeholder="Your first name or nickname" autocomplete="off">
+            </div>
+
+            <div class="pf-field">
+              <label class="pf-label">Avatar color</label>
+              <div class="pf-color-circles" id="pf-avatar-colors">
+                <button class="pf-color-circle" data-color="#1e3a5f" style="background:#1e3a5f" aria-label="Navy blue" type="button"></button>
+                <button class="pf-color-circle" data-color="#1a3a2a" style="background:#1a3a2a" aria-label="Dark green" type="button"></button>
+                <button class="pf-color-circle" data-color="#3a1a2a" style="background:#3a1a2a" aria-label="Dark rose" type="button"></button>
+                <button class="pf-color-circle" data-color="#2a1a3a" style="background:#2a1a3a" aria-label="Dark purple" type="button"></button>
+                <button class="pf-color-circle" data-color="#3a2a1a" style="background:#3a2a1a" aria-label="Dark amber" type="button"></button>
+                <button class="pf-color-circle" data-color="#1a2a3a" style="background:#1a2a3a" aria-label="Slate blue" type="button"></button>
+              </div>
+            </div>
+
+            <div class="pf-field">
+              <label class="pf-label" for="pf-chesscom-username">chess.com username</label>
+              <input class="pf-input" type="text" id="pf-chesscom-username"
+                     placeholder="your chess.com username" autocomplete="off" spellcheck="false">
+              <div class="pf-field-note" id="pf-chesscom-note">
+                Changing this updates your chess.com connection across the whole app
+              </div>
+            </div>
+          </div>
+
+          <!-- ── SECTION 2: CHESS PROFILE ── -->
+          <div class="pf-section">
+            <div class="pf-section-title">Chess Profile</div>
+
+            <div class="pf-field">
+              <label class="pf-label" for="pf-rating">Current rating</label>
+              <input class="pf-input" type="number" id="pf-rating"
+                     placeholder="e.g. 1250" min="0" max="4000">
+              <div class="pf-field-error" id="pf-rating-error">Enter a valid rating (0–4000)</div>
+            </div>
+
+            <div class="pf-field">
+              <label class="pf-label" for="pf-goal">Rating goal</label>
+              <input class="pf-input" type="number" id="pf-goal"
+                     placeholder="e.g. 1500" min="0" max="4000">
+              <div class="pf-field-error" id="pf-goal-error">Enter a valid goal (0–4000)</div>
+            </div>
+
+            <div class="pf-field">
+              <label class="pf-label" for="pf-experience">How long have you been playing?</label>
+              <select class="pf-select" id="pf-experience">
+                <option value="">Select...</option>
+                <option value="less-than-1">Less than 1 year</option>
+                <option value="1-3">1–3 years</option>
+                <option value="3-5">3–5 years</option>
+                <option value="5-plus">5+ years</option>
+              </select>
+            </div>
+
+            <div class="pf-field">
+              <label class="pf-label">Preferred time control</label>
+              <div class="pf-pill-group" id="pf-time-control">
+                <button class="pf-pill" data-val="bullet" type="button">Bullet</button>
+                <button class="pf-pill" data-val="blitz"  type="button">Blitz</button>
+                <button class="pf-pill" data-val="rapid"  type="button">Rapid</button>
+                <button class="pf-pill" data-val="classical" type="button">Classical</button>
+              </div>
+            </div>
+
+            <div class="pf-field">
+              <label class="pf-label" for="pf-goals">Your chess goals</label>
+              <span class="pf-hint">Claude reads this on every game analysis</span>
+              <textarea class="pf-textarea" id="pf-goals" rows="3"
+                placeholder="e.g. I want to hit 1600 by end of year and stop blundering in time pressure..."></textarea>
+            </div>
+          </div>
+
+          <!-- ── SECTION 3: COACH PREFERENCES ── -->
+          <div class="pf-section">
+            <div class="pf-section-title">Coach Preferences</div>
+
+            <div class="pf-field">
+              <label class="pf-label">Coach tone</label>
+              <div class="pf-pill-group" id="pf-coach-tone">
+                <button class="pf-pill" data-val="encouraging" type="button">Encouraging</button>
+                <button class="pf-pill" data-val="direct"      type="button">Direct</button>
+                <button class="pf-pill" data-val="tough-love"  type="button">Tough love</button>
+              </div>
+            </div>
+
+            <div class="pf-field">
+              <label class="pf-label">Explanation depth</label>
+              <div class="pf-pill-group" id="pf-explanation-depth">
+                <button class="pf-pill" data-val="brief"    type="button">Brief</button>
+                <button class="pf-pill" data-val="detailed" type="button">Detailed</button>
+                <button class="pf-pill" data-val="technical" type="button">Technical</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── SECTION 4: BOARD CUSTOMIZATION ── -->
+          <div class="pf-section">
+            <div class="pf-section-title">Board Customization</div>
+
+            <div class="pf-field">
+              <label class="pf-label">Light squares</label>
+              <div class="pf-swatches" id="pf-board-light-swatches">
+                <button class="pf-swatch" data-color="#dce8f0" style="background:#dce8f0" type="button" aria-label="Light blue"></button>
+                <button class="pf-swatch" data-color="#f0d9b5" style="background:#f0d9b5" type="button" aria-label="Cream"></button>
+                <button class="pf-swatch" data-color="#ffffff" style="background:#ffffff" type="button" aria-label="White"></button>
+                <button class="pf-swatch" data-color="#e8e0cc" style="background:#e8e0cc" type="button" aria-label="Warm white"></button>
+                <button class="pf-swatch" data-color="#d4e8d4" style="background:#d4e8d4" type="button" aria-label="Light green"></button>
+                <input class="pf-color-picker" type="color" id="pf-board-light-picker" title="Custom light color">
+              </div>
+            </div>
+
+            <div class="pf-field">
+              <label class="pf-label">Dark squares</label>
+              <div class="pf-swatches" id="pf-board-dark-swatches">
+                <button class="pf-swatch" data-color="#7a9ab0" style="background:#7a9ab0" type="button" aria-label="Steel blue"></button>
+                <button class="pf-swatch" data-color="#b58863" style="background:#b58863" type="button" aria-label="Brown"></button>
+                <button class="pf-swatch" data-color="#769656" style="background:#769656" type="button" aria-label="Green"></button>
+                <button class="pf-swatch" data-color="#8877aa" style="background:#8877aa" type="button" aria-label="Purple"></button>
+                <button class="pf-swatch" data-color="#557799" style="background:#557799" type="button" aria-label="Blue"></button>
+                <input class="pf-color-picker" type="color" id="pf-board-dark-picker" title="Custom dark color">
+              </div>
+            </div>
+
+            <!-- Live board preview -->
+            <div class="pf-board-preview" id="pf-board-preview"></div>
+          </div>
+
+          <!-- ── SECTION 5: APP ACCENT COLOR ── -->
+          <div class="pf-section">
+            <div class="pf-section-title">App Accent Color</div>
+            <div class="pf-field">
+              <label class="pf-label">Interface highlight color</label>
+              <div class="pf-color-circles" id="pf-accent-colors">
+                <button class="pf-color-circle" data-color="#3b82f6" style="background:#3b82f6" aria-label="Blue (default)" type="button"></button>
+                <button class="pf-color-circle" data-color="#8b5cf6" style="background:#8b5cf6" aria-label="Purple" type="button"></button>
+                <button class="pf-color-circle" data-color="#10b981" style="background:#10b981" aria-label="Green" type="button"></button>
+                <button class="pf-color-circle" data-color="#f59e0b" style="background:#f59e0b" aria-label="Amber" type="button"></button>
+                <button class="pf-color-circle" data-color="#ef4444" style="background:#ef4444" aria-label="Red" type="button"></button>
+                <button class="pf-color-circle" data-color="#ec4899" style="background:#ec4899" aria-label="Pink" type="button"></button>
+                <button class="pf-color-circle" data-color="#06b6d4" style="background:#06b6d4" aria-label="Cyan" type="button"></button>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── SECTION 6: BEHAVIOR TOGGLES ── -->
+          <div class="pf-section">
+            <div class="pf-section-title">Behavior</div>
+
+            <div class="pf-toggle-row">
+              <div class="pf-toggle-label-group">
+                <div class="pf-toggle-label">Auto-run recommendations after each game</div>
+                <div class="pf-toggle-sub">Refresh your coaching report after every analysis</div>
+              </div>
+              <button class="pf-toggle on" id="pf-toggle-autorec" type="button" role="switch" aria-checked="true">
+                <span class="pf-toggle-knob"></span>
+              </button>
+            </div>
+
+            <div class="pf-toggle-row">
+              <div class="pf-toggle-label-group">
+                <div class="pf-toggle-label">Show engine lines by default</div>
+                <div class="pf-toggle-sub">Expand engine continuation on every move</div>
+              </div>
+              <button class="pf-toggle" id="pf-toggle-engine" type="button" role="switch" aria-checked="false">
+                <span class="pf-toggle-knob"></span>
+              </button>
+            </div>
+
+            <div class="pf-toggle-row">
+              <div class="pf-toggle-label-group">
+                <div class="pf-toggle-label">Default practice side</div>
+                <div class="pf-toggle-sub">Which color you play on the practice board</div>
+              </div>
+              <div class="pf-pill-group" id="pf-practice-side" style="flex-shrink:0">
+                <button class="pf-pill" data-val="white"  type="button">White</button>
+                <button class="pf-pill" data-val="black"  type="button">Black</button>
+                <button class="pf-pill" data-val="random" type="button">Random</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── SECTION 7: DANGER ZONE ── -->
+          <div class="pf-section">
+            <div class="pf-danger-zone">
+              <div class="pf-danger-title">Danger zone</div>
+
+              <div class="pf-danger-row">
+                <div class="pf-danger-row-info">
+                  <div class="pf-danger-row-label">Reset rating goal</div>
+                  <div class="pf-danger-row-desc">Clears your ELO history and goal</div>
+                </div>
+                <button class="pf-danger-btn" data-action="reset-rating" type="button">Reset rating goal</button>
+              </div>
+
+              <div class="pf-danger-row">
+                <div class="pf-danger-row-info">
+                  <div class="pf-danger-row-label">Clear game archive</div>
+                  <div class="pf-danger-row-desc">Permanently deletes all analyzed games</div>
+                </div>
+                <button class="pf-danger-btn" data-action="clear-archive" type="button">Clear game archive</button>
+              </div>
+
+              <div class="pf-danger-row">
+                <div class="pf-danger-row-info">
+                  <div class="pf-danger-row-label">Clear recommendations</div>
+                  <div class="pf-danger-row-desc">Removes your current coaching report</div>
+                </div>
+                <button class="pf-danger-btn" data-action="clear-recs" type="button">Clear recommendations</button>
+              </div>
+
+              <div class="pf-danger-row">
+                <div class="pf-danger-row-info">
+                  <div class="pf-danger-row-label">Clear opening drill scores</div>
+                  <div class="pf-danger-row-desc">Resets all your opening trainer progress</div>
+                </div>
+                <button class="pf-danger-btn" data-action="clear-openings" type="button">Clear opening scores</button>
+              </div>
+
+              <div class="pf-danger-row">
+                <div class="pf-danger-row-info">
+                  <div class="pf-danger-row-label">Disconnect chess.com</div>
+                  <div class="pf-danger-row-desc">Removes your chess.com connection</div>
+                </div>
+                <button class="pf-danger-btn" data-action="disconnect-chesscom" type="button">Disconnect chess.com</button>
+              </div>
+
+              <div class="pf-danger-row">
+                <div class="pf-danger-row-info">
+                  <div class="pf-danger-row-label">Reset everything</div>
+                  <div class="pf-danger-row-desc">Wipes all Chess Lab data and starts fresh</div>
+                </div>
+                <button class="pf-danger-btn pf-danger-btn-solid" data-action="reset-all" type="button">Reset everything</button>
+              </div>
+
+            </div>
+          </div>
+
+        </div><!-- /pf-form-col -->
+
+        <!-- ════ RIGHT COLUMN: coach chat ════ -->
+        <div class="pf-chat-col">
+
+          <!-- Chat header -->
+          <div class="pf-chat-header">
+            <div class="pf-chat-coach-avatar">C</div>
+            <div class="pf-chat-header-text">
+              <div class="pf-chat-header-title">Setup with Coach</div>
+              <div class="pf-chat-header-sub">Tell the coach about yourself and your chess.<br>It will configure your profile for you.</div>
+            </div>
+          </div>
+
+          <!-- Messages area -->
+          <div class="pf-chat-messages" id="pf-chat-messages"></div>
+
+          <!-- Quick reply chips (shown after first message) -->
+          <div class="pf-quick-chips" id="pf-quick-chips" style="display:none">
+            <button class="pf-quick-chip" type="button">I'm a beginner (&lt; 1 year)</button>
+            <button class="pf-quick-chip" type="button">Intermediate (~1000–1400)</button>
+            <button class="pf-quick-chip" type="button">I'm around 1400–1600</button>
+          </div>
+
+          <!-- Apply suggestions button -->
+          <button class="pf-chat-apply-btn" id="pf-chat-apply-btn" type="button">
+            ← Apply coach suggestions to form
+          </button>
+
+          <!-- Chat input -->
+          <div class="pf-chat-input-row">
+            <input class="pf-chat-input" type="text" id="pf-chat-input"
+                   placeholder="Tell the coach about yourself...">
+            <button class="pf-chat-send-btn" id="pf-chat-send-btn" type="button">Send</button>
+          </div>
+
+        </div><!-- /pf-chat-col -->
+
+      </div><!-- /pf-content-area -->
+    </main><!-- /pf-main -->
+
+  </div><!-- /pf-layout -->
+
+  <script src="js/nav.js"></script>
+  <script>
+  document.addEventListener('DOMContentLoaded', function () {
+    initNav('profile');
+
+    /* ── localStorage helpers ── */
+    function lsGet(key, fallback) {
+      try { var v = localStorage.getItem(key); return v !== null ? v : (fallback !== undefined ? fallback : null); }
+      catch (_) { return fallback !== undefined ? fallback : null; }
+    }
+    function lsSet(key, val) {
+      try { localStorage.setItem(key, val); } catch (_) {}
+    }
+    function lsRemove(key) {
+      try { localStorage.removeItem(key); } catch (_) {}
+    }
+    function lsGetInt(key) {
+      var v = parseInt(lsGet(key), 10);
+      return isNaN(v) ? null : v;
+    }
+    function lsGetBool(key, def) {
+      var v = lsGet(key);
+      if (v === null) return def;
+      return v === 'true';
+    }
+
+    /* ── Toast ── */
+    var _toastTimer;
+    function showToast(msg) {
+      var el = document.getElementById('pf-toast');
+      if (!el) return;
+      el.textContent = msg;
+      el.classList.add('show');
+      clearTimeout(_toastTimer);
+      _toastTimer = setTimeout(function () { el.classList.remove('show'); }, 2500);
+    }
+
+    /* ── Sidebar population ── */
+    (function initSidebar() {
+      var displayName = lsGet('pf_display_name');
+      var username    = lsGet('csa_chesscom_username');
+      var avatarColor = lsGet('pf_avatar_color', '#1e3a5f');
+      var currentElo  = lsGetInt('csa_elo_current');
+      var goalElo     = lsGetInt('csa_elo_goal');
+      var startElo    = lsGetInt('csa_elo_start');
+
+      var sbAvatar = document.getElementById('pf-sb-avatar');
+      var sbUsername = document.getElementById('pf-sb-username');
+      var sbRating = document.getElementById('pf-sb-rating');
+      var sbRatingLabel = document.getElementById('pf-sb-rating-label');
+
+      var name = displayName || username;
+      if (sbAvatar) {
+        sbAvatar.textContent = name ? name.charAt(0).toUpperCase() : '?';
+        sbAvatar.style.background = avatarColor;
+      }
+      if (sbUsername) {
+        if (name) { sbUsername.textContent = displayName || username; }
+        else { sbUsername.textContent = 'Set display name'; sbUsername.style.color = '#4b5568'; sbUsername.style.fontSize = '10px'; }
+      }
+      if (currentElo && sbRating) { sbRating.textContent = currentElo; }
+      if (sbRatingLabel) { sbRatingLabel.textContent = currentElo ? 'Rapid' : ''; }
+
+      if (currentElo && goalElo) {
+        var start = startElo || currentElo;
+        var total = goalElo - start;
+        var gained = currentElo - start;
+        var pct = total > 0 ? Math.min(100, Math.max(0, Math.round(gained / total * 100))) : (currentElo >= goalElo ? 100 : 0);
+        var fill = document.getElementById('pf-sb-goal-fill');
+        if (fill) fill.style.width = pct + '%';
+        var nowEl = document.getElementById('pf-sb-goal-now');
+        var targetEl = document.getElementById('pf-sb-goal-target');
+        if (nowEl) nowEl.textContent = currentElo + ' now';
+        if (targetEl) targetEl.textContent = 'Goal: ' + goalElo;
+      }
+
+      if (username) {
+        var dot = document.getElementById('pf-sb-status-dot');
+        var txt = document.getElementById('pf-sb-status-text');
+        if (dot) { dot.classList.remove('db-status-gray'); dot.classList.add('db-status-green'); }
+        if (txt) txt.textContent = 'chess.com connected';
+      }
+    })();
+
+    /* ── Populate form fields from localStorage ── */
+    var storedChesscomUsername = lsGet('csa_chesscom_username', '');
+
+    function populateForm() {
+      var displayNameEl = document.getElementById('pf-display-name');
+      var chesscomEl    = document.getElementById('pf-chesscom-username');
+      var ratingEl      = document.getElementById('pf-rating');
+      var goalEl        = document.getElementById('pf-goal');
+      var expEl         = document.getElementById('pf-experience');
+      var goalsEl       = document.getElementById('pf-goals');
+
+      if (displayNameEl) displayNameEl.value = lsGet('pf_display_name', '');
+      if (chesscomEl)    chesscomEl.value    = lsGet('csa_chesscom_username', '');
+      if (ratingEl)      ratingEl.value      = lsGetInt('csa_elo_current') || '';
+      if (goalEl)        goalEl.value        = lsGetInt('csa_elo_goal') || '';
+      if (expEl)         expEl.value         = lsGet('pf_experience', '');
+      if (goalsEl)       goalsEl.value       = lsGet('pf_goals', '');
+
+      setActivePill('pf-time-control',      lsGet('pf_time_control', ''));
+      setActivePill('pf-coach-tone',        lsGet('pf_coach_tone', ''));
+      setActivePill('pf-explanation-depth', lsGet('pf_explanation_depth', ''));
+      setActivePill('pf-practice-side',     lsGet('pf_practice_side', 'white'));
+
+      setActiveColorCircle('pf-avatar-colors',  lsGet('pf_avatar_color', '#1e3a5f'));
+      setActiveColorCircle('pf-accent-colors',  lsGet('pf_accent_color', '#3b82f6'));
+
+      var lightColor = lsGet('pf_board_light', '#f0d9b5');
+      var darkColor  = lsGet('pf_board_dark',  '#b58863');
+      setActiveSwatch('pf-board-light-swatches', lightColor);
+      setActiveSwatch('pf-board-dark-swatches',  darkColor);
+      var lPicker = document.getElementById('pf-board-light-picker');
+      var dPicker = document.getElementById('pf-board-dark-picker');
+      if (lPicker) lPicker.value = lightColor;
+      if (dPicker) dPicker.value = darkColor;
+      updateBoardPreview(lightColor, darkColor);
+
+      var autoRec = document.getElementById('pf-toggle-autorec');
+      var engine  = document.getElementById('pf-toggle-engine');
+      setToggleState(autoRec, lsGetBool('pf_auto_recommendations', true));
+      setToggleState(engine,  lsGetBool('pf_show_engine_lines', false));
+    }
+
+    /* ── Pill group helpers ── */
+    function setActivePill(groupId, val) {
+      var group = document.getElementById(groupId);
+      if (!group) return;
+      group.querySelectorAll('.pf-pill').forEach(function (btn) {
+        btn.classList.toggle('pf-pill-active', btn.getAttribute('data-val') === val);
+      });
+    }
+
+    function wireupPillGroup(groupId) {
+      var group = document.getElementById(groupId);
+      if (!group) return;
+      group.querySelectorAll('.pf-pill').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          group.querySelectorAll('.pf-pill').forEach(function (b) { b.classList.remove('pf-pill-active'); });
+          btn.classList.add('pf-pill-active');
+        });
+      });
+    }
+
+    ['pf-time-control', 'pf-coach-tone', 'pf-explanation-depth', 'pf-practice-side'].forEach(wireupPillGroup);
+
+    /* ── Color circle helpers ── */
+    function setActiveColorCircle(groupId, val) {
+      var group = document.getElementById(groupId);
+      if (!group) return;
+      group.querySelectorAll('.pf-color-circle').forEach(function (btn) {
+        btn.classList.toggle('pf-color-circle-active', btn.getAttribute('data-color') === val);
+      });
+    }
+
+    function wireupColorCircles(groupId, onChange) {
+      var group = document.getElementById(groupId);
+      if (!group) return;
+      group.querySelectorAll('.pf-color-circle').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          group.querySelectorAll('.pf-color-circle').forEach(function (b) { b.classList.remove('pf-color-circle-active'); });
+          btn.classList.add('pf-color-circle-active');
+          if (onChange) onChange(btn.getAttribute('data-color'));
+        });
+      });
+    }
+
+    wireupColorCircles('pf-avatar-colors', null);
+    wireupColorCircles('pf-accent-colors', null);
+
+    /* ── Board color swatch helpers ── */
+    function setActiveSwatch(groupId, val) {
+      var group = document.getElementById(groupId);
+      if (!group) return;
+      group.querySelectorAll('.pf-swatch').forEach(function (btn) {
+        btn.classList.toggle('pf-swatch-active', btn.getAttribute('data-color') === val);
+      });
+    }
+
+    function getSelectedSwatch(groupId) {
+      var group = document.getElementById(groupId);
+      if (!group) return null;
+      var active = group.querySelector('.pf-swatch-active');
+      if (active) return active.getAttribute('data-color');
+      var picker = group.querySelector('.pf-color-picker');
+      return picker ? picker.value : null;
+    }
+
+    function wireupSwatches(groupId, pickerId, onChange) {
+      var group  = document.getElementById(groupId);
+      var picker = document.getElementById(pickerId);
+      if (!group) return;
+      group.querySelectorAll('.pf-swatch').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          group.querySelectorAll('.pf-swatch').forEach(function (b) { b.classList.remove('pf-swatch-active'); });
+          btn.classList.add('pf-swatch-active');
+          if (picker) picker.value = btn.getAttribute('data-color');
+          if (onChange) onChange(btn.getAttribute('data-color'));
+        });
+      });
+      if (picker) {
+        picker.addEventListener('input', function () {
+          group.querySelectorAll('.pf-swatch').forEach(function (b) { b.classList.remove('pf-swatch-active'); });
+          if (onChange) onChange(picker.value);
+        });
+      }
+    }
+
+    function getBoardColors() {
+      var lightActive = document.querySelector('#pf-board-light-swatches .pf-swatch-active');
+      var darkActive  = document.querySelector('#pf-board-dark-swatches .pf-swatch-active');
+      var lPicker = document.getElementById('pf-board-light-picker');
+      var dPicker = document.getElementById('pf-board-dark-picker');
+      var light = lightActive ? lightActive.getAttribute('data-color') : (lPicker ? lPicker.value : '#f0d9b5');
+      var dark  = darkActive  ? darkActive.getAttribute('data-color')  : (dPicker ? dPicker.value : '#b58863');
+      return { light: light, dark: dark };
+    }
+
+    function updateBoardPreview(light, dark) {
+      var preview = document.getElementById('pf-board-preview');
+      if (!preview) return;
+      preview.innerHTML = '';
+      for (var row = 0; row < 4; row++) {
+        for (var col = 0; col < 4; col++) {
+          var cell = document.createElement('div');
+          cell.className = 'pf-board-cell';
+          cell.style.background = (row + col) % 2 === 0 ? light : dark;
+          preview.appendChild(cell);
+        }
+      }
+    }
+
+    wireupSwatches('pf-board-light-swatches', 'pf-board-light-picker', function (color) {
+      var c = getBoardColors();
+      updateBoardPreview(color, c.dark);
+    });
+    wireupSwatches('pf-board-dark-swatches', 'pf-board-dark-picker', function (color) {
+      var c = getBoardColors();
+      updateBoardPreview(c.light, color);
+    });
+
+    /* ── Toggle helpers ── */
+    function setToggleState(btn, on) {
+      if (!btn) return;
+      if (on) { btn.classList.add('on'); btn.setAttribute('aria-checked', 'true'); }
+      else    { btn.classList.remove('on'); btn.setAttribute('aria-checked', 'false'); }
+    }
+
+    function wireupToggle(id) {
+      var btn = document.getElementById(id);
+      if (!btn) return;
+      btn.addEventListener('click', function () {
+        var isOn = btn.classList.contains('on');
+        setToggleState(btn, !isOn);
+      });
+    }
+
+    wireupToggle('pf-toggle-autorec');
+    wireupToggle('pf-toggle-engine');
+
+    /* ── chess.com username change note ── */
+    var chesscomEl = document.getElementById('pf-chesscom-username');
+    var chesscomNote = document.getElementById('pf-chesscom-note');
+    if (chesscomEl && chesscomNote) {
+      chesscomEl.addEventListener('input', function () {
+        var changed = chesscomEl.value.trim() !== storedChesscomUsername;
+        chesscomNote.style.display = changed ? 'block' : 'none';
+      });
+    }
+
+    /* ── Populate everything ── */
+    populateForm();
+
+    /* ── Save changes ── */
+    var saveBtn = document.getElementById('pf-save-btn');
+    if (saveBtn) {
+      saveBtn.addEventListener('click', function () {
+        var valid = true;
+
+        /* Validate rating */
+        var ratingEl = document.getElementById('pf-rating');
+        var ratingErr = document.getElementById('pf-rating-error');
+        var ratingVal = ratingEl ? ratingEl.value.trim() : '';
+        if (ratingVal !== '') {
+          var rInt = parseInt(ratingVal, 10);
+          if (isNaN(rInt) || rInt < 0 || rInt > 4000) {
+            valid = false;
+            if (ratingErr) ratingErr.style.display = 'block';
+          } else {
+            if (ratingErr) ratingErr.style.display = 'none';
+          }
+        } else {
+          if (ratingErr) ratingErr.style.display = 'none';
+        }
+
+        /* Validate goal */
+        var goalEl = document.getElementById('pf-goal');
+        var goalErr = document.getElementById('pf-goal-error');
+        var goalVal = goalEl ? goalEl.value.trim() : '';
+        if (goalVal !== '') {
+          var gInt = parseInt(goalVal, 10);
+          if (isNaN(gInt) || gInt < 0 || gInt > 4000) {
+            valid = false;
+            if (goalErr) goalErr.style.display = 'block';
+          } else {
+            if (goalErr) goalErr.style.display = 'none';
+          }
+        } else {
+          if (goalErr) goalErr.style.display = 'none';
+        }
+
+        if (!valid) return;
+
+        /* Read all values */
+        var displayName = document.getElementById('pf-display-name');
+        var newChesscom = document.getElementById('pf-chesscom-username');
+        var goalsTA     = document.getElementById('pf-goals');
+        var expSel      = document.getElementById('pf-experience');
+
+        if (displayName) lsSet('pf_display_name', displayName.value.trim());
+
+        /* chess.com username — clear session cache if changed */
+        if (newChesscom) {
+          var newVal = newChesscom.value.trim();
+          if (newVal !== storedChesscomUsername) {
+            try {
+              Object.keys(sessionStorage).forEach(function (k) {
+                if (k.startsWith('csa_chesscom_')) sessionStorage.removeItem(k);
+              });
+            } catch (_) {}
+          }
+          if (newVal) lsSet('csa_chesscom_username', newVal);
+          else lsRemove('csa_chesscom_username');
+          storedChesscomUsername = newVal;
+        }
+
+        if (ratingVal !== '') lsSet('csa_elo_current', parseInt(ratingVal, 10));
+        else lsRemove('csa_elo_current');
+
+        if (goalVal !== '') lsSet('csa_elo_goal', parseInt(goalVal, 10));
+        else lsRemove('csa_elo_goal');
+
+        if (expSel)  lsSet('pf_experience', expSel.value);
+        if (goalsTA) lsSet('pf_goals',      goalsTA.value.trim());
+
+        /* Pill groups */
+        function getActivePillVal(groupId) {
+          var group = document.getElementById(groupId);
+          if (!group) return '';
+          var active = group.querySelector('.pf-pill-active');
+          return active ? active.getAttribute('data-val') : '';
+        }
+        lsSet('pf_time_control',      getActivePillVal('pf-time-control'));
+        lsSet('pf_coach_tone',        getActivePillVal('pf-coach-tone'));
+        lsSet('pf_explanation_depth', getActivePillVal('pf-explanation-depth'));
+        lsSet('pf_practice_side',     getActivePillVal('pf-practice-side') || 'white');
+
+        /* Color circles */
+        function getActiveCircleColor(groupId) {
+          var group = document.getElementById(groupId);
+          if (!group) return '';
+          var active = group.querySelector('.pf-color-circle-active');
+          return active ? active.getAttribute('data-color') : '';
+        }
+        var avatarColor = getActiveCircleColor('pf-avatar-colors') || '#1e3a5f';
+        var accentColor = getActiveCircleColor('pf-accent-colors') || '#3b82f6';
+        lsSet('pf_avatar_color', avatarColor);
+        lsSet('pf_accent_color', accentColor);
+
+        /* Board colors */
+        var bc = getBoardColors();
+        lsSet('pf_board_light', bc.light);
+        lsSet('pf_board_dark',  bc.dark);
+
+        /* Toggles */
+        var autoRec = document.getElementById('pf-toggle-autorec');
+        var engine  = document.getElementById('pf-toggle-engine');
+        lsSet('pf_auto_recommendations', autoRec ? autoRec.classList.contains('on') : true);
+        lsSet('pf_show_engine_lines',    engine  ? engine.classList.contains('on')  : false);
+
+        /* Update sidebar to reflect new name/color */
+        var sbAvatar   = document.getElementById('pf-sb-avatar');
+        var sbUsername = document.getElementById('pf-sb-username');
+        var savedName  = lsGet('pf_display_name', '') || lsGet('csa_chesscom_username', '');
+        if (sbAvatar) {
+          sbAvatar.textContent = savedName ? savedName.charAt(0).toUpperCase() : '?';
+          sbAvatar.style.background = avatarColor;
+        }
+        if (sbUsername) {
+          sbUsername.textContent = savedName || 'Set display name';
+          sbUsername.style.color = '';
+          sbUsername.style.fontSize = '';
+        }
+
+        /* Save feedback */
+        saveBtn.textContent = 'Saved!';
+        saveBtn.style.background = '#059669';
+        setTimeout(function () {
+          saveBtn.textContent = 'Save changes';
+          saveBtn.style.background = '';
+        }, 2000);
+      });
+    }
+
+    /* ── Danger zone ── */
+    var _confirmingBtn = null;
+
+    document.addEventListener('click', function (e) {
+      if (_confirmingBtn && !_confirmingBtn.contains(e.target)) {
+        _confirmingBtn.textContent = _confirmingBtn.getAttribute('data-original-text');
+        _confirmingBtn.classList.remove('confirming');
+        _confirmingBtn = null;
+      }
+    });
+
+    document.querySelectorAll('.pf-danger-btn').forEach(function (btn) {
+      btn.setAttribute('data-original-text', btn.textContent);
+      btn.addEventListener('click', function (e) {
+        e.stopPropagation();
+
+        if (_confirmingBtn && _confirmingBtn !== btn) {
+          _confirmingBtn.textContent = _confirmingBtn.getAttribute('data-original-text');
+          _confirmingBtn.classList.remove('confirming');
+          _confirmingBtn = null;
+        }
+
+        if (!btn.classList.contains('confirming')) {
+          btn.classList.add('confirming');
+          btn.textContent = 'Confirm — this cannot be undone';
+          _confirmingBtn = btn;
+          return;
+        }
+
+        /* Second click: execute */
+        btn.classList.remove('confirming');
+        btn.textContent = btn.getAttribute('data-original-text');
+        _confirmingBtn = null;
+
+        var action = btn.getAttribute('data-action');
+        executeDangerAction(action, btn);
+      });
+    });
+
+    function executeDangerAction(action, btn) {
+      if (action === 'reset-rating') {
+        lsRemove('csa_elo_goal');
+        lsRemove('csa_elo_start');
+        lsRemove('csa_elo_history');
+        window.location.reload();
+
+      } else if (action === 'clear-archive') {
+        try {
+          Object.keys(localStorage).filter(function (k) { return k.startsWith('csa_game_'); })
+            .forEach(function (k) { localStorage.removeItem(k); });
+        } catch (_) {}
+        window.location.reload();
+
+      } else if (action === 'clear-recs') {
+        lsRemove('csa_recommendations');
+        btn.textContent = 'Cleared';
+        btn.style.color = '#4ade80';
+        btn.style.borderColor = '#4ade80';
+        setTimeout(function () {
+          btn.textContent = btn.getAttribute('data-original-text');
+          btn.style.color = '';
+          btn.style.borderColor = '';
+        }, 2500);
+
+      } else if (action === 'clear-openings') {
+        lsRemove('csa_opening_scores');
+        btn.textContent = 'Cleared';
+        btn.style.color = '#4ade80';
+        btn.style.borderColor = '#4ade80';
+        setTimeout(function () {
+          btn.textContent = btn.getAttribute('data-original-text');
+          btn.style.color = '';
+          btn.style.borderColor = '';
+        }, 2500);
+
+      } else if (action === 'disconnect-chesscom') {
+        lsRemove('csa_chesscom_username');
+        window.location.reload();
+
+      } else if (action === 'reset-all') {
+        try {
+          Object.keys(localStorage).filter(function (k) {
+            return k.startsWith('csa_') || k.startsWith('pf_');
+          }).forEach(function (k) { localStorage.removeItem(k); });
+        } catch (_) {}
+        window.location.href = 'index.html';
+      }
+    }
+
+    /* ════════════════════════════════════════
+       COACH CHAT
+    ════════════════════════════════════════ */
+    var API_URL = window.location.hostname === 'localhost'
+      ? 'http://localhost:4000/api/analyze'
+      : 'https://chess-lab-production.up.railway.app/api/analyze';
+
+    var chatMessages = [];
+    var messagesEl   = document.getElementById('pf-chat-messages');
+    var quickChipsEl = document.getElementById('pf-quick-chips');
+    var chatInputEl  = document.getElementById('pf-chat-input');
+    var sendBtn      = document.getElementById('pf-chat-send-btn');
+
+    function buildSystemPrompt() {
+      var displayName = lsGet('pf_display_name', '');
+      var rating      = lsGet('csa_elo_current', '');
+      var goal        = lsGet('csa_elo_goal', '');
+      var experience  = lsGet('pf_experience', '');
+      var timeControl = lsGet('pf_time_control', '');
+      var tone        = lsGet('pf_coach_tone', '');
+      var goals       = lsGet('pf_goals', '');
+
+      return 'You are a friendly chess coach helping a user set up their Chess Lab profile. ' +
+        'Your job is to have a natural conversation to understand their chess background, goals, and preferences, ' +
+        'then suggest specific profile settings. When you have enough information, tell the user what settings ' +
+        'you\'d recommend and ask them to confirm. Keep responses under 4 sentences. Be warm and encouraging.\n\n' +
+        'Current profile settings:\n' +
+        '- Display name: ' + (displayName || 'not set') + '\n' +
+        '- Rating: ' + (rating || 'not set') + '\n' +
+        '- Goal: ' + (goal || 'not set') + '\n' +
+        '- Experience: ' + (experience || 'not set') + '\n' +
+        '- Time control: ' + (timeControl || 'not set') + '\n' +
+        '- Coach tone: ' + (tone || 'not set') + '\n' +
+        '- Goals: ' + (goals || 'not set');
+    }
+
+    function appendMessage(text, role) {
+      var div = document.createElement('div');
+      div.className = 'pf-chat-msg ' + (role === 'user' ? 'pf-chat-msg-user' : 'pf-chat-msg-coach');
+      div.textContent = text;
+      if (messagesEl) messagesEl.appendChild(div);
+      scrollChat();
+      return div;
+    }
+
+    function scrollChat() {
+      if (messagesEl) messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
+
+    function showTyping() {
+      var div = document.createElement('div');
+      div.className = 'pf-chat-typing';
+      div.id = 'pf-chat-typing';
+      for (var i = 0; i < 3; i++) {
+        var dot = document.createElement('div');
+        dot.className = 'pf-chat-typing-dot';
+        div.appendChild(dot);
+      }
+      if (messagesEl) messagesEl.appendChild(div);
+      scrollChat();
+    }
+
+    function removeTyping() {
+      var el = document.getElementById('pf-chat-typing');
+      if (el && el.parentNode) el.parentNode.removeChild(el);
+    }
+
+    async function sendChatMessage(text) {
+      if (!text.trim()) return;
+
+      chatMessages.push({ role: 'user', content: text });
+      appendMessage(text, 'user');
+
+      if (chatInputEl) chatInputEl.value = '';
+      if (quickChipsEl) quickChipsEl.style.display = 'none';
+      if (sendBtn) sendBtn.disabled = true;
+
+      showTyping();
+
+      try {
+        var response = await fetch(API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: 'claude-sonnet-4-6',
+            max_tokens: 400,
+            system: buildSystemPrompt(),
+            messages: chatMessages
+          })
+        });
+
+        removeTyping();
+
+        if (!response.ok) throw new Error('API error ' + response.status);
+
+        var data = await response.json();
+        var replyText = (data && data.content && data.content[0] && data.content[0].text)
+          ? data.content[0].text
+          : null;
+
+        if (!replyText) throw new Error('empty response');
+
+        chatMessages.push({ role: 'assistant', content: replyText });
+        appendMessage(replyText, 'coach');
+
+      } catch (_) {
+        removeTyping();
+        appendMessage('Coach is unavailable right now — you can still update settings manually.', 'coach');
+      }
+
+      if (sendBtn) sendBtn.disabled = false;
+    }
+
+    /* Opening coach message */
+    (function showOpeningMessage() {
+      var name = lsGet('pf_display_name', '') || lsGet('csa_chesscom_username', '');
+      var greeting = name ? 'Hey ' + name + '!' : 'Hey there!';
+      var msg = greeting + ' I\'m here to help personalize Chess Lab for you. Tell me about your chess — ' +
+        'how long have you been playing, what\'s your rating, and what\'s your main goal right now?';
+
+      chatMessages.push({ role: 'assistant', content: msg });
+      appendMessage(msg, 'coach');
+
+      if (quickChipsEl) quickChipsEl.style.display = 'flex';
+    })();
+
+    /* Quick reply chips */
+    if (quickChipsEl) {
+      quickChipsEl.querySelectorAll('.pf-quick-chip').forEach(function (chip) {
+        chip.addEventListener('click', function () {
+          sendChatMessage(chip.textContent);
+        });
+      });
+    }
+
+    /* Send button */
+    if (sendBtn) {
+      sendBtn.addEventListener('click', function () {
+        sendChatMessage(chatInputEl ? chatInputEl.value : '');
+      });
+    }
+
+    /* Enter key */
+    if (chatInputEl) {
+      chatInputEl.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          sendChatMessage(chatInputEl.value);
+        }
+      });
+    }
+
+    /* Apply suggestions button */
+    var applyBtn = document.getElementById('pf-chat-apply-btn');
+    if (applyBtn) {
+      applyBtn.addEventListener('click', function () {
+        showToast('Review the coach\'s suggestions and update the form manually, then hit Save changes.');
+      });
+    }
+
+  }); /* end DOMContentLoaded */
+  </script>
+</body>
+</html>
