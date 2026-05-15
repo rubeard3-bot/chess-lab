@@ -77,7 +77,8 @@ const App = (() => {
     }
 
     if (checkMassImportQueue()) return;
-    checkPendingPgn();
+    if (checkPendingPgn()) return;
+    initGamePicker();
   }
 
   /* ------------------------------------------------------------------ */
@@ -217,15 +218,19 @@ const App = (() => {
   function checkPendingPgn() {
     const pgn   = sessionStorage.getItem('pending_pgn');
     const color = sessionStorage.getItem('pending_color') || 'white';
-    if (!pgn) return;
+    if (!pgn) return false;
     sessionStorage.removeItem('pending_pgn');
     sessionStorage.removeItem('pending_color');
 
     const textarea = document.getElementById('pgn-input');
-    if (!textarea) return;
+    if (!textarea) return false;
+    // Briefly expose the dropzone so the textarea is visible while analysis queues
+    const dz = document.getElementById('az-dropzone-panel');
+    if (dz) dz.classList.remove('hidden');
     textarea.value = pgn;
     applyPlayerColor(color === 'black' ? 'black' : 'white');
     setTimeout(handleAnalyze, 500);
+    return true;
   }
 
   /* ------------------------------------------------------------------ */
@@ -241,6 +246,276 @@ const App = (() => {
     // In new layout there is no separate new-game-btn; but analyze is available
     // from the drop zone which is always accessible by closing the analysis view.
     // We keep this as a no-op for now.
+  }
+
+  /* ------------------------------------------------------------------ */
+  /*  GAME PICKER                                                         */
+  /* ------------------------------------------------------------------ */
+
+  let _pickerFetching = false;
+
+  function initGamePicker() {
+    UI.showGamePicker();
+    _populateMonthSelect();
+
+    const refreshBtn  = document.getElementById('gp-refresh-btn');
+    const monthSelect = document.getElementById('gp-month-select');
+    const pasteBtn    = document.getElementById('gp-paste-btn');
+    const backBtn     = document.getElementById('gp-back-btn');
+
+    if (refreshBtn)  refreshBtn.addEventListener('click', _fetchPickerGames);
+    if (monthSelect) monthSelect.addEventListener('change', _fetchPickerGames);
+
+    if (pasteBtn) {
+      pasteBtn.addEventListener('click', () => {
+        UI.hideGamePicker();
+        const dz = document.getElementById('az-dropzone-panel');
+        if (dz) dz.classList.remove('hidden');
+        if (backBtn) backBtn.classList.remove('hidden');
+      });
+    }
+
+    if (backBtn) {
+      backBtn.addEventListener('click', () => {
+        const dz = document.getElementById('az-dropzone-panel');
+        if (dz) dz.classList.add('hidden');
+        backBtn.classList.add('hidden');
+        UI.showGamePicker();
+      });
+    }
+
+    _fetchPickerGames();
+  }
+
+  function _populateMonthSelect() {
+    const select = document.getElementById('gp-month-select');
+    if (!select) return;
+    const MONTHS = ['January','February','March','April','May','June',
+                    'July','August','September','October','November','December'];
+    const now = new Date();
+    select.innerHTML = '';
+    for (let i = 0; i < 6; i++) {
+      const d   = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const opt = document.createElement('option');
+      opt.value       = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+      opt.textContent = MONTHS[d.getMonth()] + ' ' + d.getFullYear();
+      select.appendChild(opt);
+    }
+  }
+
+  async function _fetchPickerGames() {
+    if (_pickerFetching) return;
+    _pickerFetching = true;
+    try {
+      const username = localStorage.getItem('csa_chesscom_username') || '';
+
+      if (!username) {
+        _setPickerStatus('no-username', 0, '');
+        _renderPickerGames([], '');
+        _updatePickerFooter(0, 0);
+        return;
+      }
+
+      const select = document.getElementById('gp-month-select');
+      if (!select) return;
+      const [yearStr, monthStr] = (select.value || '').split('-');
+      const year  = parseInt(yearStr,  10);
+      const month = parseInt(monthStr, 10);
+      if (!year || !month) return;
+
+      const monthLabel = select.selectedOptions[0]?.textContent || '';
+
+      _renderPickerSkeleton();
+      _setPickerStatus('fetching', 0, monthLabel);
+
+      const games = await ChessCom.fetchRecentGames(username, year, month);
+
+      if (!games) {
+        _setPickerStatus('error', 0, monthLabel);
+        _renderPickerGames([], username);
+        _updatePickerFooter(0, 0);
+        return;
+      }
+
+      const storedGames      = Storage.loadAllGames();
+      const monthPrefix      = yearStr + '-' + String(month).padStart(2, '0');
+      const unanalyzed       = games.filter(g => !_isGameAnalyzed(g, storedGames));
+      const analyzedThisMonth = storedGames.filter(g =>
+        (g.savedAt || '').startsWith(monthPrefix)
+      ).length;
+
+      const sectionLabel = document.getElementById('gp-section-label');
+      if (sectionLabel) sectionLabel.textContent = `Unanalyzed — ${monthLabel}`;
+
+      if (unanalyzed.length === 0) {
+        _setPickerStatus('no-games', 0, monthLabel);
+        _renderPickerGames([], username);
+      } else {
+        _setPickerStatus('loaded', unanalyzed.length, monthLabel);
+        _renderPickerGames(unanalyzed, username);
+      }
+
+      _updatePickerFooter(games.length, analyzedThisMonth);
+    } finally {
+      _pickerFetching = false;
+    }
+  }
+
+  function _isGameAnalyzed(ccGame, storedGames) {
+    const h = _parsePgnHeaders(ccGame.pgn || '');
+    for (const s of storedGames) {
+      const m = s.metadata || {};
+      if (m.white && m.black && m.date &&
+          m.white === h.White &&
+          m.black === h.Black &&
+          m.date  === h.Date) {
+        return true;
+      }
+      if (s.pgn && ccGame.pgn && s.pgn.trim() === ccGame.pgn.trim()) return true;
+    }
+    return false;
+  }
+
+  function _parsePgnHeaders(pgn) {
+    const out = {};
+    for (const line of pgn.split('\n')) {
+      const m = line.match(/^\[(\w+)\s+"([^"]*)"\]/);
+      if (m) out[m[1]] = m[2];
+    }
+    return out;
+  }
+
+  function _setPickerStatus(state, count, monthLabel) {
+    const dot  = document.getElementById('gp-status-dot');
+    const text = document.getElementById('gp-status-text');
+    if (!dot || !text) return;
+    dot.className = 'gp-dot';
+    switch (state) {
+      case 'fetching':
+        dot.classList.add('gp-dot-blue', 'gp-dot-pulse');
+        text.textContent = 'Fetching from chess.com...';
+        break;
+      case 'loaded':
+        dot.classList.add('gp-dot-green');
+        text.textContent = `Showing ${monthLabel} · ${count} unanalyzed game${count !== 1 ? 's' : ''}`;
+        break;
+      case 'no-username':
+        dot.classList.add('gp-dot-gray');
+        text.innerHTML = 'Connect chess.com in your <a href="profile.html" class="gp-status-link">profile</a> to see your games';
+        return;
+      case 'error':
+        dot.classList.add('gp-dot-red');
+        text.textContent = 'Could not fetch games — check your username in profile settings';
+        break;
+      case 'no-games':
+        dot.classList.add('gp-dot-gray');
+        text.textContent = `No unanalyzed games for ${monthLabel}`;
+        break;
+    }
+  }
+
+  function _renderPickerSkeleton() {
+    const container = document.getElementById('gp-games');
+    if (!container) return;
+    container.innerHTML = Array(5).fill(0).map(() => `
+      <div class="gp-row gp-row-skeleton">
+        <div class="gp-result-circle gp-skeleton" style="width:22px;height:22px;flex-shrink:0"></div>
+        <div class="gp-row-info">
+          <div class="gp-skeleton" style="height:10px;width:55%;margin-bottom:5px"></div>
+          <div class="gp-skeleton" style="height:8px;width:38%"></div>
+        </div>
+      </div>`).join('');
+  }
+
+  function _renderPickerGames(games, username) {
+    const container = document.getElementById('gp-games');
+    if (!container) return;
+    container.innerHTML = '';
+    if (!games || games.length === 0) return;
+
+    const lowerUser = (username || '').toLowerCase();
+
+    games.forEach(g => {
+      const h       = _parsePgnHeaders(g.pgn || '');
+      const white   = h.White   || 'White';
+      const black   = h.Black   || 'Black';
+      const date    = h.Date    || '';
+      const result  = h.Result  || '*';
+      const opening = h.Opening || h.ECO || '';
+
+      const isWhite = white.toLowerCase() === lowerUser;
+      const opponent = isWhite ? black : white;
+
+      let resultChar = 'D', resultCls = 'gp-result-draw';
+      if (result === '1-0') {
+        resultChar = isWhite ? 'W' : 'L';
+        resultCls  = isWhite ? 'gp-result-win' : 'gp-result-loss';
+      } else if (result === '0-1') {
+        resultChar = isWhite ? 'L' : 'W';
+        resultCls  = isWhite ? 'gp-result-loss' : 'gp-result-win';
+      }
+
+      const tcLabel = _formatTimeControl(g.time_control || '', g.time_class || '');
+      const datePart = date.replace(/\./g, '-');
+      const subLine  = [opening, datePart].filter(Boolean).join(' · ');
+
+      const row = document.createElement('div');
+      row.className = 'gp-row';
+      row.innerHTML = `
+        <div class="gp-result-circle ${_gpEsc(resultCls)}">${_gpEsc(resultChar)}</div>
+        <div class="gp-row-info">
+          <div class="gp-row-opponent">${_gpEsc(opponent)}</div>
+          <div class="gp-row-sub">${_gpEsc(subLine)}</div>
+        </div>
+        <div class="gp-row-right">
+          <span class="gp-tc-badge">${_gpEsc(tcLabel)}</span>
+          <span class="gp-analyze-hint">Analyze →</span>
+        </div>`;
+
+      row.addEventListener('click', () => {
+        container.querySelectorAll('.gp-row').forEach(r => r.classList.remove('gp-row-active'));
+        row.classList.add('gp-row-active');
+        const statusText = document.getElementById('gp-status-text');
+        if (statusText) statusText.textContent = `Loading ${opponent}...`;
+
+        const textarea = document.getElementById('pgn-input');
+        if (textarea) textarea.value = g.pgn || '';
+        applyPlayerColor(isWhite ? 'white' : 'black', false);
+        setTimeout(handleAnalyze, 50);
+      });
+
+      container.appendChild(row);
+    });
+  }
+
+  function _formatTimeControl(tc, timeClass) {
+    if (timeClass === 'bullet')    return 'Bullet';
+    if (timeClass === 'blitz')     return 'Blitz';
+    if (timeClass === 'rapid')     return 'Rapid';
+    if (timeClass === 'daily')     return 'Daily';
+    if (timeClass === 'classical') return 'Classical';
+    if (!tc) return '';
+    if (tc.includes('+')) {
+      const [base, inc] = tc.split('+');
+      const mins = Math.round(parseInt(base, 10) / 60);
+      return `${mins}+${inc}`;
+    }
+    const secs = parseInt(tc, 10);
+    if (secs >= 1800) return 'Rapid';
+    if (secs >= 180)  return 'Blitz';
+    return 'Bullet';
+  }
+
+  function _updatePickerFooter(total, analyzedCount) {
+    const el = document.getElementById('gp-footer-left');
+    if (!el) return;
+    el.textContent = `${total} game${total !== 1 ? 's' : ''} · ${analyzedCount} analyzed this month`;
+  }
+
+  function _gpEsc(str) {
+    if (typeof str !== 'string') return '';
+    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+              .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
   }
 
   /* ------------------------------------------------------------------ */
@@ -387,6 +662,7 @@ const App = (() => {
   /* ------------------------------------------------------------------ */
 
   async function handleAnalyze() {
+    UI.hideGamePicker();
     hidePgnError();
     UI.hideError();
 

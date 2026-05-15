@@ -6192,3 +6192,240 @@ body.pf-page {
 }
 .db-sidebar-profile:hover .db-profile-gear { opacity: 1; }
 
+/* ════════════════════════════════════════
+   GAME PICKER  (gp- prefix — analyzer.html only)
+   ════════════════════════════════════════ */
+
+@keyframes gp-shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+@keyframes gp-dot-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.3; }
+}
+
+.gp-picker {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
+}
+.gp-picker.hidden { display: none; }
+
+/* ── Header bar ── */
+.gp-header {
+  background: #111827;
+  border-bottom: 1px solid #1e2d40;
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.gp-header-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: #e2e8f0;
+  white-space: nowrap;
+}
+.gp-header-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.gp-month-select {
+  background: #1e2d40;
+  border: 1px solid #1e2d40;
+  border-radius: 5px;
+  padding: 4px 8px;
+  font-size: 10px;
+  color: #e2e8f0;
+  cursor: pointer;
+  outline: none;
+  font-family: inherit;
+}
+.gp-month-select:focus { border-color: #3b82f6; }
+.gp-refresh-btn {
+  background: #1e2d40;
+  border: none;
+  border-radius: 5px;
+  padding: 4px 8px;
+  color: #6b7280;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  transition: color 0.15s;
+}
+.gp-refresh-btn:hover { color: #e2e8f0; }
+.gp-paste-btn {
+  background: #0c1a3a;
+  border: 1px solid #1e3a5f;
+  border-radius: 5px;
+  color: #60a5fa;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 4px 10px;
+  cursor: pointer;
+  transition: background 0.15s;
+  font-family: inherit;
+  white-space: nowrap;
+}
+.gp-paste-btn:hover { background: #0f2454; }
+
+/* ── Status bar ── */
+.gp-status-bar {
+  background: #0d1321;
+  border-bottom: 1px solid #1e2d40;
+  padding: 6px 14px;
+  font-size: 10px;
+  color: #4b5568;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.gp-status-link { color: #60a5fa; text-decoration: none; }
+.gp-status-link:hover { text-decoration: underline; }
+
+/* ── Status dots ── */
+.gp-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.gp-dot-blue  { background: #3b82f6; }
+.gp-dot-green { background: #4ade80; }
+.gp-dot-gray  { background: #4b5568; }
+.gp-dot-red   { background: #f87171; }
+.gp-dot-pulse { animation: gp-dot-pulse 1.2s ease-in-out infinite; }
+
+/* ── Game list ── */
+.gp-list-wrap {
+  flex: 1;
+  overflow-y: auto;
+  background: #0d1321;
+  min-height: 0;
+}
+.gp-section-label {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #374151;
+  padding: 6px 14px 4px;
+}
+
+/* ── Game rows ── */
+.gp-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-bottom: 1px solid rgba(30,45,64,0.4);
+  cursor: pointer;
+  transition: background 0.1s;
+}
+.gp-row:hover { background: #111827; }
+.gp-row-active {
+  background: #0c1a3a;
+  border-left: 2px solid #3b82f6;
+  padding-left: 12px;
+}
+.gp-row-skeleton { cursor: default; }
+.gp-row-skeleton:hover { background: transparent; }
+
+/* ── Result circle ── */
+.gp-result-circle {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.gp-result-win  { background: #052e16; color: #4ade80; }
+.gp-result-loss { background: #450a0a; color: #f87171; }
+.gp-result-draw { background: #1e2d40; color: #94a3b8; }
+
+/* ── Row content ── */
+.gp-row-info { flex: 1; min-width: 0; }
+.gp-row-opponent {
+  font-size: 11px;
+  font-weight: 500;
+  color: #e2e8f0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.gp-row-sub {
+  font-size: 9px;
+  color: #4b5568;
+  margin-top: 1px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Right badge / hint (swap on hover) ── */
+.gp-row-right { flex-shrink: 0; }
+.gp-tc-badge {
+  background: #1e2d40;
+  border-radius: 3px;
+  padding: 2px 5px;
+  font-size: 8px;
+  color: #4b5568;
+  display: inline-block;
+}
+.gp-analyze-hint {
+  font-size: 9px;
+  color: #3b82f6;
+  display: none;
+  white-space: nowrap;
+}
+.gp-row:hover .gp-tc-badge     { display: none; }
+.gp-row:hover .gp-analyze-hint { display: inline; }
+
+/* ── Skeleton shimmer ── */
+.gp-skeleton {
+  background: linear-gradient(90deg, #111827 25%, #1e2d40 50%, #111827 75%);
+  background-size: 200% 100%;
+  animation: gp-shimmer 1.2s infinite;
+  border-radius: 3px;
+}
+
+/* ── Footer bar ── */
+.gp-footer {
+  background: #111827;
+  border-top: 1px solid #1e2d40;
+  padding: 8px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+.gp-footer-left { font-size: 10px; color: #4b5568; }
+.gp-footer-link { font-size: 10px; color: #3b82f6; text-decoration: none; }
+.gp-footer-link:hover { text-decoration: underline; }
+
+/* ── Back-to-games button (inside dropzone panel) ── */
+.gp-back-btn {
+  font-size: 11px;
+  color: #60a5fa;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0 0 4px;
+  align-self: flex-start;
+  font-family: inherit;
+  transition: color 0.15s;
+}
+.gp-back-btn:hover { color: #93c5fd; }
+.gp-back-btn.hidden { display: none; }
+

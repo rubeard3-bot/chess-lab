@@ -172,9 +172,34 @@
         <!-- ══════════ TAB: GAME REVIEW ══════════ -->
         <div id="tab-panel-review" class="az-tab-panel az-tab-panel-active">
 
-          <!-- DROP ZONE (before any game loaded) -->
-          <div id="az-dropzone-panel" class="az-dropzone-panel">
+          <!-- GAME PICKER (shown when no game loaded) -->
+          <div id="gp-picker" class="gp-picker hidden">
+            <div class="gp-header">
+              <span class="gp-header-title">Pick a game to analyze</span>
+              <div class="gp-header-controls">
+                <select id="gp-month-select" class="gp-month-select"></select>
+                <button id="gp-refresh-btn" class="gp-refresh-btn" title="Refresh">↺</button>
+                <button id="gp-paste-btn" class="gp-paste-btn">+ Paste PGN</button>
+              </div>
+            </div>
+            <div class="gp-status-bar">
+              <span class="gp-dot gp-dot-gray" id="gp-status-dot"></span>
+              <span id="gp-status-text"></span>
+            </div>
+            <div class="gp-list-wrap">
+              <div class="gp-section-label" id="gp-section-label">Unanalyzed</div>
+              <div id="gp-games"></div>
+            </div>
+            <div class="gp-footer">
+              <span id="gp-footer-left" class="gp-footer-left"></span>
+              <a href="archive.html" class="gp-footer-link">View archive →</a>
+            </div>
+          </div>
+
+          <!-- DROP ZONE (accessible via Paste PGN button) -->
+          <div id="az-dropzone-panel" class="az-dropzone-panel hidden">
             <div class="az-dz-inner">
+              <button id="gp-back-btn" class="gp-back-btn hidden">← Back to games</button>
               <div class="az-dz-icon">♟</div>
               <div class="az-dz-title">Drop a PGN file here or paste below</div>
               <div class="az-dz-sub">Stockfish analysis · AI coaching · Opening theory</div>
@@ -367,6 +392,7 @@
   <script src="js/analysis.js"></script>
   <script src="js/recommendations.js"></script>
   <script src="js/nav.js"></script>
+  <script src="js/chesscom.js"></script>
   <script src="js/ui.js"></script>
   <script src="js/app.js"></script>
 </body>

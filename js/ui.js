@@ -351,8 +351,12 @@ const UI = (() => {
   /* ------------------------------------------------------------------ */
 
   function showAnalysisPanels() {
+    const picker = document.getElementById('gp-picker');
+    if (picker) picker.classList.add('hidden');
     const dz = document.getElementById('az-dropzone-panel');
     if (dz) dz.classList.add('hidden');
+    const backBtn = document.getElementById('gp-back-btn');
+    if (backBtn) backBtn.classList.add('hidden');
     const detail = document.getElementById('panel-move-detail');
     if (detail) detail.classList.remove('hidden');
     const scroll = document.getElementById('az-review-scroll');
@@ -368,14 +372,28 @@ const UI = (() => {
   }
 
   function hideAnalysisPanels() {
+    const picker = document.getElementById('gp-picker');
+    if (picker) picker.classList.remove('hidden');
     const dz = document.getElementById('az-dropzone-panel');
-    if (dz) dz.classList.remove('hidden');
+    if (dz) dz.classList.add('hidden');
     const detail = document.getElementById('panel-move-detail');
     if (detail) detail.classList.add('hidden');
     const scroll = document.getElementById('az-review-scroll');
     if (scroll) scroll.classList.add('hidden');
     const chat = document.getElementById('az-coach-chat');
     if (chat) chat.classList.add('hidden');
+  }
+
+  function showGamePicker() {
+    const picker = document.getElementById('gp-picker');
+    if (picker) picker.classList.remove('hidden');
+    const dz = document.getElementById('az-dropzone-panel');
+    if (dz) dz.classList.add('hidden');
+  }
+
+  function hideGamePicker() {
+    const picker = document.getElementById('gp-picker');
+    if (picker) picker.classList.add('hidden');
   }
 
   /* ------------------------------------------------------------------ */
@@ -1353,6 +1371,8 @@ When the user asks about a specific move number, reference ONLY the data for tha
     renderGamesList,
     showAnalysisPanels,
     hideAnalysisPanels,
+    showGamePicker,
+    hideGamePicker,
     showProgress,
     hideProgress,
     showCoachLoading,
