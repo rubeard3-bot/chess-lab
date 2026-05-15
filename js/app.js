@@ -191,9 +191,7 @@ const App = (() => {
       if (typeof Recommendations !== 'undefined') {
         const autoRec = localStorage.getItem('pf_auto_recommendations');
         if (autoRec === 'false') return;
-        Recommendations.generateRecommendations().then(recs => {
-          if (recs) localStorage.setItem('csa_recommendations', JSON.stringify(recs));
-        }).catch(() => {});
+        Recommendations.generateRecommendations().catch(() => {});
       }
     } else {
       sessionStorage.setItem('csa_import_index', String(nextIndex));
