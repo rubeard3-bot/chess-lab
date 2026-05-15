@@ -4025,7 +4025,7 @@ body.import-page {
   --az-green:     #4ade80;
   --az-topbar-h:  44px;
   --az-tabbar-h:  40px;
-  --az-left-w:    340px;
+  --az-left-w:    440px;
   --az-chat-h:    220px;
 }
 
@@ -4220,7 +4220,7 @@ body.analyzer-page #app {
    ════════════════════════════════════════ */
 .az-body {
   display: grid;
-  grid-template-columns: 340px 1fr;
+  grid-template-columns: 440px 1fr;
   height: calc(100vh - 84px);
   overflow: hidden;
 }
@@ -4231,6 +4231,7 @@ body.analyzer-page #app {
 .az-col-left {
   width: var(--az-left-w);
   min-width: var(--az-left-w);
+  height: 100%;
   display: flex;
   flex-direction: column;
   border-right: 1px solid var(--az-border);
