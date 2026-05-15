@@ -44,10 +44,17 @@ const Recommendations = (() => {
   }
 
   async function generateRecommendations() {
+    if (window._recsInFlight) {
+      console.log('[Recommendations] Call already in flight, skipping.');
+      return null;
+    }
+    window._recsInFlight = true;
     try {
-      const games = Storage.loadAllGames();
+      let games = Storage.loadAllGames();
       console.log('[Recommendations] Starting generation, games found:', games.length);
       if (games.length === 0) return null;
+
+      games = games.sort((a, b) => (b.savedAt || 0) - (a.savedAt || 0)).slice(0, 10);
 
       _setProgress('Analyzing your games...');
 
@@ -93,6 +100,8 @@ const Recommendations = (() => {
     } catch (err) {
       console.error('[Recommendations] Fatal error:', err.message, err.stack);
       throw err;
+    } finally {
+      window._recsInFlight = false;
     }
   }
 

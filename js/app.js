@@ -188,6 +188,8 @@ const App = (() => {
       if (skip)   skip.style.display = 'none';
       if (stop) { stop.textContent = 'Dismiss'; stop.className = 'mass-banner-btn mass-banner-done'; stop.dataset.done = '1'; }
       if (typeof Recommendations !== 'undefined') {
+        const autoRec = localStorage.getItem('pf_auto_recommendations');
+        if (autoRec === 'false') return;
         Recommendations.generateRecommendations().then(recs => {
           if (recs) localStorage.setItem('csa_recommendations', JSON.stringify(recs));
         }).catch(() => {});
@@ -454,6 +456,8 @@ const App = (() => {
         if (massImportQueue) { onMassImportGameComplete(); return; }
 
         if (typeof Recommendations !== 'undefined') {
+          const autoRec = localStorage.getItem('pf_auto_recommendations');
+          if (autoRec === 'false') return;
           UI.showToast('Updating recommendations...');
           Recommendations.generateRecommendations().then(recs => {
             if (recs) { localStorage.setItem('csa_recommendations', JSON.stringify(recs)); UI.renderPatternsSummary(); }
