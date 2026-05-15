@@ -6178,3 +6178,17 @@ body.pf-page {
 }
 .pf-toast.show { opacity: 1; transform: translateY(0); }
 
+/* ── sidebar profile: clickable ──────────────────────────── */
+.db-sidebar-profile { cursor: pointer; transition: background 0.15s ease; }
+.db-sidebar-profile:hover { background: #1e2d40; }
+.db-profile-gear {
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  font-size: 11px;
+  color: #94a3b8;
+  flex-shrink: 0;
+  line-height: 1;
+  margin-left: auto;
+}
+.db-sidebar-profile:hover .db-profile-gear { opacity: 1; }
+

@@ -59,10 +59,11 @@
       </div>
 
       <!-- 2. Profile -->
-      <div class="db-sidebar-profile">
+      <div class="db-sidebar-profile" id="db-sidebar-profile">
         <div class="db-profile-top">
           <div class="db-avatar" id="db-avatar">R</div>
           <div class="db-username" id="db-username">Connect chess.com</div>
+          <span class="db-profile-gear" aria-hidden="true">⚙</span>
         </div>
         <div class="db-rating-row">
           <span class="db-rating-value" id="db-rating-value"></span>
@@ -105,10 +106,6 @@
         <a href="import.html" class="db-nav-item">
           <span class="db-nav-icon">📥</span>Import Games
         </a>
-        <a href="profile.html" class="db-nav-item">
-          <span class="db-nav-icon">👤</span>Profile &amp; Preferences
-        </a>
-
         <div class="db-nav-group-label" style="margin-top:12px">Study</div>
         <span class="db-nav-item db-nav-disabled">
           <span class="db-nav-icon">🧩</span>Tactics
@@ -351,6 +348,14 @@
       if (fillEl) fillEl.style.width = pct + '%';
       safeText(document.getElementById('db-goal-now-label'),    currentElo + ' now');
       safeText(document.getElementById('db-goal-target-label'), 'Goal: ' + goalElo);
+    }
+
+    /* Profile section → navigate to profile.html */
+    var profileSectionEl = document.getElementById('db-sidebar-profile');
+    if (profileSectionEl) {
+      profileSectionEl.addEventListener('click', function () {
+        window.location.href = 'profile.html';
+      });
     }
 
     /* ────────────────────────────────
