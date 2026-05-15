@@ -50,8 +50,9 @@ function claudeHeaders() {
 
 function parseResponse(text, label) {
   let json = text.trim()
-    .replace(/^```(?:json)?\s*/i, '')
-    .replace(/\s*```\s*$/i, '')
+    .replace(/^```json\s*/i, '')
+    .replace(/^```\s*/i, '')
+    .replace(/```\s*$/i, '')
     .trim();
 
   const firstBrace = json.indexOf('{');
@@ -215,7 +216,9 @@ app.post('/api/recommendations', async (req, res) => {
     const gamesSummary = buildGamesSummary(games);
     const gamesJson    = JSON.stringify(gamesSummary);
     const preamble     =
-`You are a chess coach. Analyze the following complete game history and return ONLY valid JSON with no markdown or commentary.
+`CRITICAL: Respond with ONLY a valid JSON object. Do not include any markdown formatting, code fences, backticks, or explanatory text before or after the JSON. Your entire response must be parseable by JSON.parse() with no preprocessing. Start your response with { and end with }.
+
+You are a chess coach. Analyze the following complete game history and return ONLY valid JSON with no markdown or commentary.
 
 Games data: ${gamesJson}
 
