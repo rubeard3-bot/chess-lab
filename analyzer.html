@@ -61,63 +61,48 @@
   <!-- App Shell -->
   <div id="app">
 
-    <!-- Top Navbar -->
-    <header id="top-navbar" class="top-navbar">
-      <button id="hamburger-btn" class="hamburger-btn" aria-label="Open menu">☰</button>
-      <div class="navbar-title">Chess Lab Analyzer</div>
-      <div class="navbar-right">
-        <div id="game-header" class="navbar-game-info hidden">
-          <span id="player-white" class="nav-player nav-player-white"></span>
-          <span class="nav-sep">vs</span>
-          <span id="player-black" class="nav-player nav-player-black"></span>
-          <span id="game-result" class="result-badge"></span>
-          <span id="game-date" style="display:none"></span>
+    <!-- ═══════════════════════════════════════════
+         TOPBAR (fixed, 44px)
+         ═══════════════════════════════════════════ -->
+    <header id="az-topbar" class="az-topbar">
+      <div class="az-topbar-left">
+        <button id="hamburger-btn" class="az-hamburger" aria-label="Open menu">
+          <span></span><span></span><span></span>
+        </button>
+        <div class="az-logo">
+          Chess Lab<span class="az-logo-dot"></span>
         </div>
-        <div id="navbar-acc-wrap" class="navbar-acc-wrap hidden">
-          <span id="navbar-acc" class="accuracy-badge"></span>
-          <span id="navbar-acc-label" class="navbar-acc-label"></span>
+        <div class="az-breadcrumb">Dashboard <span class="az-breadcrumb-sep">›</span> Analyzer</div>
+      </div>
+      <div class="az-topbar-right">
+        <div id="az-opp-chip" class="az-player-chip az-opp-chip hidden">
+          <span class="az-chip-dot az-chip-dot-gray"></span>
+          <span id="az-opp-chip-name" class="az-chip-name">Opponent</span>
         </div>
-        <button id="new-game-btn" class="nav-new-game-btn hidden">+ Analyze</button>
+        <div id="az-score-chip" class="az-score-chip hidden">
+          <span id="az-score-text">0 – 0</span>
+        </div>
+        <div id="az-you-chip" class="az-player-chip az-you-chip hidden">
+          <span class="az-chip-dot az-chip-dot-green"></span>
+          <span id="az-you-chip-name" class="az-chip-name">You</span>
+        </div>
+        <div id="az-acc-badge-wrap" class="az-acc-badge-wrap">
+          <span id="az-acc-badge" class="az-acc-badge az-acc-pending">—</span>
+        </div>
       </div>
     </header>
 
-    <!-- Topbar: mini bar + expandable PGN panel -->
-    <div id="topbar" class="topbar">
-      <!-- Always-visible mini bar -->
-      <div class="topbar-mini-bar">
-        <button id="pgn-load-btn" class="pgn-load-btn" type="button">📂 Load PGN</button>
-        <div class="color-selector">
-          <span class="color-selector-label">I played as</span>
-          <button id="btn-color-white" class="color-btn selected" type="button">
-            <span class="color-sq white-sq"></span>White
-          </button>
-          <button id="btn-color-black" class="color-btn" type="button">
-            <span class="color-sq black-sq"></span>Black
-          </button>
-        </div>
-        <div id="color-auto-msg" class="color-auto-msg hidden"></div>
-      </div>
-      <!-- Expandable PGN panel -->
-      <div id="pgn-dropdown" class="pgn-dropdown">
-        <input type="file" id="pgn-file-input" accept=".pgn" style="display:none">
-        <div id="pgn-dropzone" class="pgn-dropzone">
-          <span class="pgn-dropzone-icon">♟</span>
-          <span class="pgn-dropzone-main">Drop your .pgn file here</span>
-          <span class="pgn-dropzone-sub">or click to browse</span>
-        </div>
-        <div id="pgn-filename" class="pgn-filename hidden"></div>
-        <textarea id="pgn-input" placeholder="[Event &quot;Rapid&quot;]&#10;[White &quot;You&quot;]&#10;[Black &quot;Opponent&quot;]&#10;&#10;1. e4 e5 2. Nf3 ..."></textarea>
-        <div id="pgn-error" class="pgn-error hidden"></div>
-        <div class="pgn-dropdown-footer">
-          <button id="analyze-btn" class="btn-primary analyze-btn">
-            <span class="btn-text">Analyze Game</span>
-            <span class="spinner hidden" id="analyze-spinner"></span>
-          </button>
-        </div>
-      </div>
+    <!-- ═══════════════════════════════════════════
+         TAB BAR
+         ═══════════════════════════════════════════ -->
+    <div id="az-tabbar" class="az-tabbar">
+      <button class="az-tab az-tab-active" data-tab="review" id="tab-review">Game Review</button>
+      <button class="az-tab" data-tab="report" id="tab-report">My Report</button>
     </div>
 
-    <!-- Stockfish Progress -->
+    <!-- ═══════════════════════════════════════════
+         STOCKFISH PROGRESS (shown during SF analysis)
+         ═══════════════════════════════════════════ -->
     <div id="stockfish-progress" class="stockfish-progress hidden">
       <span id="progress-label" class="progress-label">Analyzing positions…</span>
       <div class="progress-track">
@@ -125,21 +110,25 @@
       </div>
     </div>
 
-    <!-- Main Layout -->
-    <div id="main-layout" class="main-layout">
+    <!-- ═══════════════════════════════════════════
+         BODY (left + right columns)
+         ═══════════════════════════════════════════ -->
+    <div id="az-body" class="az-body">
 
-      <!-- LEFT COLUMN -->
-      <div class="col-left">
+      <!-- ──────────────────────────────────────────
+           LEFT COLUMN (340px)
+           ────────────────────────────────────────── -->
+      <div class="az-col-left" id="az-col-left">
 
-        <!-- Opponent nameplate (top of board) -->
-        <div class="nameplate nameplate-top">
-          <span class="np-dot" id="np-opp-dot">●</span>
-          <span class="np-name" id="np-opp-name">Opponent</span>
+        <!-- Opponent player bar -->
+        <div class="az-player-bar az-player-bar-top" id="az-opp-bar">
+          <span class="az-pb-name" id="az-pb-opp-name">Opponent</span>
+          <span class="az-pb-captures" id="az-pb-opp-captures"></span>
         </div>
 
-        <!-- Eval bar + board -->
-        <div class="board-row">
-          <div class="eval-bar-wrap">
+        <!-- Eval bar + Board -->
+        <div class="az-board-row">
+          <div class="az-eval-bar-wrap">
             <div id="eval-bar" class="eval-bar">
               <div id="eval-bar-fill-black" class="eval-bar-fill-black"></div>
             </div>
@@ -150,161 +139,222 @@
           </div>
         </div>
 
-        <!-- You nameplate (below board) -->
-        <div class="nameplate nameplate-bottom">
-          <span class="np-dot" id="np-you-dot">○</span>
-          <span class="np-name" id="np-you-name">You</span>
+        <!-- Your player bar -->
+        <div class="az-player-bar az-player-bar-bottom" id="az-you-bar">
+          <span class="az-pb-name az-pb-name-you" id="az-pb-you-name">You</span>
+          <span class="az-pb-captures" id="az-pb-you-captures"></span>
         </div>
 
-        <!-- Navigation -->
-        <div class="board-controls">
-          <div class="nav-row">
-            <button class="nav-btn" id="btn-first" title="First move">|◀</button>
-            <button class="nav-btn" id="btn-prev"  title="Previous">◀</button>
-            <button class="nav-btn" id="btn-next"  title="Next">▶</button>
-            <button class="nav-btn" id="btn-last"  title="Last move">▶|</button>
-            <button class="nav-btn" id="btn-flip"  title="Flip board">⟳</button>
-            <button class="nav-btn" id="btn-games" title="Saved games">📂</button>
-          </div>
+        <!-- Nav controls -->
+        <div class="az-nav-controls">
+          <button class="nav-btn" id="btn-first" title="First move">|◀</button>
+          <button class="nav-btn" id="btn-prev"  title="Previous">◀</button>
+          <button class="nav-btn" id="btn-next"  title="Next">▶</button>
+          <button class="nav-btn" id="btn-last"  title="Last move">▶|</button>
+          <button class="nav-btn" id="btn-flip"  title="Flip board">⟳</button>
+          <button class="nav-btn" id="btn-games" title="Saved games">📂</button>
         </div>
 
         <!-- Move list -->
-        <div class="move-list-wrap">
+        <div class="az-move-list-wrap">
           <div id="move-list" class="move-list">
             <p class="placeholder-text">Analyze a game to see moves.</p>
           </div>
         </div>
 
-        <!-- Eval graph -->
-        <div id="panel-graph" class="panel-graph-left hidden">
-          <div class="graph-row">
-            <div class="graph-y-labels">
-              <span>+3</span>
-              <span>0</span>
-              <span>−3</span>
+      </div><!-- /az-col-left -->
+
+      <!-- ──────────────────────────────────────────
+           RIGHT COLUMN
+           ────────────────────────────────────────── -->
+      <div class="az-col-right" id="az-col-right">
+
+        <!-- ══════════ TAB: GAME REVIEW ══════════ -->
+        <div id="tab-panel-review" class="az-tab-panel az-tab-panel-active">
+
+          <!-- DROP ZONE (before any game loaded) -->
+          <div id="az-dropzone-panel" class="az-dropzone-panel">
+            <div class="az-dz-inner">
+              <div class="az-dz-icon">♟</div>
+              <div class="az-dz-title">Drop a PGN file here or paste below</div>
+              <div class="az-dz-sub">Stockfish analysis · AI coaching · Opening theory</div>
+              <div id="az-pgn-dropzone" class="pgn-dropzone az-dz-dropzone">
+                <span class="pgn-dropzone-icon">📂</span>
+                <span class="pgn-dropzone-main">Drop .pgn file or click to browse</span>
+                <span class="pgn-dropzone-sub">Supported: .pgn files</span>
+              </div>
+              <input type="file" id="pgn-file-input" accept=".pgn" style="display:none">
+              <div id="pgn-filename" class="pgn-filename hidden"></div>
+              <textarea id="pgn-input" class="az-pgn-textarea" placeholder="[Event &quot;Rapid&quot;]&#10;[White &quot;You&quot;]&#10;[Black &quot;Opponent&quot;]&#10;&#10;1. e4 e5 2. Nf3 ..."></textarea>
+              <div id="pgn-error" class="pgn-error hidden"></div>
+              <div class="az-dz-controls">
+                <div class="color-selector">
+                  <span class="color-selector-label">I played as</span>
+                  <button id="btn-color-white" class="color-btn selected" type="button">
+                    <span class="color-sq white-sq"></span>White
+                  </button>
+                  <button id="btn-color-black" class="color-btn" type="button">
+                    <span class="color-sq black-sq"></span>Black
+                  </button>
+                </div>
+                <div id="color-auto-msg" class="color-auto-msg hidden"></div>
+                <button id="analyze-btn" class="btn-primary analyze-btn">
+                  <span class="btn-text">Analyze Game</span>
+                  <span class="spinner hidden" id="analyze-spinner"></span>
+                </button>
+              </div>
             </div>
-            <div class="graph-container graph-container-left">
-              <svg id="eval-graph" width="100%" height="120" preserveAspectRatio="none"></svg>
+          </div>
+
+          <!-- MOVE DETAIL (pinned top, never scrolls) -->
+          <div id="panel-move-detail" class="az-move-detail-pin hidden">
+            <div id="move-detail-content" class="move-detail-content">
+              <p class="move-detail-empty">Navigate to a move to see coaching feedback.</p>
             </div>
           </div>
-          <div class="graph-x-labels" id="graph-x-labels"></div>
-        </div>
 
-      </div><!-- /col-left -->
+          <!-- SCROLLABLE CONTENT -->
+          <div id="az-review-scroll" class="az-review-scroll hidden">
 
-      <!-- RIGHT COLUMN -->
-      <div class="col-right" id="col-right">
-
-        <!-- Placeholder / Welcome -->
-        <div id="analysis-placeholder" class="analysis-placeholder">
-          <div class="welcome-icon">♟</div>
-          <div class="welcome-title">Chess Lab Analyzer</div>
-          <div class="welcome-sub">Load a PGN and click <strong>Analyze Game</strong> for full coaching feedback.</div>
-          <div class="welcome-features">
-            <div class="welcome-feature">
-              <span class="wf-icon">⚙</span>
-              <span class="wf-label"><strong>Stockfish-powered analysis</strong>Every position evaluated at depth 20</span>
+            <!-- Eval graph + timeline -->
+            <div class="az-section az-graph-section">
+              <div class="az-graph-wrap">
+                <svg id="eval-graph" preserveAspectRatio="none"></svg>
+              </div>
+              <div class="az-graph-phase-labels">
+                <span>Opening</span>
+                <span>Middlegame</span>
+                <span>Endgame</span>
+              </div>
+              <div class="az-graph-legend">
+                <span class="az-legend-dot" style="background:#f87171"></span><span>Blunder</span>
+                <span class="az-legend-dot" style="background:#fb923c"></span><span>Mistake</span>
+                <span class="az-legend-dot" style="background:#fcd34d"></span><span>Miss</span>
+                <span class="az-legend-dot" style="background:#4ade80"></span><span>Eval</span>
+              </div>
             </div>
-            <div class="welcome-feature">
-              <span class="wf-icon">💬</span>
-              <span class="wf-label"><strong>AI coaching explanations</strong>Plain-English feedback on your mistakes</span>
+
+            <!-- Opening panel -->
+            <div id="az-opening-panel" class="az-section az-card hidden">
+              <div class="az-card-header">
+                <span id="az-opening-name" class="az-opening-name">Opening</span>
+                <span id="az-eco-badge" class="eco-badge" style="display:none"></span>
+              </div>
+              <div id="az-opening-moves" class="az-opening-moves"></div>
+              <div id="az-opening-deviation" class="az-opening-deviation hidden"></div>
+              <a id="az-opening-explore-link" href="openings.html" class="az-opening-explore hidden">Explore this opening →</a>
+              <div id="az-opening-lines" class="az-opening-lines"></div>
             </div>
-            <div class="welcome-feature">
-              <span class="wf-icon">📖</span>
-              <span class="wf-label"><strong>Opening theory</strong>Learn the lines and ideas behind your openings</span>
+
+          </div><!-- /az-review-scroll -->
+
+          <!-- COACH CHAT (pinned bottom) -->
+          <div id="az-coach-chat" class="az-coach-chat hidden">
+            <div class="az-chat-header">
+              <div class="az-chat-avatar">C</div>
+              <div class="az-chat-header-text">
+                <span class="az-chat-title">Coach</span>
+                <span class="az-chat-subtitle" id="az-chat-subtitle">Knows your full game</span>
+              </div>
+            </div>
+            <div id="az-chat-messages" class="az-chat-messages"></div>
+            <div class="az-chat-input-row">
+              <input type="text" id="az-chat-input" class="az-chat-input" placeholder="Tell the coach what you were thinking...">
+              <button id="az-chat-send" class="az-chat-send">Send</button>
             </div>
           </div>
-        </div>
 
-        <!-- SECTION 1: Move Coaching -->
-        <div id="panel-move-detail" class="analysis-section coaching-section hidden">
-          <div id="move-detail-content" class="move-detail-content">
-            <p class="move-detail-empty">Navigate to a move to see coaching feedback.</p>
+        </div><!-- /tab-panel-review -->
+
+        <!-- ══════════ TAB: MY REPORT ══════════ -->
+        <div id="tab-panel-report" class="az-tab-panel az-report-scroll hidden">
+
+          <!-- Before game loaded -->
+          <div id="az-report-placeholder" class="az-report-placeholder">
+            <div class="az-rp-icon">📊</div>
+            <div class="az-rp-title">No game loaded yet</div>
+            <div class="az-rp-sub">Analyze a game to see your full report.</div>
           </div>
-        </div>
 
-        <!-- SECTION 2: Why Best Move -->
-        <div id="panel-why-best" class="analysis-section hidden">
-          <div class="section-heading" id="why-best-heading">Why the Best Move</div>
-          <div id="why-best-content" class="section-body-text"></div>
-        </div>
+          <!-- Report content (shown after analysis) -->
+          <div id="az-report-content" class="hidden">
 
-        <!-- SECTION 3: Alternate Moves -->
-        <div id="panel-alternates" class="analysis-section hidden">
-          <div class="section-heading">Other Good Moves</div>
-          <div id="alternates-content" class="section-body-text"></div>
-        </div>
-
-        <!-- SECTION 4: Opening Theory (collapsible, collapsed by default) -->
-        <div id="panel-opening" class="analysis-section collapsible-section hidden">
-          <button class="section-toggle" data-body="opening-body">
-            <span class="section-toggle-label">Opening Theory</span>
-            <span class="toggle-arrow">▾</span>
-          </button>
-          <div id="opening-body" class="collapsible-body">
-            <div class="opening-title-row">
-              <h3 id="opening-name-heading" class="opening-name-h">Opening</h3>
-              <span id="eco-badge" class="eco-badge"></span>
+            <!-- Section 1: Report card -->
+            <div class="az-section az-card az-report-card">
+              <div class="az-rc-top">
+                <div class="az-rc-grade-wrap">
+                  <div id="az-grade-circle" class="az-grade-circle">—</div>
+                </div>
+                <div class="az-rc-phases">
+                  <div class="az-phase-bar-row">
+                    <span class="az-phase-label">Opening</span>
+                    <div class="az-phase-track">
+                      <div id="az-phase-opening" class="az-phase-fill az-phase-opening" style="width:0%"></div>
+                    </div>
+                    <span id="az-phase-opening-pct" class="az-phase-pct">—</span>
+                  </div>
+                  <div class="az-phase-bar-row">
+                    <span class="az-phase-label">Middlegame</span>
+                    <div class="az-phase-track">
+                      <div id="az-phase-mid" class="az-phase-fill az-phase-mid" style="width:0%"></div>
+                    </div>
+                    <span id="az-phase-mid-pct" class="az-phase-pct">—</span>
+                  </div>
+                  <div class="az-phase-bar-row">
+                    <span class="az-phase-label">Endgame</span>
+                    <div class="az-phase-track">
+                      <div id="az-phase-end" class="az-phase-fill az-phase-end" style="width:0%"></div>
+                    </div>
+                    <span id="az-phase-end-pct" class="az-phase-pct">—</span>
+                  </div>
+                </div>
+              </div>
+              <div id="az-stat-grid" class="az-stat-grid"></div>
             </div>
-            <div id="opening-details" class="opening-details"></div>
-            <div id="lines-to-study" class="lines-to-study"></div>
-          </div>
-        </div>
 
-        <!-- SECTION 5: Game Summary (collapsible, collapsed by default) -->
-        <div id="panel-summary" class="analysis-section collapsible-section hidden">
-          <button class="section-toggle" data-body="summary-body">
-            <span class="section-toggle-label">Game Summary</span>
-            <span class="toggle-arrow">▾</span>
-          </button>
-          <div id="summary-body" class="collapsible-body">
-            <div class="summary-acc-row">
-              <span id="accuracy-badge" class="accuracy-badge"></span>
-              <span id="accuracy-color-label" class="accuracy-color-label"></span>
+            <!-- Section 2: Coach summary -->
+            <div class="az-section az-card az-coach-summary-card">
+              <div class="az-cs-header">
+                <div class="az-chat-avatar">C</div>
+                <div>
+                  <div class="az-cs-title">Coach</div>
+                  <div id="az-cs-subtitle" class="az-cs-subtitle">Game analysis</div>
+                </div>
+              </div>
+              <div id="az-coach-summary-text" class="az-cs-text">
+                <div class="coach-loading-wrap">
+                  <div class="coach-loading-text">Reviewing your game…</div>
+                  <div class="coach-loading-dots"><span></span><span></span><span></span></div>
+                </div>
+              </div>
             </div>
-            <div id="stats-row" class="stats-row"></div>
-            <div id="strength-card"  class="insight-card strength-card"></div>
-            <div id="weakness-card"  class="insight-card weakness-card"></div>
-            <div id="pattern-card"   class="insight-card pattern-card hidden"></div>
-          </div>
-        </div>
 
-        <!-- SECTION 6: Middlegame Notes (collapsible, collapsed by default) -->
-        <div id="panel-middlegame" class="analysis-section collapsible-section hidden">
-          <button class="section-toggle" data-body="middlegame-body">
-            <span class="section-toggle-label">Middlegame</span>
-            <span class="toggle-arrow">▾</span>
-          </button>
-          <div id="middlegame-body" class="collapsible-body">
-            <div id="middlegame-content" class="section-body-text"></div>
-          </div>
-        </div>
+            <!-- Section 3: vs recent average -->
+            <div id="az-vs-avg-section" class="az-section az-card">
+              <div class="az-card-header az-card-header-sm">vs Your Recent Average</div>
+              <div id="az-vs-avg-content" class="az-vs-avg-grid"></div>
+            </div>
 
-        <!-- SECTION 7: Endgame Notes (collapsible, collapsed by default) -->
-        <div id="panel-endgame" class="analysis-section collapsible-section hidden">
-          <button class="section-toggle" data-body="endgame-body">
-            <span class="section-toggle-label">Endgame</span>
-            <span class="toggle-arrow">▾</span>
-          </button>
-          <div id="endgame-body" class="collapsible-body">
-            <div id="endgame-content" class="section-body-text"></div>
-          </div>
-        </div>
+            <!-- Section 4: Patterns spotted -->
+            <div id="az-patterns-section" class="az-section az-card">
+              <div class="az-card-header az-card-header-sm">Patterns Spotted</div>
+              <div id="az-patterns-content" class="az-patterns-list"></div>
+            </div>
 
-        <!-- SECTION 8: Your Patterns — condensed cross-game recommendations -->
-        <div id="panel-patterns" class="analysis-section collapsible-section hidden">
-          <button class="section-toggle" data-body="patterns-body">
-            <span class="section-toggle-label">Your Patterns</span>
-            <span class="toggle-arrow">▾</span>
-          </button>
-          <div id="patterns-body" class="collapsible-body">
-            <div id="patterns-summary-content" class="patterns-summary-content"></div>
-          </div>
-        </div>
+            <!-- Section 5: Next steps -->
+            <div class="az-section az-card">
+              <div class="az-card-header az-card-header-sm">Next Steps</div>
+              <div id="az-next-steps" class="az-next-steps-grid"></div>
+            </div>
 
-      </div><!-- /col-right -->
+          </div><!-- /az-report-content -->
 
-    </div><!-- /main-layout -->
+        </div><!-- /tab-panel-report -->
+
+      </div><!-- /az-col-right -->
+
+    </div><!-- /az-body -->
+
   </div><!-- /app -->
 
   <script src="js/chess.js"></script>
