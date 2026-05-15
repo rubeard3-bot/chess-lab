@@ -51,8 +51,9 @@ const Recommendations = (() => {
     window._recsInFlight = true;
     try {
       let games = Storage.loadAllGames();
-      console.log('[Recommendations] Starting generation, games found:', games.length);
-      if (games.length === 0) return null;
+      const totalGameCount = games.length;
+      console.log('[Recommendations] Starting generation, games found:', totalGameCount);
+      if (totalGameCount === 0) return null;
 
       games = games.sort((a, b) => (b.savedAt || 0) - (a.savedAt || 0)).slice(0, 10);
 
@@ -90,7 +91,7 @@ const Recommendations = (() => {
 
       localStorage.setItem(RECS_KEY, JSON.stringify(merged));
       localStorage.setItem(META_KEY, JSON.stringify({
-        gameCount:   games.length,
+        gameCount:   totalGameCount,
         generatedAt: new Date().toISOString()
       }));
 

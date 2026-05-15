@@ -21,6 +21,10 @@
     .acc-poor    { background: rgba(239,83,80,0.15);   color: #ef5350; }
     .acc-unknown { background: rgba(255,255,255,0.05); color: #666; }
     .rec-game-ref-link { font-size: 0.72rem; color: #4caf50; font-weight: 600; }
+    .rec-stale-banner { background: #0c1a3a; border-bottom: 1px solid #1e3a5f; padding: 8px 20px; font-size: 11px; color: #60a5fa; display: flex; align-items: center; gap: 8px; }
+    .rec-stale-banner.hidden { display: none; }
+    .rec-stale-dot { width: 6px; height: 6px; border-radius: 50%; background: #60a5fa; flex-shrink: 0; animation: stale-pulse 1.4s ease-in-out infinite; }
+    @keyframes stale-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
   </style>
 </head>
 <body class="rec-page">
@@ -71,6 +75,12 @@
     <h2 class="rec-empty-title">No Recommendations Yet</h2>
     <p class="rec-empty-sub">Analyze at least one game to generate your personalized coaching report</p>
     <a href="analyzer.html" class="btn-primary" style="display:inline-flex;margin-top:4px">Go to Analyzer →</a>
+  </div>
+
+  <!-- Stale data banner — shown when new games detected, hidden once refresh completes -->
+  <div id="rec-stale-banner" class="rec-stale-banner hidden">
+    <span class="rec-stale-dot"></span>
+    New games detected — updating your recommendations...
   </div>
 
   <!-- Main Content -->
@@ -266,6 +276,16 @@
       _toastTimer = setTimeout(() => el.classList.remove('show'), 3200);
     }
 
+    function showStaleBanner() {
+      const el = document.getElementById('rec-stale-banner');
+      if (el) el.classList.remove('hidden');
+    }
+
+    function hideStaleBanner() {
+      const el = document.getElementById('rec-stale-banner');
+      if (el) el.classList.add('hidden');
+    }
+
     /* ---- init ---- */
     function init() {
       window.addEventListener('rec-parse-error', e => showToast(e.detail.message));
@@ -281,7 +301,25 @@
 
       document.getElementById('rec-empty').classList.add('hidden');
       document.getElementById('rec-content').classList.remove('hidden');
-      if (recs) renderRecommendations(recs);
+
+      if (recs) {
+        renderRecommendations(recs);
+        if (Recommendations.shouldRegenerate()) {
+          showStaleBanner();
+          Recommendations.generateRecommendations().then(fresh => {
+            hideStaleBanner();
+            if (fresh) {
+              renderRecommendations(fresh);
+              showToast('Recommendations updated');
+            } else {
+              showToast('Could not refresh — showing last known recommendations');
+            }
+          }).catch(() => {
+            hideStaleBanner();
+            showToast('Could not refresh — showing last known recommendations');
+          });
+        }
+      }
     }
 
     /* ---- master render ---- */

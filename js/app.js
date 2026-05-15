@@ -736,8 +736,11 @@ const App = (() => {
           if (autoRec === 'false') return;
           UI.showToast('Updating recommendations...');
           Recommendations.generateRecommendations().then(recs => {
-            if (recs) { localStorage.setItem('csa_recommendations', JSON.stringify(recs)); UI.renderPatternsSummary(); }
-          }).catch(() => {});
+            if (recs) { UI.renderPatternsSummary(); }
+          }).catch((err) => {
+            console.error('[Recommendations] Auto-trigger failed:', err);
+            UI.showToast('Could not update recommendations — will retry after your next game.');
+          });
         }
       })
       .catch(err => {
