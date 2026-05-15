@@ -76,7 +76,7 @@ function parseResponse(text, label) {
   }
 }
 
-async function callClaude(prompt, label) {
+async function callClaude(prompt, label, maxTokens = 1500) {
   console.log(`[${label}] sending prompt, length:`, prompt.length);
 
   for (let attempt = 1; attempt <= 2; attempt++) {
@@ -86,7 +86,7 @@ async function callClaude(prompt, label) {
         headers: claudeHeaders(),
         body:    JSON.stringify({
           model:      MODEL,
-          max_tokens: 4000,
+          max_tokens: maxTokens,
           messages:   [{ role: 'user', content: prompt }]
         })
       });
@@ -151,7 +151,6 @@ function buildGamesSummary(games) {
     strength:    g.analysis?.summary?.strength         || '',
     weakness:    g.analysis?.summary?.weakness         || '',
     recurringPattern:  g.analysis?.summary?.recurringPattern || '',
-    coachingNotes:     g.analysis?.summary?.middlegameNotes  || '',
     openingDeviations: {
       youPlayed:   g.analysis?.opening?.youPlayed   || '',
       theorySays:  g.analysis?.opening?.theorySays  || '',
@@ -161,8 +160,7 @@ function buildGamesSummary(games) {
       ply:            m.ply,
       san:            m.san,
       classification: m.classification,
-      evalLoss:       m.evalLoss,
-      explanation:    m.explanation
+      evalLoss:       m.evalLoss
     }))
   }));
 }
@@ -322,9 +320,9 @@ When citing specific games as examples, always include the gameId in examples ar
     /* -- Fire all 3 calls in parallel (Tier 2 rate limits have ample headroom) */
     console.log('[Recommendations] Firing all 3 Claude calls in parallel...');
     const [result1, result2, result3] = await Promise.all([
-      callClaude(prompt1, 'Call1-Core'),
-      callClaude(prompt2, 'Call2-OpenTactics'),
-      callClaude(prompt3, 'Call3-StudyPlan')
+      callClaude(prompt1, 'Call1-Core',          2500),
+      callClaude(prompt2, 'Call2-OpenTactics',   1500),
+      callClaude(prompt3, 'Call3-StudyPlan',     1500)
     ]);
 
     /* -- Merge --------------------------------------------------------- */
@@ -340,7 +338,10 @@ When citing specific games as examples, always include the gameId in examples ar
 
     const merged = Object.assign({}, result1 || {}, result2 || {}, result3 || {});
 
-    if (failedSections.length > 0) {
+    if (!result1) {
+      merged._partialFailure = 'Core Analysis (Call 1) failed — topWeaknesses and accuracyTrend are missing. Other sections may still be usable.';
+      console.warn('[/api/recommendations] CRITICAL: Core Analysis (Call 1) failed — topWeaknesses and accuracyTrend unavailable.');
+    } else if (failedSections.length > 0) {
       merged._partialFailure = `Some sections could not be generated: ${failedSections.join(', ')}`;
       console.warn('[/api/recommendations] Partial result, failed sections:', failedSections);
     }
