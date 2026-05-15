@@ -50,7 +50,9 @@ const App = (() => {
       currentPly:   state.currentPly,
       analysisData: state.analysisData,
       playerColor,
-      metadata:     state.metadata
+      metadata:     state.metadata,
+      pgn:          state.pgn,
+      fens:         state.fens
     }));
 
     const gameId = getGameIdFromUrl();

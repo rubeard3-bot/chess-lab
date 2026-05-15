@@ -1120,28 +1120,64 @@ const UI = (() => {
     _appendUserMsg(text);
     const typing = _appendTyping();
 
-    const state = getStateCallback();
-    const moveData = state.analysisData?.moves?.find(m => m.ply === state.currentPly) || null;
-    const summary  = state.analysisData?.summary || {};
-    const opening  = state.analysisData?.opening || {};
+    const state      = getStateCallback();
+    const moves      = state.analysisData?.moves  || [];
+    const summary    = state.analysisData?.summary || {};
+    const opening    = state.analysisData?.opening || {};
+    const fens       = state.fens || [];
+    const pgn        = state.pgn  || '';
+    const currentPly = state.currentPly;
 
-    const systemPrompt = `You are a chess coach reviewing a specific game. You have full context of the game analysis. Respond concisely (2-4 sentences). Be specific, encouraging, and technical.`;
+    // Build full move list with all engine data for every move
+    const moveListLines = moves.map(m => {
+      const moveNum = Math.ceil(m.ply / 2);
+      const side    = m.color === 'white' ? 'W' : 'B';
+      const eb      = typeof m.evalBefore === 'number' ? m.evalBefore.toFixed(2) : '?';
+      const ea      = typeof m.eval       === 'number' ? m.eval.toFixed(2)       : '?';
+      const pv      = (m.pvSan || []).slice(0, 4).join(' ') || 'none';
+      return `Move ${moveNum}${side} (ply ${m.ply}): ${m.san} | ${m.classification} | eval ${eb}→${ea} | engine best: ${m.bestMoveSan || 'none'} | engine line: ${pv}`;
+    }).join('\n');
 
-    const contextLines = [
-      `Game: ${_gameMetadata.white || 'White'} vs ${_gameMetadata.black || 'Black'}, Result: ${_gameMetadata.result || '*'}`,
-      `Player color: ${state.playerColor}`,
-      `Accuracy: ${summary.accuracy ?? '?'}%`,
-      `Blunders: ${summary.blunders ?? 0}, Mistakes: ${summary.mistakes ?? 0}`,
-      `Opening: ${opening.name || 'unknown'}`,
-      moveData ? `Current move: ${moveData.san} (${moveData.classification}, eval ${moveData.evalBefore?.toFixed(2)} → ${moveData.eval?.toFixed(2)})` : '',
-      moveData?.bestMoveSan ? `Engine best: ${moveData.bestMoveSan}` : '',
-      `Player says: ${text}`
-    ].filter(Boolean).join('\n');
+    // Current move context — reflects wherever the user has navigated
+    const moveData   = moves.find(m => m.ply === currentPly) || null;
+    const currentFen = fens[currentPly] || null;
+    let currentMoveBlock;
+    if (moveData && currentPly > 0) {
+      const moveNum = Math.ceil(moveData.ply / 2);
+      const eb      = typeof moveData.evalBefore === 'number' ? moveData.evalBefore.toFixed(2) : '?';
+      const ea      = typeof moveData.eval       === 'number' ? moveData.eval.toFixed(2)       : '?';
+      const pv      = (moveData.pvSan || []).slice(0, 4).join(' ') || 'none';
+      currentMoveBlock =
+        `CURRENT MOVE BEING DISCUSSED: Move ${moveNum} — ${moveData.san}\n` +
+        `  FEN at this position: ${currentFen || 'not available'}\n` +
+        `  Eval before: ${eb}\n` +
+        `  Eval after: ${ea}\n` +
+        `  Classification: ${moveData.classification}\n` +
+        `  Engine best move: ${moveData.bestMoveSan || 'none'}\n` +
+        `  Engine line: ${pv}`;
+    } else {
+      currentMoveBlock = 'CURRENT MOVE: Start position (no specific move selected)';
+    }
 
-    const messages = [
-      ..._chatHistory.slice(-6).map(m => ({ role: m.role, content: m.content })),
-      { role: 'user', content: contextLines }
-    ];
+    const systemPrompt =
+`You are a chess coach reviewing a specific game. You have been given the EXACT game data below. Never guess, infer, or reconstruct positions — only reference moves, pieces, and positions that are explicitly stated in the data provided. If the user asks about something not in the data, say you don't have enough information rather than guessing.
+
+GAME DATA:
+- PGN: ${pgn}
+- Player color: ${state.playerColor}
+- Final accuracy: ${summary.accuracy ?? '?'}%
+- Blunders: ${summary.blunders ?? 0}, Mistakes: ${summary.mistakes ?? 0}, Inaccuracies: ${summary.inaccuracies ?? 0}
+- Opening: ${opening.name || 'unknown'}
+
+MOVE LIST WITH CLASSIFICATIONS:
+${moveListLines}
+
+${currentMoveBlock}
+
+When the user asks about a specific move number, reference ONLY the data for that move as listed above. Never suggest piece locations you cannot confirm from the FEN or move list. Never suggest moves that aren't in the engine line provided. If you are not 100% certain of a piece's location from the data provided, do not mention it. Say "based on the position at move N" and reference only what the engine data confirms. Respond concisely (2-4 sentences). Be specific and technical.`;
+
+    // Messages includes current user msg already appended to _chatHistory above
+    const messages = _chatHistory.slice(-6).map(m => ({ role: m.role, content: m.content }));
 
     try {
       const response = await fetch(API_URL, {
