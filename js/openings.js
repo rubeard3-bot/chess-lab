@@ -6,8 +6,8 @@
   const MASTERS_EP = 'https://explorer.lichess.ovh/masters';
   const PLAYERS_EP = 'https://explorer.lichess.ovh/lichess';
 
-  const LIGHT = '#f0d9b5';
-  const DARK  = '#b58863';
+  const LIGHT = window.BOARD_LIGHT || '#f0d9b5';
+  const DARK  = window.BOARD_DARK  || '#b58863';
   const PX    = 420;
   const SQ    = PX / 8;
 

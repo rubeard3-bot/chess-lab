@@ -22,8 +22,8 @@ const Board = (() => {
 
   const pieceImages = {};
 
-  const LIGHT_SQ = '#f0d9b5';
-  const DARK_SQ  = '#b58863';
+  const LIGHT_SQ = window.BOARD_LIGHT || '#f0d9b5';
+  const DARK_SQ  = window.BOARD_DARK  || '#b58863';
 
   let canvas, ctx, wrap;
   let sqSize = 60;

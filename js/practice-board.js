@@ -2,8 +2,8 @@
   'use strict';
 
   // ── Constants ──────────────────────────────────────────────────────────
-  const LIGHT = '#f0d9b5';
-  const DARK  = '#b58863';
+  const LIGHT = window.BOARD_LIGHT || '#f0d9b5';
+  const DARK  = window.BOARD_DARK  || '#b58863';
 
   // Unicode fallback symbols (used only when an SVG fails to load)
   const SYM = {
