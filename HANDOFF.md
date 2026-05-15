@@ -44,7 +44,7 @@ Railway config: `server/railway.json` — builder: NIXPACKS, start command: `nod
 | cors | ^2.8.5 | Backend CORS middleware |
 | express-rate-limit | ^7.1.5 | Rate limiting |
 | node-fetch | ^2.7.0 | Fetch in Node (CommonJS) |
-| Claude model | `claude-sonnet-4-6` | `server/index.js:11`, `analysis.js:5`, `ui.js:1151` |
+| Claude model | `claude-sonnet-4-6` | `server/index.js:11`, `analysis.js:5`, `ui.js:1189`, `profile.html` |
 | Canvas API | Browser native | Board rendering (3 separate implementations) |
 | No bundler | — | No Webpack/Vite/Rollup; files loaded via `<script>` tags |
 | No framework | — | Vanilla JS throughout; IIFE module pattern |
@@ -62,10 +62,10 @@ chess_analyzer/
 │   └── railway.json          # Railway deploy config
 │
 ├── js/
-│   ├── app.js                # Main controller, state management, 637 lines
-│   ├── analysis.js           # Analysis pipeline (PGN→Stockfish→Claude), 322 lines
+│   ├── app.js                # Main controller, state management, 639 lines
+│   ├── analysis.js           # Analysis pipeline (PGN→Stockfish→Claude), 323 lines
 │   ├── board.js              # Canvas board for analyzer, 242 lines
-│   ├── ui.js                 # All UI/DOM rendering, 1340 lines
+│   ├── ui.js                 # All UI/DOM rendering, 1376 lines
 │   ├── engine.js             # Stockfish Web Worker wrapper, 201 lines
 │   ├── storage.js            # localStorage CRUD, 65 lines
 │   ├── nav.js                # Navigation drawer, 87 lines
@@ -78,11 +78,12 @@ chess_analyzer/
 │   └── stockfish.wasm        # WASM binary
 │
 ├── css/
-│   └── styles.css            # Global styles, 4003+ lines
+│   └── styles.css            # Global styles, 4000+ lines
 │
-├── index.html                # Homepage / ELO tracker
-├── analyzer.html             # Game Analyzer, 365 lines
-├── recommendations.html      # Recommendations dashboard, 561 lines
+├── index.html                # Dashboard — full-viewport layout with sidebar
+├── analyzer.html             # Game Analyzer, 374 lines
+├── profile.html              # Profile & Preferences — 1057 lines
+├── recommendations.html      # Recommendations dashboard
 ├── archive.html              # Game archive
 ├── import.html               # Chess.com import + mass import
 ├── openings.html             # Opening Explorer
@@ -117,7 +118,7 @@ chess_analyzer/
 | Canvas board with navigation | Live | `board.js` |
 | Player bars with captured pieces + material delta | Live | `ui.js renderMaterialBars()` |
 | Two-tab analyzer (Game Review / My Report) | Live | `analyzer.html`, `ui.js initTabs()` |
-| Coach chat (persistent, context-aware) | Live | `ui.js initCoachChat()`, `/api/analyze` |
+| Coach chat (persistent, context-aware, anti-hallucination) | Live | `ui.js initCoachChat()`, `/api/analyze` |
 | Eval timeline with phase labels + legend | Live | `ui.js renderEvalGraph()` |
 | Report card (grade circle A–F, phase accuracy bars) | Live | `ui.js renderGameSummary()`, `renderPhaseAccuracy()` |
 | Stat grid (blunders/mistakes/misses/inaccuracies/best/accuracy/result) | Live | `ui.js renderGameSummary()`, `updateStatGridMisses()` |
@@ -133,15 +134,71 @@ chess_analyzer/
 | Opening Explorer (Lichess data) | Live | `openings.js`, `openings.html` |
 | Opening Trainer (drill/hint/reveal) | Live | `openings.js` |
 | Practice Board with Stockfish | Live | `practice-board.js`, `practice.html` |
-| ELO tracker with SVG graph | Live | `index.html` |
-| "Opening Explorer" nav link | **Live** (fixed) | `nav.js:70-72` — navigates to `openings.html` |
-| `csa_api_key` Settings modal | **DEAD UI** | Nav drawer shows "Settings / API Key" button; `setupApiKeyModal()` in `app.js:230` is a no-op; `Storage.getApiKey()`/`setApiKey()` remain in `storage.js` but are never called by the app |
-| Study streak counter | **INCOMPLETE** | UI element exists in `index.html`; no tracking logic |
+| **Dashboard (full-viewport)** | **Live** | `index.html` — sidebar, hero, stats, recent games, weakness panel |
+| **Profile & Preferences page** | **Live** | `profile.html` — display name, avatar, rating/goal, board colors, coach prefs, danger zone |
+| **Board color theming** | **Live** | `pf_board_light`/`pf_board_dark` → `window.BOARD_LIGHT`/`BOARD_DARK` → board renderers |
+| **Study streak counter** | **Live (partial)** | `index.html` — counts unique calendar days in last 30 days with analyzed games; not a consecutive-day counter |
+| "Opening Explorer" nav link | Live | `nav.js:70-72` — navigates to `openings.html` |
+| `csa_api_key` Settings modal | **DEAD UI** | Nav drawer shows "Settings / API Key" button; `setupApiKeyModal()` in `app.js:232` is a no-op; `Storage.getApiKey()`/`setApiKey()` remain in `storage.js` but are never called |
 | SSE / streaming progress | **NOT BUILT** | Stockfish progress is WASM-side only; no server-sent events |
+| Tactics trainer | **NOT BUILT** | Referenced in Next Steps UI as "coming soon" |
+| My Progress page | **NOT BUILT** | Nav item shows "Soon" badge |
 
 ---
 
-## 6. Full Analysis Flow
+## 6. Dashboard Layout (`index.html`)
+
+The dashboard is a full-viewport layout (`html, body { height: 100%; overflow: hidden }`), split into a 220px left sidebar and a scrollable main area.
+
+### Left Sidebar (`db-sidebar`)
+- **Logo** — "Chess Lab" with accent dot
+- **Profile section** — avatar circle (letter + custom color), display name or chess.com username, current rating + delta arrow (↑/↓ vs previous entry), goal progress bar with labels
+- **Nav** — links to Dashboard (active), Analyzer, Openings, Practice, Archive, Recommendations, Import Games, Profile & Preferences; "Tactics" shown as disabled with "Soon" badge
+- **Sidebar badges** — Archive shows game count; Openings shows amber "Drill" badge when opening scores have weak lines
+- **Footer** — ⚙ Settings button (no action wired), chess.com connection status dot (gray/green)
+
+### Hero Section (not scrollable)
+- **Greeting** — time-of-day aware ("Good morning/afternoon/evening, [name]!") from `pf_display_name` or `csa_chesscom_username`
+- **Chips row** — last game result (W/L/D + accuracy %), top weakness name (amber, from `csa_recommendations`), current rating (if set)
+- **Mini SVG rating-trend chart** (110×44px) — plots ELO history, dashed goal line; hidden if no goal set
+- **Today's focus card** — driven by `recs.topWeaknesses[0]`; shows 2-sentence description, primary action button ("Analyze a game" or "Drill openings"), optional "Review last game" and "Full recommendations" buttons
+
+### Content Area (scrollable, `db-content`)
+- **Features grid** (3 cards) — Game Analyzer (primary/blue), Opening Explorer, Practice Board
+- **Stats grid** (4 cards) — Avg accuracy (with ↑/↓/→ trend), Games analyzed (+ this week), Avg blunders (with trend), Study streak (unique active days in last 30)
+- **Two-column section** — Recent Games (last 5, W/L/D circle + opponent + accuracy + Review button) | Top Weakness (top 2 from `recs.topWeaknesses`, "Drill this pattern" button)
+
+---
+
+## 7. Profile & Preferences Page (`profile.html`)
+
+Two-column layout: settings form left, coach setup chat right. Same `db-sidebar` left sidebar as dashboard.
+
+### Settings Form Sections
+
+1. **Identity** — display name (saved to `pf_display_name`), avatar color (6 presets → `pf_avatar_color`), chess.com username (synced to `csa_chesscom_username`)
+2. **Chess Profile** — current rating → `csa_elo_current`, rating goal → `csa_elo_goal`, experience (select), preferred time control (pill group → `pf_time_control`), chess goals textarea → `pf_goals`
+3. **Coach Preferences** — coach tone pill group → `pf_coach_tone` (encouraging/direct/tough-love), explanation depth → `pf_explanation_depth` (brief/detailed/technical)
+4. **Board Customization** — light square swatches → `pf_board_light`, dark square swatches → `pf_board_dark`, plus custom color pickers; 4×4 live preview grid updates in real time
+5. **App Accent Color** — 7 color circles → `pf_accent_color` (saved but not yet wired to CSS variables)
+6. **Behavior** — "Auto-run recommendations" toggle → `pf_auto_recommendations`; "Show engine lines by default" → `pf_show_engine_lines`; default practice side → `pf_practice_side`
+7. **Danger Zone** — two-click confirmation pattern (first click changes text to "Confirm — this cannot be undone"; second click executes):
+   - Reset rating goal (clears `csa_elo_goal`, `csa_elo_start`, `csa_elo_history`)
+   - Clear game archive (deletes all `csa_game_*` keys)
+   - Clear recommendations (removes `csa_recommendations`)
+   - Clear opening drill scores (removes `csa_opening_scores`)
+   - Disconnect chess.com (removes `csa_chesscom_username`)
+   - Reset everything (clears all `csa_*` and `pf_*` keys)
+
+**Save flow**: reads all fields/pills/swatches on button click, validates rating/goal (0–4000), writes to localStorage. If chess.com username changed, clears `csa_chesscom_*` sessionStorage keys.
+
+### Coach Setup Chat (right column)
+
+A conversational interface powered by `claude-sonnet-4-6` via `/api/analyze`. Claude acts as a friendly setup coach. On page load, it sends a greeting. Quick-reply chips offered initially ("I'm a beginner", etc.). System prompt includes current profile state so Claude can make personalized recommendations. "Apply coach suggestions" button shows a toast directing user to update the form manually.
+
+---
+
+## 8. Full Analysis Flow
 
 ```
 User pastes PGN
@@ -175,11 +232,14 @@ User pastes PGN
 
 ---
 
-## 7. Railway Endpoints
+## 9. Railway Endpoints
 
 ### POST /api/analyze
 Thin proxy to Anthropic. Forwards `{ model, max_tokens, messages, system? }` directly.  
-Used by `analysis.js` for per-game coaching (max_tokens: 8000) and by `ui.js` for coach chat (max_tokens: 300).
+Used by:
+- `analysis.js` for per-game coaching (max_tokens: 8000)
+- `ui.js _sendChat()` for analyzer coach chat (max_tokens: 300, includes full system prompt with game data)
+- `profile.html` coach setup chat (max_tokens: 400, system prompt includes current profile state)
 
 ### POST /api/recommendations
 Aggregates game history, fires **3 Claude calls in parallel** via `Promise.all`.  
@@ -200,7 +260,76 @@ Max tokens: 350.
 
 ---
 
-## 8. localStorage Reference
+## 10. Coach Chat Anti-Hallucination System
+
+The analyzer coach chat (`ui.js _sendChat()`) had a hallucination problem — Claude was guessing piece positions and moves not in the actual game. This was fixed by building a comprehensive system prompt that includes all concrete game data:
+
+```
+System prompt includes:
+- Full PGN text
+- Player color
+- Final accuracy, blunders, mistakes, inaccuracies
+- Opening name
+- Complete move list: every move with ply, SAN, classification, eval before→after,
+  engine best move, engine continuation (4 half-moves)
+- Current position: move number, SAN, FEN at that ply, full eval/classification/PV data
+
+Anti-hallucination rules (verbatim in prompt):
+- "Never suggest piece locations you cannot confirm from the FEN or move list."
+- "Never suggest moves that aren't in the engine line provided."
+- "If you are not 100% certain of a piece's location from the data provided, do not mention it."
+- "If the user asks about something not in the data, say you don't have enough information
+  rather than guessing."
+```
+
+Chat history is kept to last 6 messages (`_chatHistory.slice(-6)`). The system prompt rebuilds on every send, so navigating to a different move mid-chat immediately updates the coach's context.
+
+---
+
+## 11. Board Color Theming
+
+Board colors flow through three layers:
+
+**1. Profile page saves colors:**
+```
+profile.html → lsSet('pf_board_light', color) / lsSet('pf_board_dark', color)
+```
+
+**2. Each board page injects globals before loading board JS:**
+```html
+<!-- In analyzer.html, practice.html, openings.html — runs before board JS: -->
+<script>
+  try {
+    var _bl = localStorage.getItem('pf_board_light');
+    var _bd = localStorage.getItem('pf_board_dark');
+    if (_bl) window.BOARD_LIGHT = _bl;
+    if (_bd) window.BOARD_DARK  = _bd;
+  } catch (_) {}
+</script>
+```
+
+**3. Board renderers read globals with fallback to defaults:**
+```js
+// board.js:25-26
+const LIGHT_SQ = window.BOARD_LIGHT || '#f0d9b5';
+const DARK_SQ  = window.BOARD_DARK  || '#b58863';
+
+// practice-board.js:5-6
+const LIGHT = window.BOARD_LIGHT || '#f0d9b5';
+const DARK  = window.BOARD_DARK  || '#b58863';
+
+// openings.js:9-10
+const LIGHT = window.BOARD_LIGHT || '#f0d9b5';
+const DARK  = window.BOARD_DARK  || '#b58863';
+```
+
+Default colors: light `#f0d9b5` (cream), dark `#b58863` (brown) — classic wood look.
+
+---
+
+## 12. localStorage Reference
+
+### `csa_*` keys (app data)
 
 | Key | Type | Purpose | Set by | Max size |
 |---|---|---|---|---|
@@ -208,10 +337,32 @@ Max tokens: 350.
 | `csa_recommendations` | Object | Latest recommendations JSON from 3-call Claude | `recommendations.js` | 1 entry |
 | `csa_recommendations_meta` | Object | `{ gameCount, generatedAt }` — staleness tracking | `recommendations.js` | 1 entry |
 | `csa_opening_scores` | Object | Opening Trainer drill scores per opening | `openings.js` | Unbounded |
+| `csa_chesscom_username` | String | Chess.com username; auto-detects player color from PGN | `import.html` / `profile.html` | — |
+| `csa_elo_current` | Number | Current ELO rating | `index.html` / `profile.html` | — |
+| `csa_elo_goal` | Number | Target ELO goal | `index.html` / `profile.html` | — |
+| `csa_elo_start` | Number | ELO at time goal was set (for progress bar denominator) | `index.html` | — |
+| `csa_elo_history` | Array | `[{ date, elo }]` — rating history for trend chart | `index.html` | Unbounded |
 | `csa_api_key` | String | **DEAD** — stored and readable but never used by the app | `storage.js setApiKey()` | — |
-| `csa_chesscom_username` | String | Used to auto-detect player color from PGN | `import.html` / `chesscom.js` | — |
 
-**sessionStorage keys** (page-lifetime only):
+### `pf_*` keys (profile/preferences)
+
+| Key | Type | Default | Purpose |
+|---|---|---|---|
+| `pf_display_name` | String | — | User's display name for greetings and coach |
+| `pf_avatar_color` | String | `#1e3a5f` | Background color of avatar circle |
+| `pf_accent_color` | String | `#3b82f6` | App accent color (saved, not yet applied to CSS vars) |
+| `pf_board_light` | String | `#f0d9b5` | Light square color for all boards |
+| `pf_board_dark` | String | `#b58863` | Dark square color for all boards |
+| `pf_experience` | String | — | How long playing: `less-than-1`, `1-3`, `3-5`, `5-plus` |
+| `pf_time_control` | String | — | `bullet`, `blitz`, `rapid`, `classical` |
+| `pf_goals` | String | — | Free-text chess goals; read by Claude in coaching prompts |
+| `pf_coach_tone` | String | — | `encouraging`, `direct`, `tough-love` |
+| `pf_explanation_depth` | String | — | `brief`, `detailed`, `technical` |
+| `pf_practice_side` | String | `white` | Default side on practice board: `white`, `black`, `random` |
+| `pf_auto_recommendations` | Boolean | `true` | Re-run recommendations after each game |
+| `pf_show_engine_lines` | Boolean | `false` | Expand engine continuation by default |
+
+### sessionStorage keys (page-lifetime only)
 
 | Key | Purpose |
 |---|---|
@@ -223,14 +374,15 @@ Max tokens: 350.
 | `az_critical_ply` | Ply number of worst blunder, used to set practice FEN |
 | `az_critical_fen` | FEN of worst blunder position, passed to practice.html |
 | `practice_fen` | FEN loaded into practice board |
+| `csa_review_game_id` | Set by dashboard "Review last game" — **NOT YET CONSUMED** by analyzer.html (see Known Issues) |
 
 ---
 
-## 9. Config Values
+## 13. Config Values
 
 | Setting | Value | File | Notes |
 |---|---|---|---|
-| Claude model | `claude-sonnet-4-6` | `server/index.js:11`, `analysis.js:5`, `ui.js:1151` | Current |
+| Claude model | `claude-sonnet-4-6` | `server/index.js:11`, `analysis.js:5`, `ui.js:1189`, `profile.html` | Current |
 | Railway URL | `https://chess-lab-production.up.railway.app` | `analysis.js:3-4`, `ui.js:16-17`, `recommendations.js:7-8`, `openings.js:5` | |
 | Anthropic API tier | Tier 2 | `server/index.js:322` (comment) | Allows parallel calls without 429 concern |
 | Stockfish depth (analyzer) | `20` | `engine.js:3` | |
@@ -239,15 +391,18 @@ Max tokens: 350.
 | Rate limit | `10 req / 60s` | `server/index.js:32-37` | Shared across all routes |
 | Theory cache size | `200 entries` | `server/index.js:402` | In-memory only; clears on deploy |
 | Max tokens — analyze | `8000` | `analysis.js:229` | Per-game coaching |
-| Max tokens — coach chat | `300` | `ui.js:1151` | Short conversational replies |
+| Max tokens — coach chat (analyzer) | `300` | `ui.js:1189` | Short conversational replies |
+| Max tokens — coach chat (profile) | `400` | `profile.html` | Setup conversation |
 | Max tokens — recommendations | `4000 × 3` | `server/index.js:89` (via `callClaude` helper) | Per parallel call |
 | Max tokens — theory | `350` | `server/index.js:386` | |
+| Board default light | `#f0d9b5` | `board.js:25`, `practice-board.js:5`, `openings.js:9` | Fallback when no pf_board_light set |
+| Board default dark | `#b58863` | `board.js:26`, `practice-board.js:6`, `openings.js:10` | Fallback when no pf_board_dark set |
 | Opening Trainer max tree nodes | `50` | `openings.js` | Lichess API tree build |
 | Opening Trainer max depth | `4` | `openings.js` | Half-moves from root |
 
 ---
 
-## 10. Development Workflow
+## 14. Development Workflow
 
 **To run locally:**
 ```bash
@@ -261,7 +416,7 @@ ANTHROPIC_API_KEY=sk-ant-... node index.js   # runs on :4000
 npx serve . -p 3000
 ```
 
-`analysis.js`, `ui.js`, and `recommendations.js` each auto-switch Railway URL ↔ localhost:4000 based on `window.location.hostname === 'localhost'`.
+`analysis.js`, `ui.js`, `recommendations.js`, and `openings.js` each auto-switch Railway URL ↔ localhost:4000 based on `window.location.hostname === 'localhost'`.
 
 **To deploy:**
 - Push to `main` → GitHub Pages rebuilds frontend automatically
@@ -271,7 +426,7 @@ npx serve . -p 3000
 
 ---
 
-## 11. Architecture Decisions
+## 15. Architecture Decisions
 
 **Why Railway proxy instead of direct Anthropic calls?**  
 The Anthropic API key must never be in frontend JS. The Railway proxy keeps the key server-side only, while still allowing a fully static GitHub Pages frontend.
@@ -291,14 +446,17 @@ A single prompt combining all analysis sections would approach Claude's context 
 **Why does board render before Claude returns?**  
 Stockfish analysis (the slow, compute-heavy step) completes first. Rendering the board and move list immediately after Stockfish means the user can start reviewing moves while Claude composes coaching text. This reduces perceived latency from ~20s to ~5s.
 
+**Why `window.BOARD_LIGHT`/`BOARD_DARK` globals for board colors?**  
+Board renderers are IIFEs that capture their constants at module parse time. Passing colors as globals set in an inline `<script>` block before the module loads is the simplest approach without a build system. Each board page reads from localStorage and sets the globals just before loading the board JS file.
+
 ---
 
-## 12. Analyzer Layout (Two-Tab Design)
+## 16. Analyzer Layout (Two-Tab Design)
 
 ### Game Review tab (default)
 - **Pinned top**: Move detail card — classification badge, eval before/after, "you played / best move" row, Claude coaching text, collapsible engine PV line
 - **Scrollable middle**: Eval timeline (60px SVG, clickable, blunder/mistake/miss markers), Opening panel (name, ECO, deviation, explore link)
-- **Pinned bottom**: Coach chat — persistent multi-turn conversation, context-aware (knows current move and full game)
+- **Pinned bottom**: Coach chat — persistent multi-turn conversation, context-aware (knows current move and full game); system prompt rebuilt per message
 
 ### My Report tab
 - **Report card**: Letter grade (A=90%+, B=80%+, C=70%+, D=60%+, F=below), phase accuracy progress bars (Opening/Middlegame/Endgame)
@@ -317,7 +475,7 @@ Stockfish analysis (the slow, compute-heavy step) completes first. Rendering the
 
 ---
 
-## 13. Move Classification Details
+## 17. Move Classification Details
 
 **Win percentage from centipawns (white's perspective):**
 ```
@@ -357,33 +515,39 @@ Note: `miss` is checked before `inaccuracy` and `mistake` in the classification 
 
 ---
 
-## 14. Known Issues (Confirmed by Audit)
+## 18. Known Issues (Confirmed by Audit)
 
 ### Medium Priority
 
 1. **Dead Settings modal / API key stub**  
-   The nav drawer on every page shows a "Settings / API Key" button (`#change-api-key-link`). Clicking it on non-analyzer pages redirects to `index.html`; on the analyzer page it does nothing (the `setupApiKeyModal()` function is a no-op). `storage.js` still exports `getApiKey()`/`setApiKey()` but nothing calls them. This confuses users who think they need to supply a key. Options: remove the button entirely, or wire it to useful settings (theme, board colors, etc.).
+   The nav drawer on every page shows a "Settings / API Key" button (`#change-api-key-link`). Clicking it on non-analyzer pages redirects to `index.html`; on the analyzer page it does nothing (`setupApiKeyModal()` in `app.js:232` is a no-op). `storage.js` still exports `getApiKey()`/`setApiKey()` but nothing calls them. Options: remove the button entirely, or wire it to the Profile page.
 
-2. **Study streak counter incomplete**  
-   A study streak UI element exists in `index.html` but there is no tracking or increment logic anywhere in the codebase.
+2. **`csa_review_game_id` sessionStorage key is set but never consumed**  
+   The dashboard's "Review last game" button and recent game rows set `sessionStorage.setItem('csa_review_game_id', 'csa_game_' + id)` and navigate to `analyzer.html`. But `app.js init()` only reads `?gameId=` from the URL query string — it never reads `csa_review_game_id`. Clicking "Review last game" opens the analyzer at the empty drop zone state instead of loading the game.
+
+3. **Study streak is "active days" not "consecutive days"**  
+   The stat grid shows a "Study streak" which counts unique calendar days in the last 30 days with at least one analyzed game. It is not a traditional consecutive-day streak. The label is misleading and will always reset to showing a count regardless of gaps.
 
 ### Low Priority
 
-3. **No fetch timeout on Claude calls**  
+4. **No fetch timeout on Claude calls**  
    Neither `analysis.js callClaude()` nor the coach chat in `ui.js._sendChat()` use an `AbortController`. A hung Anthropic API call can block the client for the full Railway request timeout (~30s). The recommendations endpoint has a 2-attempt retry but no timeout on individual attempts.
 
-4. **Race condition on async Claude return**  
+5. **Race condition on async Claude return**  
    If the user starts a second analysis while Claude is still processing the first, the `.then()` callback from the first call updates `state.analysisData` and rerenders the UI. No cancellation token exists. Mitigated in practice because Claude typically responds in 5–15s, but possible on slow connections.
 
-5. **In-memory theory cache resets on deploy**  
+6. **In-memory theory cache resets on deploy**  
    `/api/theory` cache is a `Map()`. Every Railway deploy clears it. Not critical, but repeated deploys generate extra API calls for frequently-visited openings.
 
-6. **`response._partialFailure` check is dead (non-200 path)**  
-   `recommendations.js:65` checks `if (response._partialFailure)` on the raw `Response` object inside the `!response.ok` branch. This will never be true (Response objects don't have that property). However, this branch only runs when the server returned a non-200 status, which means there's no partial JSON body anyway — so it's dead code but harmless. The actual `_partialFailure` handling at line 75 (checking the parsed JSON) is correct.
+7. **`response._partialFailure` check is dead (non-200 path)**  
+   `recommendations.js:65` checks `if (response._partialFailure)` on the raw `Response` object inside the `!response.ok` branch. This will never be true (Response objects don't have that property). The actual `_partialFailure` handling at line 75 (checking the parsed JSON) is correct.
+
+8. **`pf_accent_color` is saved but not applied**  
+   Profile page saves accent color to `pf_accent_color`, but no code reads this key to update CSS custom properties at runtime. The feature is UI-only without the wiring.
 
 ---
 
-## 15. Connected Learning Loop
+## 19. Connected Learning Loop
 
 The "connected learning loop" works as follows:
 
@@ -394,13 +558,14 @@ The "connected learning loop" works as follows:
 5. Results merged and stored to `csa_recommendations` + `csa_recommendations_meta` in localStorage
 6. `recommendations.html` reads `csa_recommendations` on load and renders the full dashboard
 7. Analyzer's My Report tab reads `csa_recommendations` for "Patterns Spotted" section
-8. Opening Trainer stores per-opening drill scores in `csa_opening_scores`
+8. Dashboard reads `csa_recommendations` for the "Today's focus" card and "Top weakness" panel
+9. Opening Trainer stores per-opening drill scores in `csa_opening_scores`
 
 The loop is: analyze game → get move-level feedback → see cross-game patterns → drill weak openings → re-analyze future games.
 
 ---
 
-## 16. Commercialization Notes
+## 20. Commercialization Notes
 
 Current state: single-user, no auth, no billing, no user accounts.
 
@@ -414,12 +579,14 @@ If commercializing: the most natural path is per-user API key passthrough (user 
 
 ---
 
-## 17. Build Roadmap
+## 21. Build Roadmap
 
 Items remaining from code audit (not a committed roadmap — inferred from code state):
 
-- [ ] Remove or repurpose dead "Settings / API Key" nav button
-- [ ] Implement study streak tracking (counter exists in `index.html` UI)
+- [ ] Fix "Review last game" on dashboard — consume `csa_review_game_id` sessionStorage in `app.js init()`, or pass game ID via URL param
+- [ ] Wire `pf_accent_color` to CSS custom properties at runtime
+- [ ] Replace or repurpose dead "Settings / API Key" nav button (link to profile.html instead)
+- [ ] Make study streak count consecutive days instead of unique active days
 - [ ] Add `AbortController` to Claude fetch calls with ~20s timeout
 - [ ] Fix race condition in async Claude callbacks (cancellation token or guard)
 - [ ] Remove dead `response._partialFailure` check at `recommendations.js:65` (non-200 path)
@@ -428,17 +595,17 @@ Items remaining from code audit (not a committed roadmap — inferred from code 
 
 ---
 
-## 18. Recent Changes Log
+## 22. Recent Changes Log
 
 Based on git log at time of audit:
 
 | Commit | Change |
 |---|---|
-| `3cfaa71` | Fix analyzer layout — syntax error, grid columns, tab panels, eval bar, player bars |
-| `661147e` | Analyzer overhaul — two tabs, material count, coach chat, timeline, report card |
-| `1011034` | Add miss move classification — amber badge, positional context detection, coach awareness |
-| `2a9fd01` | Fix Claude model to 4-6, fix Opening Explorer nav link, remove dead API key modal |
-| `be58ff3` | Add HANDOFF.md — full project audit and living project bible |
+| `e5baf2d` | Wire board color globals into board.js, practice-board.js, openings.js |
+| `a58ade5` | Fix coach chat hallucination — full game data in system prompt, FEN per ply, anti-hallucination rules |
+| `168d2e3` | Add profile page, coach chat fix, board color overrides, danger zone resets |
+| `8d360e4` | Dashboard overhaul — full viewport layout, sidebar, hero, stats, recent games, weakness panel |
+| `9fd1dbc` | Regenerate HANDOFF.md — post analyzer overhaul, Tier 2, speed fixes |
 
 ---
 
@@ -456,11 +623,14 @@ Based on git log at time of audit:
 10. `js/nav.js`
 11. `js/recommendations.js`
 12. `js/chesscom.js`
-13. `js/openings.js` *(glob confirmed; content well-understood from prior sessions)*
-14. `js/practice-board.js` *(glob confirmed; content well-understood from prior sessions)*
+13. `js/openings.js` *(first 50 lines — board color constants confirmed; full content from prior audit)*
+14. `js/practice-board.js` *(first 50 lines — board color constants confirmed; full content from prior audit)*
 15. `analyzer.html`
-16. `recommendations.html`
-17. `CNAME`
+16. `index.html`
+17. `profile.html`
+18. `openings.html` *(grep for board color injection)*
+19. `practice.html` *(grep for board color injection)*
+20. `CNAME`
 
 ---
 
