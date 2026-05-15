@@ -4219,10 +4219,10 @@ body.analyzer-page #app {
    BODY (columns)
    ════════════════════════════════════════ */
 .az-body {
-  flex: 1;
-  display: flex;
+  display: grid;
+  grid-template-columns: 340px 1fr;
+  height: calc(100vh - 84px);
   overflow: hidden;
-  min-height: 0;
 }
 
 /* ════════════════════════════════════════
@@ -4245,9 +4245,11 @@ body.analyzer-page #app {
   gap: 8px;
   padding: 5px 10px;
   flex-shrink: 0;
+  background: #111827;
+  color: #e2e8f0;
 }
-.az-player-bar-top  { border-bottom: 1px solid var(--az-border); }
-.az-player-bar-bottom { border-top: 1px solid var(--az-border); }
+.az-player-bar-top  { border-bottom: 1px solid #1e2d40; }
+.az-player-bar-bottom { border-top: 1px solid #1e2d40; }
 
 .az-pb-name {
   font-size: 13px;
@@ -4270,6 +4272,7 @@ body.analyzer-page #app {
   display: flex;
   flex-direction: row;
   flex-shrink: 0;
+  position: relative;
 }
 
 /* Eval bar inside new layout */
@@ -4353,6 +4356,7 @@ body.analyzer-page #app {
 /* Tab panels */
 .az-tab-panel { display: none; flex-direction: column; flex: 1; overflow: hidden; min-height: 0; }
 .az-tab-panel.az-tab-panel-active { display: flex; }
+.az-tab-panel.hidden { display: none; }
 
 /* ════════════════════════════════════════
    DROP ZONE PANEL

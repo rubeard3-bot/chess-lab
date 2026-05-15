@@ -1157,7 +1157,7 @@ const UI = (() => {
       _removeTyping();
       if (!response.ok) { _appendCoachMsg('Sorry, I had trouble connecting. Try again.'); return; }
       const data = await response.json();
-      const reply = data?.content?.[0]?.text || 'I'm not sure — try rephrasing.';
+      const reply = data?.content?.[0]?.text || "I'm not sure — try rephrasing.";
       _appendCoachMsg(reply);
     } catch (_) {
       _removeTyping();
