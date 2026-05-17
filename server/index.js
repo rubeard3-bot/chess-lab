@@ -55,6 +55,11 @@ function parseResponse(text, label) {
     .replace(/```\s*$/i, '')
     .trim();
 
+  if (!json.endsWith('}')) {
+    console.error(`[${label}] Response truncated — missing closing brace, length: ${json.length}`);
+    return null;
+  }
+
   const firstBrace = json.indexOf('{');
   const lastBrace  = json.lastIndexOf('}');
   if (firstBrace !== -1 && lastBrace > firstBrace) {
@@ -157,12 +162,16 @@ function buildGamesSummary(games) {
       theorySays:  g.analysis?.opening?.theorySays  || '',
       bookedUntil: g.analysis?.opening?.bookedUntil || null
     },
-    moves: (g.analysis?.moves || []).map(m => ({
-      ply:            m.ply,
-      san:            m.san,
-      classification: m.classification,
-      evalLoss:       m.evalLoss
-    }))
+    moves: (g.analysis?.moves || [])
+      .filter(m => ['blunder', 'mistake', 'miss', 'inaccuracy'].includes(m.classification))
+      .sort((a, b) => (b.evalLoss || 0) - (a.evalLoss || 0))
+      .slice(0, 15)
+      .map(m => ({
+        ply:            m.ply,
+        san:            m.san,
+        classification: m.classification,
+        evalLoss:       m.evalLoss
+      }))
   }));
 }
 
@@ -323,9 +332,9 @@ When citing specific games as examples, always include the gameId in examples ar
     /* -- Fire all 3 calls in parallel (Tier 2 rate limits have ample headroom) */
     console.log('[Recommendations] Firing all 3 Claude calls in parallel...');
     const [result1, result2, result3] = await Promise.all([
-      callClaude(prompt1, 'Call1-Core',          2500),
-      callClaude(prompt2, 'Call2-OpenTactics',   1500),
-      callClaude(prompt3, 'Call3-StudyPlan',     1500)
+      callClaude(prompt1, 'Call1-Core',          8000),
+      callClaude(prompt2, 'Call2-OpenTactics',   8000),
+      callClaude(prompt3, 'Call3-StudyPlan',     8000)
     ]);
 
     /* -- Merge --------------------------------------------------------- */
