@@ -6430,3 +6430,333 @@ body.pf-page {
 .gp-back-btn:hover { color: #93c5fd; }
 .gp-back-btn.hidden { display: none; }
 
+/* ════════════════════════════════════════════════════════════
+   RECOMMENDATIONS — NEW LAYOUT  (rec- prefix, added for
+   dashboard-style redesign; never modifies existing classes)
+   ════════════════════════════════════════════════════════════ */
+
+/* ── Root grid shell ── */
+.rec-layout {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+}
+
+/* ── Right main column ── */
+.rec-main {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+  background: #0d1321;
+  min-width: 0;
+}
+
+/* ── Topbar (44px) ── */
+.rec-topbar {
+  height: 44px;
+  min-height: 44px;
+  background: #111827;
+  border-bottom: 1px solid #1e2d40;
+  padding: 0 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+
+.rec-topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.rec-topbar-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #e2e8f0;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.rec-topbar-divider {
+  color: #1e2d40;
+  font-size: 14px;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.rec-topbar-meta {
+  font-size: 11px;
+  color: #6b7280;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rec-topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* ── Topbar buttons ── */
+.rec-btn-topbar {
+  background: #1e2d40;
+  border: 1px solid #1e2d40;
+  border-radius: 5px;
+  padding: 5px 12px;
+  font-size: 11px;
+  color: #94a3b8;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+  font-family: inherit;
+  white-space: nowrap;
+}
+.rec-btn-topbar:hover    { border-color: #3b82f6; color: #e2e8f0; }
+.rec-btn-topbar:disabled { opacity: 0.55; cursor: not-allowed; }
+
+/* ── Scrollable content ── */
+.rec-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 24px 48px;
+  background: #0d1321;
+}
+
+/* ── Empty state (centred in flex column) ── */
+.rec-main > .rec-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ── Section labels (10px uppercase caps) ── */
+.rec-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: #6b7280;
+  margin-bottom: 10px;
+  margin-top: 22px;
+  display: block;
+}
+
+/* ── Label + time on one row (Weekly Study Plan header) ── */
+.rec-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 22px;
+  margin-bottom: 10px;
+}
+.rec-label-row .rec-total-time {
+  font-size: 10px;
+  color: #6b7280;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+/* ── Overall Assessment card ── */
+.rec-assess-card {
+  background: #111827;
+  border: 1px solid #1e2d40;
+  border-radius: 8px;
+  padding: 14px 16px;
+  margin-bottom: 4px;
+}
+
+.rec-coach-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.rec-coach-avatar {
+  font-size: 20px;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.rec-card-heading {
+  font-size: 13px;
+  font-weight: 600;
+  color: #e2e8f0;
+  line-height: 1.2;
+}
+
+.rec-card-sub {
+  font-size: 10px;
+  color: #6b7280;
+  margin-top: 2px;
+}
+
+/* ── Phase score chips ── */
+.rec-phase-chips {
+  display: flex;
+  gap: 10px;
+  margin-top: 14px;
+  flex-wrap: wrap;
+}
+
+.rec-phase-chip {
+  background: #0d1321;
+  border: 1px solid #1e2d40;
+  border-radius: 6px;
+  padding: 8px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: 72px;
+}
+
+.rec-phase-chip-lbl {
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #6b7280;
+}
+
+.rec-phase-chip-val {
+  font-size: 26px;
+  font-weight: 800;
+  color: #e2e8f0;
+  line-height: 1;
+}
+
+/* ── Two-column grid ── */
+.rec-two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  align-items: start;
+  margin-top: 22px;
+}
+
+/* Phase analysis cards stack 1-wide inside the two-col right column */
+.rec-two-col .rec-phase-cards-grid {
+  grid-template-columns: 1fr;
+}
+
+/* Bottom two-col (Goals + Coach) needs no extra top margin from inner labels */
+.rec-two-col-bot { margin-top: 22px; }
+
+/* ── Weekly Study Plan — 7-day grid ── */
+.rec-study-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 8px;
+}
+
+/* Override horizontal flex layout for narrow grid cells */
+.rec-study-grid .rec-week-day {
+  flex-direction: column;
+  gap: 5px;
+  padding: 10px 8px;
+  margin-bottom: 0;
+  background: #111827;
+  border: 1px solid #1e2d40;
+  border-radius: 6px;
+  min-height: 0;
+}
+
+/* Remove alternating row tints inside the grid */
+.rec-study-grid .rec-week-day.even,
+.rec-study-grid .rec-week-day.odd { background: #111827; }
+
+.rec-study-grid .rec-day-name {
+  width: auto;
+  font-size: 11px;
+  font-weight: 700;
+  color: #e2e8f0;
+  padding-top: 0;
+  padding-bottom: 5px;
+  border-bottom: 1px solid #1e2d40;
+}
+
+.rec-study-grid .rec-day-body  { flex: unset; }
+
+.rec-study-grid .rec-day-focus {
+  font-size: 11px;
+  color: #94a3b8;
+  margin-bottom: 3px;
+}
+
+.rec-study-grid .rec-day-activities li {
+  font-size: 10px;
+  color: #6b7280;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: block;
+  padding: 0;
+  gap: 0;
+}
+
+.rec-study-grid .rec-day-activities li::before { display: none; }
+
+.rec-study-grid .rec-day-duration {
+  width: auto;
+  text-align: left;
+  font-size: 10px;
+  color: #6b7280;
+  padding-top: 5px;
+  border-top: 1px solid #1e2d40;
+}
+
+/* ── Coach message card — blue left border in new layout ── */
+.rec-coach-card-styled {
+  background: #111827 !important;
+  border: 1px solid #1e2d40 !important;
+  border-left: 3px solid #3b82f6 !important;
+  padding: 18px 20px !important;
+}
+
+/* ── Card hover transitions for clickable items ── */
+.rec-scroll .rec-weakness-card    { transition: border-color 0.15s ease; }
+.rec-scroll .rec-weakness-card:hover    { border-color: #3b82f6; }
+.rec-scroll .rec-opening-card     { transition: border-color 0.15s ease; }
+.rec-scroll .rec-opening-card:hover     { border-color: #3b82f6; }
+.rec-scroll .rec-tactic-card      { transition: border-color 0.15s ease; }
+.rec-scroll .rec-tactic-card:hover      { border-color: #3b82f6; }
+.rec-scroll .rec-improvement-card { transition: border-color 0.15s ease; }
+.rec-scroll .rec-improvement-card:hover { border-color: #3b82f6; }
+.rec-scroll .rec-goal-card        { transition: border-color 0.15s ease; }
+.rec-scroll .rec-goal-card:hover        { border-color: #3b82f6; }
+
+/* ── Text brightness — #94a3b8 for content, #e2e8f0 for headings ── */
+.rec-scroll .rec-overall-text         { color: #94a3b8; line-height: 1.65; }
+.rec-scroll .rec-repertoire-assessment { color: #94a3b8; }
+.rec-scroll .rec-weakness-desc        { color: #94a3b8; }
+.rec-scroll .rec-opening-mistake      { color: #94a3b8; }
+.rec-scroll .rec-phase-assessment     { color: #94a3b8; }
+.rec-scroll .rec-tactic-desc          { color: #94a3b8; }
+.rec-scroll .rec-improvement-evidence { color: #94a3b8; }
+.rec-scroll .rec-improvement-msg      { color: #94a3b8; }
+.rec-scroll .rec-goal-achieve         { color: #94a3b8; }
+.rec-scroll .rec-coach-msg-text       { color: #94a3b8; }
+.rec-scroll .rec-drill-item           { color: #94a3b8; }
+.rec-scroll .rec-day-focus            { color: #94a3b8; }
+.rec-scroll .rec-none-msg             { color: #6b7280; }
+
+/* ── Severity badge colors — solid dark/bright palette ── */
+.rec-scroll .rec-sev-badge.sev-critical { background: #450a0a; color: #fca5a5; }
+.rec-scroll .rec-sev-badge.sev-major    { background: #451a03; color: #fcd34d; }
+.rec-scroll .rec-sev-badge.sev-moderate { background: #052e16; color: #86efac; }
+
+/* ── Verdict badge colors ── */
+.rec-scroll .rec-opening-rec-badge.keep    { background: #052e16; color: #86efac; }
+.rec-scroll .rec-opening-rec-badge.modify  { background: #451a03; color: #fcd34d; }
+.rec-scroll .rec-opening-rec-badge.replace { background: #450a0a; color: #fca5a5; }
+
