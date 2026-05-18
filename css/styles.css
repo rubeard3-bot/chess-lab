@@ -6639,9 +6639,10 @@ body.pf-page {
 .rec-two-col {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 24px;
+  gap: 12px;
   align-items: start;
   margin-top: 22px;
+  width: 100%;
 }
 
 /* Phase analysis cards stack 1-wide inside the two-col right column */
