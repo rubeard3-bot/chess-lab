@@ -6637,12 +6637,18 @@ body.pf-page {
 
 /* ── Two-column grid ── */
 .rec-two-col {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 12px !important;
+  width: 100% !important;
   align-items: start;
   margin-top: 22px;
-  width: 100%;
+}
+
+/* Both columns must be able to shrink */
+.rec-two-col > * {
+  min-width: 0 !important;
+  overflow: hidden !important;
 }
 
 /* Phase analysis cards stack 1-wide inside the two-col right column */
