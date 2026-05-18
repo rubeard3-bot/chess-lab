@@ -5078,7 +5078,7 @@ body.analyzer-page #app {
 
 .db-rating-label {
   font-size: 10px;
-  color: #4b5568;
+  color: #94a3b8;
 }
 
 .db-rating-delta {
@@ -5120,7 +5120,7 @@ body.analyzer-page #app {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: #4b5568;
+  color: #94a3b8;
   padding: 4px 16px 3px;
   display: block;
 }
@@ -5188,7 +5188,7 @@ body.analyzer-page #app {
   width: 100%;
   text-align: left;
   font-size: 11px;
-  color: #4b5568;
+  color: #94a3b8;
   margin-bottom: 8px;
   padding: 0;
   cursor: pointer;
@@ -5204,7 +5204,7 @@ body.analyzer-page #app {
   align-items: center;
   gap: 5px;
   font-size: 10px;
-  color: #4b5568;
+  color: #94a3b8;
 }
 
 .db-status-dot {
@@ -5277,7 +5277,7 @@ body.analyzer-page #app {
 
 .db-trend-label {
   font-size: 9px;
-  color: #4b5568;
+  color: #94a3b8;
   margin-bottom: 4px;
 }
 
@@ -5312,7 +5312,7 @@ body.analyzer-page #app {
 
 .db-focus-text {
   font-size: 11px;
-  color: #6b7280;
+  color: #94a3b8;
   line-height: 1.5;
   margin-bottom: 8px;
 }
@@ -5365,7 +5365,7 @@ body.analyzer-page #app {
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #374151;
+  color: #6b7280;
   margin-bottom: 8px;
 }
 
@@ -5404,7 +5404,7 @@ body.analyzer-page #app {
 
 .db-feature-desc {
   font-size: 10px;
-  color: #4b5568;
+  color: #94a3b8;
   line-height: 1.5;
   margin-bottom: 6px;
 }
@@ -5439,13 +5439,13 @@ body.analyzer-page #app {
 
 .db-stat-label {
   font-size: 10px;
-  color: #4b5568;
+  color: #94a3b8;
   margin-top: 2px;
 }
 
 .db-stat-sub {
   font-size: 9px;
-  color: #374151;
+  color: #6b7280;
   margin-top: 3px;
 }
 
@@ -5496,7 +5496,7 @@ body.analyzer-page #app {
 
 .db-game-sub {
   font-size: 9px;
-  color: #4b5568;
+  color: #94a3b8;
   margin-top: 1px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -5556,7 +5556,7 @@ body.analyzer-page #app {
 
 .db-weakness-desc {
   font-size: 10px;
-  color: #6b7280;
+  color: #94a3b8;
   line-height: 1.6;
   margin-bottom: 8px;
 }
@@ -5577,7 +5577,7 @@ body.analyzer-page #app {
 /* ── Empty state ── */
 .db-empty-state {
   font-size: 11px;
-  color: #4b5568;
+  color: #94a3b8;
   padding: 12px 0;
   line-height: 1.6;
 }
@@ -5686,7 +5686,7 @@ body.pf-page {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: #4b5568;
+  color: #94a3b8;
   margin-bottom: 12px;
   padding-bottom: 6px;
   border-bottom: 1px solid #1e2d40;
@@ -5705,7 +5705,7 @@ body.pf-page {
 .pf-hint {
   display: block;
   font-size: 10px;
-  color: #4b5568;
+  color: #94a3b8;
   margin-bottom: 5px;
 }
 
@@ -5858,7 +5858,7 @@ body.pf-page {
 
 .pf-toggle-sub {
   font-size: 10px;
-  color: #4b5568;
+  color: #94a3b8;
   margin-top: 2px;
 }
 
@@ -5925,7 +5925,7 @@ body.pf-page {
 
 .pf-danger-row-desc {
   font-size: 9px;
-  color: #4b5568;
+  color: #94a3b8;
   margin-top: 1px;
 }
 
@@ -5960,7 +5960,7 @@ body.pf-page {
 /* ── Field helpers ── */
 .pf-field-note {
   font-size: 10px;
-  color: #4b5568;
+  color: #94a3b8;
   margin-top: 4px;
   display: none;
 }
@@ -6013,7 +6013,7 @@ body.pf-page {
 
 .pf-chat-header-sub {
   font-size: 10px;
-  color: #4b5568;
+  color: #94a3b8;
   margin-top: 2px;
   line-height: 1.5;
 }
