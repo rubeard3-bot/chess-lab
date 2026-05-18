@@ -6767,3 +6767,316 @@ body.pf-page {
 .rec-scroll .rec-opening-rec-badge.modify  { background: #451a03; color: #fcd34d; }
 .rec-scroll .rec-opening-rec-badge.replace { background: #450a0a; color: #fca5a5; }
 
+/* ============================================================
+   PRACTICE BOARD v2  (pb- prefix — practice.html only)
+   ============================================================ */
+
+/* ── Layout shell ── */
+.pb-layout {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+}
+
+.pb-main {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+  background: #0d1321;
+  min-width: 0;
+}
+
+/* ── Topbar ── */
+.pb-topbar {
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 22px;
+  border-bottom: 1px solid #1e2d40;
+  background: #111827;
+  flex-shrink: 0;
+}
+
+.pb-topbar-left {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.pb-topbar-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #e2e8f0;
+}
+
+.pb-topbar-sub {
+  font-size: 10px;
+  color: #6b7280;
+}
+
+.pb-danger-btn {
+  font-size: 11px;
+  font-weight: 600;
+  color: #fcd34d;
+  background: rgba(252,211,77,0.08);
+  border: 1px solid rgba(252,211,77,0.2);
+  border-radius: 5px;
+  padding: 5px 10px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s;
+}
+.pb-danger-btn:hover { background: rgba(252,211,77,0.15); }
+
+/* ── Scrollable content ── */
+.pb-content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: auto;
+  padding: 18px 22px 32px;
+}
+
+/* ── Back link ── */
+.pb-back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: #60a5fa;
+  text-decoration: none;
+  margin-bottom: 12px;
+  transition: color 0.15s;
+}
+.pb-back-link:hover { color: #93c5fd; text-decoration: none; }
+
+/* ── Mode view header ── */
+.pb-view-header { margin-bottom: 16px; }
+
+.pb-mode-headline {
+  font-size: 16px;
+  font-weight: 700;
+  color: #e2e8f0;
+  margin-bottom: 3px;
+}
+
+.pb-mode-subtitle {
+  font-size: 11px;
+  color: #6b7280;
+}
+
+/* ── Landing hero ── */
+.pb-hero { margin-bottom: 18px; }
+
+.pb-hero-headline {
+  font-size: 17px;
+  font-weight: 600;
+  color: #e2e8f0;
+  margin-bottom: 4px;
+}
+
+.pb-hero-sub {
+  font-size: 12px;
+  color: #94a3b8;
+  max-width: 580px;
+  line-height: 1.5;
+}
+
+/* ── Section label ── */
+.pb-section-label {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: #6b7280;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+/* ── Mode cards 2×2 grid ── */
+.pb-mode-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+/* ── Individual mode card ── */
+.pb-mode-card {
+  background: #111827;
+  border: 1px solid #1e2d40;
+  border-radius: 9px;
+  padding: 13px 15px;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+  position: relative;
+  user-select: none;
+}
+.pb-mode-card:hover { border-color: #3b82f6; }
+
+.pb-mode-card-primary {
+  background: #0c1a3a;
+  border-color: #1e3a5f;
+}
+
+.pb-mode-card-badge {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: #052e16;
+  color: #86efac;
+}
+
+.pb-mode-icon {
+  font-size: 20px;
+  margin-bottom: 7px;
+  line-height: 1;
+  display: block;
+}
+
+.pb-mode-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: #e2e8f0;
+  margin-bottom: 5px;
+}
+.pb-mode-title-blue { color: #60a5fa; }
+
+.pb-mode-desc {
+  font-size: 11px;
+  color: #94a3b8;
+  line-height: 1.5;
+  margin-bottom: 10px;
+}
+
+/* ── Meta pills ── */
+.pb-mode-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.pb-pill {
+  font-size: 9px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 10px;
+  white-space: nowrap;
+}
+.pb-pill-blue  { background: #0c1a3a; color: #60a5fa; border: 1px solid #1e3a5f; }
+.pb-pill-amber { background: #451a03; color: #fcd34d; border: 1px solid #713f12; }
+.pb-pill-gray  { background: #111827; color: #94a3b8; border: 1px solid #1e2d40; }
+.pb-pill-muted { background: #0d1321; color: #4b5568; border: 1px solid #1e2d40; }
+
+/* ── Training stats ── */
+.pb-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.pb-stat-card {
+  background: #111827;
+  border: 1px solid #1e2d40;
+  border-radius: 7px;
+  padding: 10px 12px;
+}
+
+.pb-stat-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.pb-stat-title {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: #6b7280;
+  font-weight: 600;
+}
+
+.pb-stat-icon {
+  font-size: 12px;
+  color: #374151;
+}
+
+.pb-stat-value {
+  font-size: 16px;
+  font-weight: 700;
+  color: #e2e8f0;
+  margin-bottom: 3px;
+}
+
+.pb-stat-sub {
+  font-size: 9px;
+  color: #94a3b8;
+}
+
+/* ── Coming soon card ── */
+.pb-cs-card {
+  background: #111827;
+  border: 1px solid #1e2d40;
+  border-radius: 9px;
+  padding: 32px 28px;
+  max-width: 560px;
+  text-align: center;
+}
+
+.pb-cs-icon {
+  font-size: 48px;
+  display: block;
+  margin-bottom: 16px;
+  line-height: 1;
+}
+
+.pb-cs-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #e2e8f0;
+  margin-bottom: 10px;
+}
+
+.pb-cs-desc {
+  font-size: 13px;
+  color: #94a3b8;
+  line-height: 1.6;
+  margin-bottom: 16px;
+  text-align: left;
+}
+
+.pb-cs-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 20px;
+  text-align: left;
+}
+
+.pb-cs-list li {
+  font-size: 12px;
+  color: #94a3b8;
+  padding: 4px 0 4px 18px;
+  position: relative;
+}
+
+.pb-cs-list li::before {
+  content: '→';
+  position: absolute;
+  left: 0;
+  color: #374151;
+}
+
+.pb-cs-note {
+  font-size: 11px;
+  color: #4b5568;
+  font-style: italic;
+  text-align: center;
+}
+

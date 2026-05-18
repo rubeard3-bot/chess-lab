@@ -8,41 +8,15 @@
   <style>
     .hidden { display: none !important; }
 
-    body.practice-page {
-      height: auto;
-      min-height: 100vh;
-      overflow-y: auto;
+    html, body {
+      height: 100%;
+      overflow: hidden;
+      margin: 0;
+      padding: 0;
+      background: #0d1321;
     }
 
-    .practice-container {
-      max-width: 920px;
-      margin: 0 auto;
-      padding: 24px 24px 48px;
-      display: flex;
-      flex-direction: column;
-      gap: 18px;
-    }
-
-    /* ── Header ─────────────────────────────────────── */
-    .practice-header {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-      padding-bottom: 16px;
-      border-bottom: 1px solid var(--border);
-    }
-    .practice-header-center {
-      flex: 1;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 10px;
-    }
-    .practice-header-icon { font-size: 26px; color: var(--accent); line-height: 1; }
-    .practice-title { font-size: 20px; font-weight: 800; color: var(--text); }
-    .practice-header-spacer { width: 80px; flex-shrink: 0; }
-
-    /* ── Piece palette ───────────────────────────────── */
+    /* ── Piece palette ─────────────────────────────────────── */
     .palette-wrap {
       background: var(--panel);
       border: 1px solid var(--border);
@@ -52,6 +26,7 @@
       align-items: center;
       gap: 10px;
       flex-wrap: wrap;
+      margin-bottom: 10px;
     }
     .palette-label {
       font-size: 10px;
@@ -122,7 +97,7 @@
     }
     .pal-done-btn:hover { background: rgba(127,166,80,0.25); border-color: var(--accent); }
 
-    /* ── Main layout ─────────────────────────────────── */
+    /* ── Main layout ───────────────────────────────────────── */
     .practice-main {
       display: flex;
       align-items: flex-start;
@@ -130,7 +105,7 @@
       position: relative;
     }
 
-    /* ── Promotion picker ────────────────────────────── */
+    /* ── Promotion picker ──────────────────────────────────── */
     .promo-overlay {
       position: absolute;
       inset: 0;
@@ -172,7 +147,7 @@
     .promo-piece:hover { border-color: var(--accent); background: rgba(127,166,80,0.18); }
     .promo-piece img { width: 100%; height: 100%; display: block; }
 
-    /* ── Game-over banner ────────────────────────────── */
+    /* ── Game-over banner ──────────────────────────────────── */
     .gameover-banner {
       position: absolute;
       inset: 0;
@@ -212,7 +187,7 @@
       color: #a0d070;
     }
 
-    /* ── Eval bar ────────────────────────────────────── */
+    /* ── Eval bar ──────────────────────────────────────────── */
     .eval-bar-col {
       display: flex;
       flex-direction: column;
@@ -245,7 +220,7 @@
       white-space: nowrap;
     }
 
-    /* ── Board column ────────────────────────────────── */
+    /* ── Board column ──────────────────────────────────────── */
     .board-col {
       display: flex;
       flex-direction: column;
@@ -274,7 +249,7 @@
     .practice-status.err { color: var(--danger); font-weight: 600; }
     .practice-status.ok  { color: var(--accent);  font-weight: 600; }
 
-    /* ── Pill toggles ────────────────────────────────── */
+    /* ── Pill toggles ──────────────────────────────────────── */
     .practice-toggles {
       display: flex;
       gap: 8px;
@@ -314,7 +289,7 @@
       color: var(--text);
     }
 
-    /* ── Action buttons ──────────────────────────────── */
+    /* ── Action buttons ────────────────────────────────────── */
     .practice-actions {
       display: flex;
       gap: 8px;
@@ -343,7 +318,7 @@
       color: var(--accent2);
     }
 
-    /* ── Move history panel ──────────────────────────── */
+    /* ── Move history panel ────────────────────────────────── */
     .practice-history {
       flex: 1;
       min-width: 180px;
@@ -421,131 +396,404 @@
       color: var(--accent);
       font-family: monospace;
     }
+
+    /* ── Opening line banner (injected by preload script) ── */
+    .pb-opening-banner {
+      background: rgba(127,166,80,0.12);
+      border: 1px solid rgba(127,166,80,0.30);
+      border-radius: 6px;
+      padding: 10px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      font-size: 13px;
+      margin-bottom: 12px;
+    }
   </style>
 </head>
-<body class="practice-page">
+<body>
 
-<!-- Nav Drawer Overlay -->
-<div id="nav-overlay" class="nav-overlay hidden"></div>
-
-<!-- Hamburger Nav Drawer -->
-<div id="nav-drawer" class="nav-drawer">
-  <div class="nav-drawer-header">
-    <span class="nav-drawer-brand">♟ Chess Lab</span>
-    <button id="nav-drawer-close" class="nav-drawer-close" aria-label="Close menu">✕</button>
-  </div>
-  <nav class="nav-drawer-nav">
-    <a href="index.html" class="nav-item"><span class="nav-item-icon">🏠</span><span>Home</span></a>
-    <a href="analyzer.html" class="nav-item"><span class="nav-item-icon">♟</span><span>Game Analyzer</span></a>
-    <a href="archive.html" class="nav-item"><span class="nav-item-icon">📂</span><span>Game Archive</span></a>
-    <a href="practice.html" class="nav-item"><span class="nav-item-icon">♜</span><span>Practice Board</span></a>
-    <button class="nav-item nav-item-btn" id="nav-progress-btn">
-      <span class="nav-item-icon">📈</span><span>My Progress</span>
-      <span class="nav-coming-soon">Soon</span>
-    </button>
-    <button class="nav-item nav-item-btn" id="nav-openings-btn">
-      <span class="nav-item-icon">📖</span><span>Opening Explorer</span>
-      <span class="nav-coming-soon">Soon</span>
-    </button>
-  </nav>
-  <div class="nav-drawer-footer">
-    <button class="nav-item nav-item-btn" id="change-api-key-link">
-      <span class="nav-item-icon">⚙</span><span>Settings / API Key</span>
-    </button>
-  </div>
-</div>
-
+<!-- Toast -->
 <div id="az-toast" class="az-toast"></div>
 
-<div class="practice-container">
+<!-- ═══════════════════════════════════════
+     PRACTICE BOARD LAYOUT — sidebar | main
+     ═══════════════════════════════════════ -->
+<div class="pb-layout">
 
-  <!-- Header -->
-  <div class="practice-header">
-    <button id="hamburger-btn" class="hamburger-btn" aria-label="Open menu">☰</button>
-    <div class="practice-header-center">
-      <span class="practice-header-icon">♜</span>
-      <span class="practice-title">Practice Board</span>
+  <!-- ── LEFT SIDEBAR ── -->
+  <aside class="db-sidebar">
+
+    <!-- Logo -->
+    <div class="db-sidebar-logo">
+      <span class="db-logo-dot"></span>
+      <span class="db-logo-text">Chess Lab</span>
     </div>
-    <div class="practice-header-spacer"></div>
-  </div>
 
-  <!-- Piece palette (shown only in Set Position mode) -->
-  <div class="palette-wrap hidden" id="palette-wrap">
-    <span class="palette-label">White</span>
-    <div class="palette-pieces" id="pal-white"></div>
-    <div class="pal-sep"></div>
-    <span class="palette-label">Black</span>
-    <div class="palette-pieces" id="pal-black"></div>
-    <div class="pal-sep"></div>
-    <div class="pal-eraser-btn" id="pal-eraser" title="Erase piece">✕</div>
-    <button class="pal-done-btn" id="pal-done">Done ✓</button>
-  </div>
-
-  <!-- Main content -->
-  <div class="practice-main">
-
-    <!-- Game-over banner -->
-    <div class="gameover-banner hidden" id="gameover-banner">
-      <div class="gameover-result" id="gameover-result"></div>
-      <div class="gameover-btns">
-        <button class="gameover-btn gameover-btn-primary" id="btn-play-again">↺ Play Again</button>
-        <button class="gameover-btn" id="btn-new-pos">✏ New Position</button>
+    <!-- Profile (clickable → profile.html) -->
+    <div class="db-sidebar-profile" id="pb-sidebar-profile">
+      <div class="db-profile-top">
+        <div class="db-avatar" id="pb-avatar">?</div>
+        <div class="db-username" id="pb-username">Connect chess.com</div>
+        <span class="db-profile-gear" aria-hidden="true">⚙</span>
+      </div>
+      <div class="db-rating-row">
+        <span class="db-rating-value" id="pb-rating-value"></span>
+        <span class="db-rating-label" id="pb-rating-label"></span>
+        <span class="db-rating-delta" id="pb-rating-delta"></span>
+      </div>
+      <div class="db-goal-bar-track">
+        <div class="db-goal-bar-fill" id="pb-goal-bar-fill" style="width:0%"></div>
+      </div>
+      <div class="db-goal-labels">
+        <span id="pb-goal-now-label"></span>
+        <span id="pb-goal-target-label"></span>
       </div>
     </div>
 
-    <!-- Eval bar -->
-    <div class="eval-bar-col" id="eval-bar-col">
-      <div class="eval-bar-track">
-        <div class="eval-bar-fill" id="eval-bar-fill"></div>
+    <!-- Nav -->
+    <nav class="db-sidebar-nav">
+      <div class="db-nav-group-label">Features</div>
+
+      <a href="index.html" class="db-nav-item">
+        <span class="db-nav-icon">🏠</span>Dashboard
+      </a>
+      <a href="analyzer.html" class="db-nav-item">
+        <span class="db-nav-icon">♟</span>Analyzer
+      </a>
+      <a href="openings.html" class="db-nav-item">
+        <span class="db-nav-icon">📖</span>Openings
+        <span class="db-nav-badge db-nav-badge-amber" id="pb-badge-openings" style="display:none">Drill</span>
+      </a>
+      <a href="practice.html" class="db-nav-item db-nav-active">
+        <span class="db-nav-icon">⚡</span>Practice
+      </a>
+      <a href="archive.html" class="db-nav-item">
+        <span class="db-nav-icon">📂</span>Archive
+        <span class="db-nav-badge db-nav-badge-muted" id="pb-badge-archive">0</span>
+      </a>
+      <a href="recommendations.html" class="db-nav-item">
+        <span class="db-nav-icon">🎯</span>Recommendations
+      </a>
+      <a href="import.html" class="db-nav-item">
+        <span class="db-nav-icon">📥</span>Import Games
+      </a>
+
+      <div class="db-nav-group-label" style="margin-top:12px">Study</div>
+      <span class="db-nav-item db-nav-disabled">
+        <span class="db-nav-icon">🧩</span>Tactics
+        <span class="db-nav-badge db-nav-badge-muted">Soon</span>
+      </span>
+    </nav>
+
+    <!-- Footer -->
+    <div class="db-sidebar-footer">
+      <button class="db-footer-settings" id="pb-settings-btn">⚙ Settings</button>
+      <div class="db-footer-status">
+        <span class="db-status-dot db-status-gray" id="pb-status-dot"></span>
+        <span id="pb-status-text">not connected</span>
       </div>
-      <div class="eval-bar-text" id="eval-bar-text">0.0</div>
     </div>
 
-    <!-- Board + controls -->
-    <div class="board-col">
-      <div class="board-wrap">
-        <canvas id="practice-canvas" width="560" height="560"></canvas>
-        <!-- Promotion picker -->
-        <div class="promo-overlay hidden" id="promo-overlay">
-          <div class="promo-card">
-            <div class="promo-label">Choose promotion piece</div>
-            <div class="promo-options" id="promo-options"></div>
-          </div>
+  </aside><!-- /db-sidebar -->
+
+  <!-- ── MAIN AREA ── -->
+  <div class="pb-main">
+
+    <!-- Topbar -->
+    <div class="pb-topbar">
+      <div class="pb-topbar-left">
+        <span class="pb-topbar-title">Practice Board</span>
+        <span class="pb-topbar-sub">Training arena</span>
+      </div>
+      <button class="pb-danger-btn" id="pb-danger-btn">⚠ Danger zone settings</button>
+    </div>
+
+    <!-- Scrollable content area -->
+    <div class="pb-content" id="pb-content">
+
+      <!-- ══════════════════════════════════
+           VIEW: LANDING SCREEN (default)
+           ══════════════════════════════════ -->
+      <div id="pb-view-landing">
+
+        <!-- Hero -->
+        <div class="pb-hero">
+          <div class="pb-hero-headline">Pick your training mode</div>
+          <div class="pb-hero-sub">The practice board is where everything Chess Lab learns about you gets put to work. Pick a focused mode, or jump into free play to explore.</div>
         </div>
-      </div>
-      <div class="practice-status" id="practice-status"></div>
-      <div class="practice-toggles">
-        <button class="pill-toggle active" id="tog-bestmove">
-          <span class="pill-dot"></span>Best Move
-        </button>
-        <button class="pill-toggle active" id="tog-evalbar">
-          <span class="pill-dot"></span>Eval Bar
-        </button>
-      </div>
-      <div class="practice-actions">
-        <button class="prac-btn" id="btn-undo">↩ Undo</button>
-        <button class="prac-btn" id="btn-reset">↺ Reset</button>
-        <button class="prac-btn" id="btn-setpos">✏ Set Position</button>
-      </div>
-    </div>
 
-    <!-- Move history -->
-    <div class="practice-history">
-      <div class="history-head">Move History</div>
-      <div class="history-scroll" id="history-scroll">
-        <div class="history-empty">No moves yet</div>
-      </div>
-      <div class="history-eval-box" id="history-eval-box"></div>
-    </div>
+        <!-- Mode cards -->
+        <div class="pb-section-label">Training modes</div>
+        <div class="pb-mode-grid">
 
-  </div>
-</div>
+          <!-- Card 1 — Weakness Drill (PRIMARY) -->
+          <div class="pb-mode-card pb-mode-card-primary" id="pb-card-weakness">
+            <span class="pb-mode-card-badge">Recommended</span>
+            <span class="pb-mode-icon">🎯</span>
+            <div class="pb-mode-title pb-mode-title-blue">Weakness Drill</div>
+            <div class="pb-mode-desc">Practice positions matching your weaknesses — real blunder moments from past games plus generated scenarios for conversion and tactics.</div>
+            <div class="pb-mode-pills" id="pb-pills-weakness">
+              <span class="pb-pill pb-pill-blue">Coach on</span>
+              <span class="pb-pill pb-pill-amber">Danger zone</span>
+              <span class="pb-pill pb-pill-gray" id="pb-weakness-count">0 scenarios ready</span>
+            </div>
+          </div>
+
+          <!-- Card 2 — Play the Coach -->
+          <div class="pb-mode-card" id="pb-card-coach">
+            <span class="pb-mode-icon">♟</span>
+            <div class="pb-mode-title">Play the Coach</div>
+            <div class="pb-mode-desc">Full game vs Stockfish. The coach reacts to your critical moves, gives danger zone warnings, and tracks your record over time.</div>
+            <div class="pb-mode-pills">
+              <span class="pb-pill pb-pill-blue">Coach on</span>
+              <span class="pb-pill pb-pill-gray">Default: max strength</span>
+            </div>
+          </div>
+
+          <!-- Card 3 — Opening Drill -->
+          <div class="pb-mode-card" id="pb-card-opening">
+            <span class="pb-mode-icon">📖</span>
+            <div class="pb-mode-title">Opening Drill</div>
+            <div class="pb-mode-desc">Practice an opening against book moves. The coach tells you when you've left theory and shows you the move you should have played.</div>
+            <div class="pb-mode-pills" id="pb-pills-opening">
+              <span class="pb-pill pb-pill-blue">Coach on</span>
+            </div>
+          </div>
+
+          <!-- Card 4 — Free Play -->
+          <div class="pb-mode-card" id="pb-card-free">
+            <span class="pb-mode-icon">🧪</span>
+            <div class="pb-mode-title">Free Play</div>
+            <div class="pb-mode-desc">Sandbox mode — set up any position, move pieces freely, see Stockfish evaluation. No coach, no goals, just exploration.</div>
+            <div class="pb-mode-pills">
+              <span class="pb-pill pb-pill-muted">Coach off</span>
+              <span class="pb-pill pb-pill-muted">No tracking</span>
+            </div>
+          </div>
+
+        </div><!-- /pb-mode-grid -->
+
+        <!-- Training stats -->
+        <div class="pb-section-label">Your training stats</div>
+        <div class="pb-stat-grid">
+
+          <div class="pb-stat-card">
+            <div class="pb-stat-row">
+              <span class="pb-stat-title">vs Coach record</span>
+              <span class="pb-stat-icon">♟</span>
+            </div>
+            <div class="pb-stat-value" id="pb-stat-coach">—</div>
+            <div class="pb-stat-sub" id="pb-stat-coach-sub">Start training to track stats</div>
+          </div>
+
+          <div class="pb-stat-card">
+            <div class="pb-stat-row">
+              <span class="pb-stat-title">Warnings heeded</span>
+              <span class="pb-stat-icon">⚠</span>
+            </div>
+            <div class="pb-stat-value" id="pb-stat-warn">—</div>
+            <div class="pb-stat-sub" id="pb-stat-warn-sub">Start training to track stats</div>
+          </div>
+
+          <div class="pb-stat-card">
+            <div class="pb-stat-row">
+              <span class="pb-stat-title">Openings drilled</span>
+              <span class="pb-stat-icon">📖</span>
+            </div>
+            <div class="pb-stat-value" id="pb-stat-openings">—</div>
+            <div class="pb-stat-sub" id="pb-stat-openings-sub">Start training to track stats</div>
+          </div>
+
+        </div><!-- /pb-stat-grid -->
+
+      </div><!-- /pb-view-landing -->
+
+      <!-- ══════════════════════════════════
+           VIEW: FREE PLAY (full sandbox)
+           ══════════════════════════════════ -->
+      <div id="pb-view-free" class="hidden">
+
+        <div class="pb-view-header">
+          <a href="#" class="pb-back-link" id="pb-back-free">← Back to modes</a>
+          <div class="pb-mode-headline">🧪 Free Play</div>
+          <div class="pb-mode-subtitle">Sandbox mode — explore positions freely</div>
+        </div>
+
+        <!-- Opening line banner target (inserted here by preload script) -->
+        <div id="pb-opening-banner-anchor"></div>
+
+        <!-- Piece palette (shown only in Set Position mode) -->
+        <div class="palette-wrap hidden" id="palette-wrap">
+          <span class="palette-label">White</span>
+          <div class="palette-pieces" id="pal-white"></div>
+          <div class="pal-sep"></div>
+          <span class="palette-label">Black</span>
+          <div class="palette-pieces" id="pal-black"></div>
+          <div class="pal-sep"></div>
+          <div class="pal-eraser-btn" id="pal-eraser" title="Erase piece">✕</div>
+          <button class="pal-done-btn" id="pal-done">Done ✓</button>
+        </div>
+
+        <!-- Practice main: eval bar | board | history -->
+        <div class="practice-main">
+
+          <!-- Game-over banner (positioned absolute within practice-main) -->
+          <div class="gameover-banner hidden" id="gameover-banner">
+            <div class="gameover-result" id="gameover-result"></div>
+            <div class="gameover-btns">
+              <button class="gameover-btn gameover-btn-primary" id="btn-play-again">↺ Play Again</button>
+              <button class="gameover-btn" id="btn-new-pos">✏ New Position</button>
+            </div>
+          </div>
+
+          <!-- Eval bar -->
+          <div class="eval-bar-col" id="eval-bar-col">
+            <div class="eval-bar-track">
+              <div class="eval-bar-fill" id="eval-bar-fill"></div>
+            </div>
+            <div class="eval-bar-text" id="eval-bar-text">0.0</div>
+          </div>
+
+          <!-- Board + controls -->
+          <div class="board-col">
+            <div class="board-wrap">
+              <canvas id="practice-canvas" width="560" height="560"></canvas>
+              <!-- Promotion picker -->
+              <div class="promo-overlay hidden" id="promo-overlay">
+                <div class="promo-card">
+                  <div class="promo-label">Choose promotion piece</div>
+                  <div class="promo-options" id="promo-options"></div>
+                </div>
+              </div>
+            </div>
+            <div class="practice-status" id="practice-status"></div>
+            <div class="practice-toggles">
+              <button class="pill-toggle active" id="tog-bestmove">
+                <span class="pill-dot"></span>Best Move
+              </button>
+              <button class="pill-toggle active" id="tog-evalbar">
+                <span class="pill-dot"></span>Eval Bar
+              </button>
+            </div>
+            <div class="practice-actions">
+              <button class="prac-btn" id="btn-undo">↩ Undo</button>
+              <button class="prac-btn" id="btn-reset">↺ Reset</button>
+              <button class="prac-btn" id="btn-setpos">✏ Set Position</button>
+            </div>
+          </div>
+
+          <!-- Move history -->
+          <div class="practice-history">
+            <div class="history-head">Move History</div>
+            <div class="history-scroll" id="history-scroll">
+              <div class="history-empty">No moves yet</div>
+            </div>
+            <div class="history-eval-box" id="history-eval-box"></div>
+          </div>
+
+        </div><!-- /practice-main -->
+
+      </div><!-- /pb-view-free -->
+
+      <!-- ══════════════════════════════════
+           VIEW: WEAKNESS DRILL — Coming Soon
+           ══════════════════════════════════ -->
+      <div id="pb-view-weakness" class="hidden">
+
+        <div class="pb-view-header">
+          <a href="#" class="pb-back-link" id="pb-back-weakness">← Back to modes</a>
+          <div class="pb-mode-headline">🎯 Weakness Drill</div>
+          <div class="pb-mode-subtitle">Practice positions tailored to your specific weaknesses</div>
+        </div>
+
+        <div class="pb-cs-card">
+          <span class="pb-cs-icon">🎯</span>
+          <div class="pb-cs-title">Weakness Drill — Coming soon</div>
+          <div class="pb-cs-desc">
+            Chess Lab has already identified your patterns — blunder tendencies, missed tactics, conversion failures. The Weakness Drill mode will take the positions where you go wrong and drill them until they become automatic. Every session is generated from your real game history, so there's no generic content — only your specific blind spots.
+          </div>
+          <ul class="pb-cs-list">
+            <li>Drill actual blunder moments from your analyzed games</li>
+            <li>AI-generated scenarios for your conversion and endgame weaknesses</li>
+            <li>Tactics pattern drills targeting your most common mistake types</li>
+            <li>Coach commentary explaining what you should have seen</li>
+            <li>Danger zone warnings on critical positions with your pattern</li>
+          </ul>
+          <div class="pb-cs-note">Building this in the next phase. For now, try Free Play or come back soon.</div>
+        </div>
+
+      </div><!-- /pb-view-weakness -->
+
+      <!-- ══════════════════════════════════
+           VIEW: PLAY THE COACH — Coming Soon
+           ══════════════════════════════════ -->
+      <div id="pb-view-coach" class="hidden">
+
+        <div class="pb-view-header">
+          <a href="#" class="pb-back-link" id="pb-back-coach">← Back to modes</a>
+          <div class="pb-mode-headline">♟ Play the Coach</div>
+          <div class="pb-mode-subtitle">Full game vs Stockfish with live coach commentary</div>
+        </div>
+
+        <div class="pb-cs-card">
+          <span class="pb-cs-icon">♟</span>
+          <div class="pb-cs-title">Play the Coach — Coming soon</div>
+          <div class="pb-cs-desc">
+            Play a full game against Stockfish while the coach watches your every move. When you reach a critical moment — a missed tactic, a blunder setup, or a position that matches your known weakness patterns — the coach speaks up. Over time, your record vs the coach becomes the clearest signal of how much you've actually improved.
+          </div>
+          <ul class="pb-cs-list">
+            <li>Full games against Stockfish at configurable strength</li>
+            <li>Coach popups at critical decision points in the game</li>
+            <li>Danger zone warnings when you're about to repeat a known mistake</li>
+            <li>Win/loss/draw record tracked over time</li>
+            <li>Post-game summary with key moments highlighted</li>
+          </ul>
+          <div class="pb-cs-note">Building this in the next phase. For now, try Free Play or come back soon.</div>
+        </div>
+
+      </div><!-- /pb-view-coach -->
+
+      <!-- ══════════════════════════════════
+           VIEW: OPENING DRILL — Coming Soon
+           ══════════════════════════════════ -->
+      <div id="pb-view-opening" class="hidden">
+
+        <div class="pb-view-header">
+          <a href="#" class="pb-back-link" id="pb-back-opening">← Back to modes</a>
+          <div class="pb-mode-headline">📖 Opening Drill</div>
+          <div class="pb-mode-subtitle">Practice your repertoire openings against book moves</div>
+        </div>
+
+        <div class="pb-cs-card">
+          <span class="pb-cs-icon">📖</span>
+          <div class="pb-cs-title">Opening Drill — Coming soon</div>
+          <div class="pb-cs-desc">
+            The Opening Drill puts you against a book-move opponent that plays the mainline theory for your chosen opening. Every deviation from theory triggers an immediate coach explanation showing the move you should have played and why. Over multiple sessions, your accuracy per opening is tracked so you can see exactly where your preparation breaks down.
+          </div>
+          <ul class="pb-cs-list">
+            <li>Book-move opponent plays known theory for any selected opening</li>
+            <li>Coach warns when you leave theory and shows the correct move</li>
+            <li>Select openings from your repertoire or from recommendations</li>
+            <li>Accuracy percentage tracked per opening per session</li>
+            <li>Priority drilling for openings flagged as needing work</li>
+          </ul>
+          <div class="pb-cs-note">Building this in the next phase. For now, try Free Play or come back soon.</div>
+        </div>
+
+      </div><!-- /pb-view-opening -->
+
+    </div><!-- /pb-content -->
+
+  </div><!-- /pb-main -->
+
+</div><!-- /pb-layout -->
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
-<script src="js/nav.js"></script>
-<script>document.addEventListener('DOMContentLoaded', function () { initNav('practice'); });</script>
+
 <script>
-/* ── Opening Explorer line preload ─────────────────────────────────── */
+/* ── Opening line preload ──────────────────────────────────────── */
 (function () {
   var raw = sessionStorage.getItem('csa_opening_line');
   if (!raw) return;
@@ -553,39 +801,34 @@
   try { data = JSON.parse(raw); } catch (_) { return; }
   if (!data || !data.moves || !data.moves.length) return;
 
-  /* Show dismissable banner (DOM is ready; scripts are at end of body) */
-  var banner = document.createElement('div');
-  banner.style.cssText = [
-    'background:rgba(127,166,80,0.12)',
-    'border:1px solid rgba(127,166,80,0.30)',
-    'border-radius:6px',
-    'padding:10px 16px',
-    'display:flex',
-    'align-items:center',
-    'justify-content:space-between',
-    'gap:12px',
-    'font-size:13px',
-    'margin-bottom:0'
-  ].join(';');
+  /* Build banner element — injected into the free play view on DOMContentLoaded */
   var nameStr = data.openingName || 'Opening Line';
   var moveStr = data.moves.slice(0, 8).join(' ') + (data.moves.length > 8 ? '…' : '');
-  banner.innerHTML =
-    '<span style="color:#a0d070;font-weight:600">📖 ' + nameStr + ': <span style="font-weight:400;font-family:\'Courier New\',monospace">' + moveStr + '</span></span>' +
-    '<button onclick="this.parentElement.remove()" style="background:none;border:none;color:#a0d070;cursor:pointer;font-size:18px;line-height:1;padding:0 4px;font-family:inherit" aria-label="Dismiss">✕</button>';
-  var header = document.querySelector('.practice-header');
-  if (header) header.insertAdjacentElement('afterend', banner);
+
+  document.addEventListener('DOMContentLoaded', function () {
+    var anchor = document.getElementById('pb-opening-banner-anchor');
+    if (!anchor) return;
+    var banner = document.createElement('div');
+    banner.className = 'pb-opening-banner';
+    banner.innerHTML =
+      '<span style="color:#a0d070;font-weight:600">📖 ' + nameStr +
+      ': <span style="font-weight:400;font-family:\'Courier New\',monospace">' + moveStr + '</span></span>' +
+      '<button onclick="this.parentElement.remove()" style="background:none;border:none;color:#a0d070;cursor:pointer;font-size:18px;line-height:1;padding:0 4px;font-family:inherit" aria-label="Dismiss">✕</button>';
+    anchor.appendChild(banner);
+  });
 
   /* Wrap Chess constructor so practice-board starts at the opening position */
   if (typeof window.Chess === 'undefined') return;
   var _Orig = window.Chess;
   window.Chess = function (fen) {
-    if (fen !== undefined) return new _Orig(fen);   /* analysis calls pass FEN — leave alone */
+    if (fen !== undefined) return new _Orig(fen);
     var inst = new _Orig();
     data.moves.forEach(function (m) { try { inst.move(m); } catch (_) {} });
     return inst;
   };
 })();
 </script>
+
 <script>
   try {
     var _bl = localStorage.getItem('pf_board_light');
@@ -594,6 +837,311 @@
     if (_bd) window.BOARD_DARK  = _bd;
   } catch (_) {}
 </script>
+
 <script src="js/practice-board.js"></script>
+
+<script>
+/* ── Practice Board v2 — Routing, sidebar, localStorage ─────────── */
+(function () {
+  'use strict';
+
+  /* ── Toast ──────────────────────────────────────────────────── */
+  var _toastTimer;
+  function pbToast(msg) {
+    var el = document.getElementById('az-toast');
+    if (!el) return;
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(_toastTimer);
+    _toastTimer = setTimeout(function () { el.classList.remove('show'); }, 2800);
+  }
+
+  /* ── localStorage helpers ───────────────────────────────────── */
+  function lsGet(key) { return localStorage.getItem(key); }
+  function lsGetJSON(key) {
+    try { return JSON.parse(localStorage.getItem(key)); } catch (_) { return null; }
+  }
+  function lsGetInt(key) {
+    var v = parseInt(localStorage.getItem(key), 10);
+    return isNaN(v) ? null : v;
+  }
+  function safeText(el, val) {
+    if (el) el.textContent = (val !== null && val !== undefined) ? String(val) : '';
+  }
+
+  /* ── Initialize new localStorage keys with defaults ─────────── */
+  function initPBStorage() {
+    if (!lsGet('pb_coach_record')) {
+      localStorage.setItem('pb_coach_record', JSON.stringify({ wins: 0, losses: 0, draws: 0 }));
+    }
+    if (!lsGet('pb_warning_efficacy')) {
+      localStorage.setItem('pb_warning_efficacy', JSON.stringify({ shown: 0, heeded: 0 }));
+    }
+    if (!lsGet('pb_opening_drill_scores')) {
+      localStorage.setItem('pb_opening_drill_scores', JSON.stringify({}));
+    }
+  }
+
+  /* ── Sidebar population ─────────────────────────────────────── */
+  function populateSidebar() {
+    var username    = lsGet('csa_chesscom_username') || '';
+    var displayName = lsGet('pf_display_name') || '';
+    var avatarColor = lsGet('pf_avatar_color') || '';
+    var currentElo  = lsGetInt('csa_elo_current');
+    var goalElo     = lsGetInt('csa_elo_goal');
+    var startElo    = lsGetInt('csa_elo_start');
+    var eloHistory  = lsGetJSON('csa_elo_history') || [];
+
+    var displayedName = displayName || username;
+    var avatarEl   = document.getElementById('pb-avatar');
+    var usernameEl = document.getElementById('pb-username');
+
+    if (displayedName) {
+      if (avatarEl) {
+        avatarEl.textContent = displayedName.charAt(0).toUpperCase();
+        if (avatarColor) avatarEl.style.background = avatarColor;
+      }
+      if (usernameEl) {
+        usernameEl.textContent = displayedName;
+        usernameEl.style.color = '';
+        usernameEl.style.fontSize = '';
+      }
+    } else {
+      if (usernameEl) {
+        usernameEl.style.color = '#4b5568';
+        usernameEl.style.fontSize = '10px';
+      }
+    }
+
+    if (currentElo) {
+      safeText(document.getElementById('pb-rating-value'), currentElo);
+      safeText(document.getElementById('pb-rating-label'), 'Rapid');
+
+      if (eloHistory.length >= 2) {
+        var sorted = eloHistory.slice().sort(function (a, b) {
+          return a.date < b.date ? -1 : a.date > b.date ? 1 : 0;
+        });
+        var delta = sorted[sorted.length - 1].elo - sorted[sorted.length - 2].elo;
+        if (delta !== 0) {
+          var deltaEl = document.getElementById('pb-rating-delta');
+          if (deltaEl) {
+            deltaEl.textContent = (delta > 0 ? '↑ +' : '↓ ') + delta;
+            deltaEl.style.color = delta > 0 ? '#4ade80' : '#f87171';
+          }
+        }
+      }
+    }
+
+    if (currentElo && goalElo) {
+      var start     = startElo || currentElo;
+      var totalSpan = goalElo - start;
+      var gained    = currentElo - start;
+      var pct = totalSpan > 0
+        ? Math.min(100, Math.max(0, Math.round(gained / totalSpan * 100)))
+        : (currentElo >= goalElo ? 100 : 0);
+      var fillEl = document.getElementById('pb-goal-bar-fill');
+      if (fillEl) fillEl.style.width = pct + '%';
+      safeText(document.getElementById('pb-goal-now-label'), currentElo + ' now');
+      safeText(document.getElementById('pb-goal-target-label'), 'Goal: ' + goalElo);
+    }
+
+    /* Archive badge */
+    var archiveCount = Object.keys(localStorage).filter(function (k) {
+      return k.startsWith('csa_game_');
+    }).length;
+    safeText(document.getElementById('pb-badge-archive'), archiveCount);
+
+    /* Openings badge — show if any opening has more wrong than correct */
+    var scores = lsGetJSON('csa_opening_scores');
+    if (scores) {
+      var hasWeak = false;
+      if (Array.isArray(scores)) {
+        hasWeak = scores.some(function (s) {
+          return (s.wrong_count || 0) > (s.correct_count || 0);
+        });
+      } else if (typeof scores === 'object') {
+        hasWeak = Object.values(scores).some(function (s) {
+          return s && (s.wrong_count || 0) > (s.correct_count || 0);
+        });
+      }
+      var badge = document.getElementById('pb-badge-openings');
+      if (hasWeak && badge) badge.style.display = '';
+    }
+
+    /* Footer status */
+    if (username) {
+      var dot = document.getElementById('pb-status-dot');
+      if (dot) {
+        dot.classList.remove('db-status-gray');
+        dot.classList.add('db-status-green');
+      }
+      safeText(document.getElementById('pb-status-text'), 'chess.com connected');
+    }
+
+    /* Profile section click → profile.html */
+    var profileEl = document.getElementById('pb-sidebar-profile');
+    if (profileEl) {
+      profileEl.addEventListener('click', function () {
+        window.location.href = 'profile.html';
+      });
+    }
+
+    /* Settings button */
+    var settingsBtn = document.getElementById('pb-settings-btn');
+    if (settingsBtn) {
+      settingsBtn.addEventListener('click', function () {
+        window.location.href = 'index.html';
+      });
+    }
+  }
+
+  /* ── Mode card meta pills ───────────────────────────────────── */
+  function populateModePills() {
+    var recs = lsGetJSON('csa_recommendations');
+
+    /* Weakness count pill */
+    var weakCountEl = document.getElementById('pb-weakness-count');
+    if (weakCountEl) {
+      var count = recs && recs.topWeaknesses ? recs.topWeaknesses.length : 0;
+      weakCountEl.textContent = count + ' scenario' + (count !== 1 ? 's' : '') + ' ready';
+    }
+
+    /* Opening drill amber pill — show if any opening is Modify or Replace */
+    var pillsOpeningEl = document.getElementById('pb-pills-opening');
+    if (pillsOpeningEl && recs && recs.openingRecommendations) {
+      var weak = null;
+      for (var i = 0; i < recs.openingRecommendations.length; i++) {
+        var o = recs.openingRecommendations[i];
+        var rec = (o.recommendation || '').toLowerCase();
+        if (rec === 'modify' || rec === 'replace') { weak = o; break; }
+      }
+      if (weak) {
+        var pill = document.createElement('span');
+        pill.className = 'pb-pill pb-pill-amber';
+        pill.textContent = (weak.name || 'Opening') + ' needs work →';
+        pillsOpeningEl.appendChild(pill);
+      }
+    }
+  }
+
+  /* ── Training stats ─────────────────────────────────────────── */
+  function populateStats() {
+    var coachRecord  = lsGetJSON('pb_coach_record')       || { wins: 0, losses: 0, draws: 0 };
+    var warnEfficacy = lsGetJSON('pb_warning_efficacy')   || { shown: 0, heeded: 0 };
+    var drillScores  = lsGetJSON('pb_opening_drill_scores') || {};
+
+    /* Coach record */
+    var hasCoach = coachRecord.wins || coachRecord.losses || coachRecord.draws;
+    if (hasCoach) {
+      safeText(document.getElementById('pb-stat-coach'),
+        coachRecord.wins + 'W · ' + coachRecord.draws + 'D · ' + coachRecord.losses + 'L');
+      safeText(document.getElementById('pb-stat-coach-sub'), 'vs Stockfish');
+    }
+
+    /* Warning efficacy */
+    if (warnEfficacy.shown > 0) {
+      var pct = Math.round(warnEfficacy.heeded / warnEfficacy.shown * 100);
+      safeText(document.getElementById('pb-stat-warn'), pct + '%');
+      safeText(document.getElementById('pb-stat-warn-sub'),
+        'Changed move ' + warnEfficacy.heeded + ' of ' + warnEfficacy.shown + ' times');
+    }
+
+    /* Openings drilled */
+    var drillKeys    = Object.keys(drillScores);
+    var recs         = lsGetJSON('csa_recommendations');
+    var totalOpenings = recs && recs.openingRecommendations ? recs.openingRecommendations.length : 0;
+    if (drillKeys.length > 0) {
+      safeText(document.getElementById('pb-stat-openings'),
+        drillKeys.length + (totalOpenings ? ' / ' + totalOpenings : ''));
+      var nextKey = drillKeys.find(function (k) {
+        var s = drillScores[k];
+        return !s || !s.completed;
+      });
+      safeText(document.getElementById('pb-stat-openings-sub'),
+        nextKey ? 'Next: ' + nextKey : 'All drilled!');
+    }
+  }
+
+  /* ── URL routing ────────────────────────────────────────────── */
+  function getMode() {
+    try {
+      return new URLSearchParams(window.location.search).get('mode') || null;
+    } catch (_) { return null; }
+  }
+
+  function showView(mode) {
+    var views = ['landing', 'free', 'weakness', 'coach', 'opening'];
+    views.forEach(function (id) {
+      var el = document.getElementById('pb-view-' + id);
+      if (el) el.classList.add('hidden');
+    });
+
+    var target = 'landing';
+    if (mode === 'free')     target = 'free';
+    else if (mode === 'weakness') target = 'weakness';
+    else if (mode === 'coach')    target = 'coach';
+    else if (mode === 'opening')  target = 'opening';
+
+    var active = document.getElementById('pb-view-' + target);
+    if (active) active.classList.remove('hidden');
+  }
+
+  function navigateTo(mode) {
+    var url = mode
+      ? (window.location.pathname + '?mode=' + mode)
+      : window.location.pathname;
+    window.history.pushState({ mode: mode }, '', url);
+    showView(mode);
+  }
+
+  /* ── Init ───────────────────────────────────────────────────── */
+  document.addEventListener('DOMContentLoaded', function () {
+    initPBStorage();
+    populateSidebar();
+    populateModePills();
+    populateStats();
+
+    /* Route on load */
+    showView(getMode());
+
+    /* Danger zone button */
+    var dangerBtn = document.getElementById('pb-danger-btn');
+    if (dangerBtn) {
+      dangerBtn.addEventListener('click', function () {
+        pbToast('Danger zone settings coming in Phase 5');
+      });
+    }
+
+    /* Mode card clicks */
+    var cardMap = {
+      'pb-card-weakness': 'weakness',
+      'pb-card-coach':    'coach',
+      'pb-card-opening':  'opening',
+      'pb-card-free':     'free'
+    };
+    Object.keys(cardMap).forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) {
+        el.addEventListener('click', function () { navigateTo(cardMap[id]); });
+      }
+    });
+
+    /* Back links */
+    document.querySelectorAll('.pb-back-link').forEach(function (el) {
+      el.addEventListener('click', function (e) {
+        e.preventDefault();
+        navigateTo(null);
+      });
+    });
+
+    /* Browser back/forward */
+    window.addEventListener('popstate', function () {
+      showView(getMode());
+    });
+  });
+
+})();
+</script>
+
 </body>
 </html>
