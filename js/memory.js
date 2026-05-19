@@ -192,10 +192,15 @@
     return lsSetJSON(KEY.audit, arr);
   }
   function appendAudit(entry) {
-    var arr = readAudit();
-    arr.unshift(entry);
-    if (arr.length > AUDIT_CAP) arr = arr.slice(0, AUDIT_CAP);
-    writeAudit(arr);
+    try {
+      var arr = readAudit();
+      arr.unshift(entry);
+      if (arr.length > AUDIT_CAP) arr = arr.slice(0, AUDIT_CAP);
+      var ok = writeAudit(arr);
+      if (!ok) console.error('[MemoryAudit] writeAudit failed — localStorage quota exceeded?');
+    } catch (e) {
+      console.error('[MemoryAudit] appendAudit threw:', e);
+    }
   }
 
   function readHealth() {
@@ -416,6 +421,28 @@
     }
   }
 
+  // Repairs Claude-narrative enum fields before validation.
+  // trend and severity are narrative judgements Claude writes — safe to default.
+  // stockfishClassification is a Stockfish fact — must NOT be healed; invalid = real fabrication.
+  function repairNarrativeFields(proposedBucket) {
+    var p = proposedBucket;
+    if (!p || !p.weaknesses) return;
+    var wKeys = Object.keys(p.weaknesses);
+    for (var i = 0; i < wKeys.length; i++) {
+      var wk = wKeys[i];
+      var w = p.weaknesses[wk];
+      if (!w || typeof w !== 'object') continue;
+      if (!inSet(w.trend, ALLOWED_TRENDS)) {
+        console.warn('[MemoryRepair] Repaired invalid trend for "' + wk + '": "' + w.trend + '" → "stable"');
+        w.trend = 'stable';
+      }
+      if (!inSet(w.severity, ALLOWED_SEVERITIES)) {
+        console.warn('[MemoryRepair] Repaired invalid severity for "' + wk + '": "' + w.severity + '" → "major"');
+        w.severity = 'major';
+      }
+    }
+  }
+
   function validateProposedBucket(prevMemory, bucketName, prevBucket, proposedBucket, expectedNewGameRouting, gameIndex, otherBucketActiveIds) {
     function fail(check, reason) { return { ok: false, failedCheck: check, reason: reason }; }
 
@@ -475,15 +502,15 @@
       var wk = wKeys[wi], w = p.weaknesses[wk];
       if (!w || typeof w !== 'object') return fail('Check6', 'Weakness "' + wk + '" is not an object');
       if (!isNonEmptyString(w.title)) return fail('Check6', 'Weakness "' + wk + '" has empty title');
-      if (!inSet(w.severity, ALLOWED_SEVERITIES)) return fail('Check6', 'Weakness "' + wk + '" has invalid severity "' + w.severity + '"');
+      if (!inSet(w.severity, ALLOWED_SEVERITIES)) return fail('Check25', 'Weakness "' + wk + '" has invalid severity "' + w.severity + '"');
       if (!inSet(w.stockfishClassification, ALLOWED_CLASSIFICATIONS)) {
-        return fail('Check6', 'Weakness "' + wk + '" has invalid stockfishClassification "' + w.stockfishClassification + '"');
+        return fail('Check26', 'Weakness "' + wk + '" has invalid stockfishClassification "' + w.stockfishClassification + '"');
       }
       if (!isISODateLike(w.firstSeen))       return fail('Check19', 'Weakness "' + wk + '" has invalid firstSeen (not a valid ISO date)');
-      if (!isISODateLike(w.lastSeen))        return fail('Check6', 'Weakness "' + wk + '" has invalid lastSeen');
-      if (!isNonNegInt(w.activeOccurrences)) return fail('Check6', 'Weakness "' + wk + '" activeOccurrences not non-negative int');
-      if (!isNonNegInt(w.historicalOccurrences)) return fail('Check6', 'Weakness "' + wk + '" historicalOccurrences not non-negative int');
-      if (!inSet(w.trend, ALLOWED_TRENDS))   return fail('Check6', 'Weakness "' + wk + '" has invalid trend');
+      if (!isISODateLike(w.lastSeen))        return fail('Check27', 'Weakness "' + wk + '" has invalid lastSeen');
+      if (!isNonNegInt(w.activeOccurrences)) return fail('Check28', 'Weakness "' + wk + '" activeOccurrences not non-negative int');
+      if (!isNonNegInt(w.historicalOccurrences)) return fail('Check29', 'Weakness "' + wk + '" historicalOccurrences not non-negative int');
+      if (!inSet(w.trend, ALLOWED_TRENDS))   return fail('Check30', 'Weakness "' + wk + '" has invalid trend');
     }
 
     // 7: dates parse
@@ -1231,6 +1258,7 @@
             agingOutSummaries
           );
           repairFirstSeenDates(proposedBucket, bn2, gameIndex, expectedRouting);
+          repairNarrativeFields(proposedBucket);
           working.buckets[bn2] = proposedBucket;
           bucketsTouched.push(bn2);
         } catch (err) {
