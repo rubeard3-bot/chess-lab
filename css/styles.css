@@ -7080,3 +7080,334 @@ body.pf-page {
   text-align: center;
 }
 
+/* ══════════════════════════════════════════════════════════════
+   PRACTICE BOARD — PLAY THE COACH MODE
+   All classes prefixed pb-coach-
+   ══════════════════════════════════════════════════════════════ */
+
+/* ── Top bar ── */
+.pb-coach-topbar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 14px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+
+.pb-coach-topbar-center {
+  flex: 1;
+  min-width: 120px;
+}
+
+.pb-coach-controls {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-left: auto;
+}
+
+.pb-coach-ctrl-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pb-coach-ctrl-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text2);
+  white-space: nowrap;
+}
+
+.pb-coach-select {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 12px;
+  font-family: inherit;
+  padding: 5px 8px;
+  cursor: pointer;
+  outline: none;
+}
+.pb-coach-select:focus { border-color: var(--accent2); }
+
+/* Toggle switch */
+.pb-coach-switch {
+  width: 40px;
+  height: 22px;
+  border-radius: 11px;
+  background: #374151;
+  border: 1px solid rgba(255,255,255,0.08);
+  position: relative;
+  cursor: pointer;
+  transition: background 0.2s;
+  flex-shrink: 0;
+}
+.pb-coach-switch-on { background: #3b82f6; }
+
+.pb-coach-switch-knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 0.2s;
+  pointer-events: none;
+}
+.pb-coach-switch-on .pb-coach-switch-knob { transform: translateX(18px); }
+
+/* New game button */
+.pb-coach-new-btn {
+  padding: 7px 16px;
+  background: rgba(59,130,246,0.14);
+  border: 1px solid rgba(59,130,246,0.32);
+  color: #93c5fd;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s, border-color 0.15s;
+}
+.pb-coach-new-btn:hover {
+  background: rgba(59,130,246,0.24);
+  border-color: #3b82f6;
+}
+
+/* ── Game layout ── */
+.pb-coach-layout {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.pb-coach-board-col {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pb-coach-board-wrap {
+  position: relative;
+  width: 480px;
+  height: 480px;
+  flex-shrink: 0;
+}
+
+#coach-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+}
+
+.pb-coach-status {
+  font-size: 12px;
+  color: var(--text2);
+  text-align: center;
+  min-height: 18px;
+  font-weight: 500;
+}
+.pb-coach-status.err { color: var(--danger); font-weight: 600; }
+.pb-coach-status.ok  { color: var(--accent); font-weight: 600; }
+
+.pb-coach-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+
+/* ── Coach popup ── */
+.pb-coach-popup {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  width: 300px;
+  background: #111827;
+  border: 1px solid #3b82f6;
+  border-radius: 10px;
+  padding: 13px 15px;
+  box-shadow: 0 4px 20px rgba(59,130,246,0.18);
+  z-index: 100;
+}
+
+@keyframes pb-coach-slide-in {
+  from { transform: translateX(110%); opacity: 0; }
+  to   { transform: translateX(0);   opacity: 1; }
+}
+@keyframes pb-coach-slide-out {
+  from { transform: translateX(0);   opacity: 1; }
+  to   { transform: translateX(110%); opacity: 0; }
+}
+
+.pb-coach-popup-enter { animation: pb-coach-slide-in 0.3s ease forwards; }
+.pb-coach-popup-exit  { animation: pb-coach-slide-out 0.3s ease forwards; }
+
+.pb-coach-popup-hd {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.pb-coach-avatar {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #1e3a5f;
+  border: 1px solid rgba(59,130,246,0.30);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.pb-coach-popup-name {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text);
+  flex: 1;
+}
+
+.pb-coach-popup-x {
+  background: none;
+  border: none;
+  color: var(--text2);
+  font-size: 13px;
+  cursor: pointer;
+  padding: 0 2px;
+  font-family: inherit;
+  line-height: 1;
+  transition: color 0.15s;
+  flex-shrink: 0;
+}
+.pb-coach-popup-x:hover { color: var(--text); }
+
+/* Badge */
+.pb-coach-popup-badge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 4px;
+  margin-bottom: 8px;
+  letter-spacing: 0.03em;
+}
+.pb-coach-badge-red    { background:#450a0a; color:#fca5a5; border:1px solid #7f1d1d; }
+.pb-coach-badge-orange { background:#431407; color:#fdba74; border:1px solid #7c2d12; }
+.pb-coach-badge-yellow { background:#422006; color:#fde68a; border:1px solid #92400e; }
+.pb-coach-badge-green  { background:#052e16; color:#86efac; border:1px solid #14532d; }
+.pb-coach-badge-teal   { background:#042f2e; color:#5eead4; border:1px solid #134e4a; }
+.pb-coach-badge-amber  { background:#451a03; color:#fcd34d; border:1px solid #713f12; }
+.pb-coach-badge-blue   { background:#0c1a3a; color:#93c5fd; border:1px solid #1e3a5f; }
+
+/* Message */
+.pb-coach-popup-msg {
+  font-size: 12px;
+  color: #94a3b8;
+  line-height: 1.6;
+  margin-bottom: 10px;
+  min-height: 20px;
+}
+
+/* Hint section */
+.pb-coach-hint {
+  background: rgba(0,0,0,0.22);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 6px;
+  padding: 9px 11px;
+  margin-bottom: 10px;
+}
+
+.pb-coach-hint-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text2);
+  margin-bottom: 5px;
+}
+
+.pb-coach-hint-move {
+  font-size: 20px;
+  font-weight: 800;
+  color: #4ade80;
+  font-family: 'Courier New', monospace;
+  margin-bottom: 4px;
+}
+
+.pb-coach-hint-reason {
+  font-size: 11px;
+  color: #94a3b8;
+  line-height: 1.5;
+  min-height: 16px;
+}
+
+/* Footer */
+.pb-coach-popup-footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pb-coach-missed-btn {
+  font-size: 11px;
+  padding: 5px 10px;
+  background: rgba(59,130,246,0.10);
+  border: 1px solid rgba(59,130,246,0.28);
+  color: #93c5fd;
+  border-radius: 5px;
+  cursor: pointer;
+  font-family: inherit;
+  font-weight: 600;
+  transition: background 0.15s;
+}
+.pb-coach-missed-btn:hover { background: rgba(59,130,246,0.20); }
+
+.pb-coach-gotit-btn {
+  font-size: 11px;
+  padding: 5px 10px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  color: var(--text2);
+  border-radius: 5px;
+  cursor: pointer;
+  font-family: inherit;
+  font-weight: 600;
+  transition: background 0.15s;
+  margin-left: auto;
+}
+.pb-coach-gotit-btn:hover { color: var(--text); border-color: rgba(255,255,255,0.18); }
+
+/* Loading dots */
+.pb-coach-loading {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  padding: 3px 0;
+}
+.pb-coach-loading span {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #4b5568;
+  display: inline-block;
+  animation: pb-coach-dot 1.2s infinite ease-in-out;
+}
+.pb-coach-loading span:nth-child(2) { animation-delay: 0.2s; }
+.pb-coach-loading span:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes pb-coach-dot {
+  0%,80%,100% { transform: scale(0.7); opacity: 0.4; }
+  40%          { transform: scale(1.1); opacity: 1;   }
+}
+

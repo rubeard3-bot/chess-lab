@@ -727,31 +727,117 @@
       </div><!-- /pb-view-weakness -->
 
       <!-- ══════════════════════════════════
-           VIEW: PLAY THE COACH — Coming Soon
+           VIEW: PLAY THE COACH
            ══════════════════════════════════ -->
       <div id="pb-view-coach" class="hidden">
 
-        <div class="pb-view-header">
-          <a href="#" class="pb-back-link" id="pb-back-coach">← Back to modes</a>
-          <div class="pb-mode-headline">♟ Play the Coach</div>
-          <div class="pb-mode-subtitle">Full game vs Stockfish with live coach commentary</div>
+        <!-- ── Top bar ── -->
+        <div class="pb-coach-topbar">
+          <a href="#" class="pb-back-link" id="pb-back-coach" style="margin-bottom:0;flex-shrink:0">← Back to modes</a>
+          <div class="pb-coach-topbar-center">
+            <div class="pb-mode-headline" style="margin-bottom:2px">♟ Play the Coach</div>
+            <div class="pb-mode-subtitle">Full game vs Stockfish with AI coaching</div>
+          </div>
+          <div class="pb-coach-controls">
+            <div class="pb-coach-ctrl-item">
+              <span class="pb-coach-ctrl-label">Coach commentary</span>
+              <div class="pb-coach-switch" id="pb-coach-switch" title="Toggle coach commentary">
+                <div class="pb-coach-switch-knob"></div>
+              </div>
+            </div>
+            <div class="pb-coach-ctrl-item">
+              <span class="pb-coach-ctrl-label">Stockfish skill</span>
+              <select class="pb-coach-select" id="pb-coach-difficulty">
+                <option value="20">Max</option>
+                <option value="15">Strong</option>
+                <option value="10">Medium</option>
+                <option value="5">Easy</option>
+                <option value="1">Beginner</option>
+              </select>
+            </div>
+            <div class="pb-coach-ctrl-item">
+              <span class="pb-coach-ctrl-label">Play as</span>
+              <select class="pb-coach-select" id="pb-coach-color">
+                <option value="white">White</option>
+                <option value="black">Black</option>
+                <option value="random">Random</option>
+              </select>
+            </div>
+            <div class="pb-coach-ctrl-item" style="justify-content:flex-end">
+              <button class="pb-coach-new-btn" id="pb-coach-new">New Game</button>
+            </div>
+          </div>
         </div>
 
-        <div class="pb-cs-card">
-          <span class="pb-cs-icon">♟</span>
-          <div class="pb-cs-title">Play the Coach — Coming soon</div>
-          <div class="pb-cs-desc">
-            Play a full game against Stockfish while the coach watches your every move. When you reach a critical moment — a missed tactic, a blunder setup, or a position that matches your known weakness patterns — the coach speaks up. Over time, your record vs the coach becomes the clearest signal of how much you've actually improved.
+        <!-- ── Main game layout: eval bar | board | history ── -->
+        <div class="pb-coach-layout">
+
+          <!-- Eval bar -->
+          <div class="eval-bar-col" id="pb-coach-eval-col">
+            <div class="eval-bar-track" style="height:480px">
+              <div class="eval-bar-fill" id="pb-coach-eval-fill"></div>
+            </div>
+            <div class="eval-bar-text" id="pb-coach-eval-text">0.0</div>
           </div>
-          <ul class="pb-cs-list">
-            <li>Full games against Stockfish at configurable strength</li>
-            <li>Coach popups at critical decision points in the game</li>
-            <li>Danger zone warnings when you're about to repeat a known mistake</li>
-            <li>Win/loss/draw record tracked over time</li>
-            <li>Post-game summary with key moments highlighted</li>
-          </ul>
-          <div class="pb-cs-note">Building this in the next phase. For now, try Free Play or come back soon.</div>
-        </div>
+
+          <!-- Board column -->
+          <div class="pb-coach-board-col">
+            <div class="pb-coach-board-wrap" id="pb-coach-board-wrap">
+              <canvas id="coach-canvas" width="480" height="480"></canvas>
+
+              <!-- Promotion picker -->
+              <div class="promo-overlay hidden" id="coach-promo-overlay">
+                <div class="promo-card">
+                  <div class="promo-label">Choose promotion piece</div>
+                  <div class="promo-options" id="coach-promo-options"></div>
+                </div>
+              </div>
+
+              <!-- Game-over banner -->
+              <div class="gameover-banner hidden" id="coach-gameover-banner">
+                <div class="gameover-result" id="coach-gameover-result"></div>
+                <div class="gameover-btns">
+                  <button class="gameover-btn gameover-btn-primary" id="coach-btn-play-again">↺ Play Again</button>
+                </div>
+              </div>
+
+              <!-- Coach popup -->
+              <div class="pb-coach-popup hidden" id="pb-coach-popup">
+                <div class="pb-coach-popup-hd">
+                  <div class="pb-coach-avatar">♟</div>
+                  <span class="pb-coach-popup-name">Coach</span>
+                  <button class="pb-coach-popup-x" id="pb-coach-popup-x">✕</button>
+                </div>
+                <div class="pb-coach-popup-badge" id="pb-coach-popup-badge"></div>
+                <div class="pb-coach-popup-msg" id="pb-coach-popup-msg"></div>
+                <div class="pb-coach-hint hidden" id="pb-coach-hint">
+                  <div class="pb-coach-hint-label">Engine's top choice:</div>
+                  <div class="pb-coach-hint-move" id="pb-coach-hint-move"></div>
+                  <div class="pb-coach-hint-reason" id="pb-coach-hint-reason"></div>
+                </div>
+                <div class="pb-coach-popup-footer">
+                  <button class="pb-coach-missed-btn hidden" id="pb-coach-missed">Show me what I missed</button>
+                  <button class="pb-coach-gotit-btn" id="pb-coach-gotit">Got it</button>
+                </div>
+              </div>
+
+            </div><!-- /pb-coach-board-wrap -->
+            <div class="pb-coach-status" id="pb-coach-status">Click New Game to start</div>
+            <div class="pb-coach-actions">
+              <button class="prac-btn" id="pb-coach-resign">Resign</button>
+            </div>
+          </div><!-- /pb-coach-board-col -->
+
+          <!-- Move history (reuses existing styles) -->
+          <div class="practice-history" style="height:480px">
+            <div class="history-head">Move History</div>
+            <div class="history-scroll" id="coach-history-scroll">
+              <div class="history-empty">No moves yet</div>
+            </div>
+            <div class="history-eval-box" id="coach-history-eval-box"></div>
+          </div>
+
+        </div><!-- /pb-coach-layout -->
 
       </div><!-- /pb-view-coach -->
 
