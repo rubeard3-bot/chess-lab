@@ -1846,7 +1846,9 @@ Respond with ONLY the coach message text.`;
     ? 'http://localhost:4000/api/analyze'
     : 'https://chess-lab-production.up.railway.app/api/analyze';
 
-  const LICHESS_EP = 'https://explorer.lichess.ovh/lichess';
+  const LICHESS_EP = window.location.hostname === 'localhost'
+    ? 'http://localhost:4000/api/lichess-explorer'
+    : 'https://chess-lab-production.up.railway.app/api/lichess-explorer';
   let _odLastFetchErr = null; // 'auth' | 'network' | null
 
   const OD_PX = 480;
@@ -2119,7 +2121,9 @@ Respond with ONLY the coach message text.`;
       _odLastFetchErr = 'network';
       return null;
     }
-    if (!r.ok) { _odLastFetchErr = 'auth'; return null; }
+    if (r.status === 401) { _odLastFetchErr = 'auth';      return null; }
+    if (r.status === 429) { _odLastFetchErr = 'ratelimit'; return null; }
+    if (!r.ok)            { _odLastFetchErr = 'server';    return null; }
     const data = await r.json();
     odFenCache.set(fen, data);
     return data;
@@ -2505,9 +2509,11 @@ Each section should be 1-2 sentences. No other markdown.`;
 
     if (!data || !data.moves || !data.moves.length) {
       let msg;
-      if (!data && _odLastFetchErr === 'auth') msg = "Couldn't reach Lichess. Please try again.";
-      else if (!data && _odLastFetchErr === 'network') msg = 'Network error — check your connection.';
-      else msg = 'Theory has thinned out at this position. Good drilling!';
+      if (!data && _odLastFetchErr === 'auth')      msg = 'Lichess auth failed — admin needs to refresh the token';
+      else if (!data && _odLastFetchErr === 'ratelimit') msg = 'Too many requests — please wait a moment and try again';
+      else if (!data && _odLastFetchErr === 'server')    msg = "Server error — couldn't reach Lichess";
+      else if (!data && _odLastFetchErr === 'network')   msg = 'Network error — check your connection';
+      else msg = 'Theory has thinned out here — good drilling!';
       content.innerHTML = `<div class="pb-od-coach-placeholder">${msg}</div>`;
       return;
     }

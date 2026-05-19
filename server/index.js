@@ -423,6 +423,49 @@ In 3-4 sentences explain: the main strategic ideas, what each side wants to achi
   }
 });
 
+/* ------------------------------------------------------------------ */
+/*  GET /api/lichess-explorer                                           */
+/* ------------------------------------------------------------------ */
+
+const lichessExplorerLimiter = rateLimit({
+  windowMs:        10 * 1000,
+  max:             10,
+  standardHeaders: true,
+  legacyHeaders:   false
+});
+
+app.get('/api/lichess-explorer', lichessExplorerLimiter, async (req, res) => {
+  try {
+    const allowed = ['fen', 'speeds', 'ratings', 'moves', 'variant'];
+    const params  = new URLSearchParams();
+    for (const key of allowed) {
+      if (req.query[key] != null) params.set(key, req.query[key]);
+    }
+
+    const url      = `https://explorer.lichess.ovh/lichess?${params.toString()}`;
+    const upstream = await fetch(url, {
+      headers: { Authorization: `Bearer ${process.env.LICHESS_API_TOKEN}` }
+    });
+
+    if (upstream.status === 429) {
+      return res.status(429).json({ error: 'Lichess rate limited — please wait a moment' });
+    }
+
+    if (!upstream.ok) {
+      const errText = await upstream.text();
+      console.error('[/api/lichess-explorer] upstream error:', upstream.status, errText.slice(0, 200));
+      return res.status(500).json({ error: `Lichess error: ${upstream.status}` });
+    }
+
+    const data = await upstream.json();
+    res.json(data);
+
+  } catch (err) {
+    console.error('[/api/lichess-explorer] error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`ChessLab server running on port ${PORT}`);
 });
