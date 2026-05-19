@@ -421,6 +421,79 @@
     }
   }
 
+  // Recalculates all three trend maps from actual game data, overriding whatever
+  // Claude returned. These are deterministic aggregations — Claude should not be
+  // inventing them. Runs after repairFirstSeenDates so activeGames is settled.
+  //
+  // TODO (fabrication audit): openings.gamesPlayed/wins/draws/losses/avgAccuracy
+  // are also numeric facts Claude generates from game data — candidates for the
+  // same treatment. activeOccurrences / historicalOccurrences on weaknesses are
+  // likewise counts Claude estimates rather than we calculate. gamesAnalyzedEver
+  // is set in code before Claude runs but Claude can overwrite it in its response.
+  function repairTrendValues(proposedBucket, bucketName, gameIndex, expectedNewGameRouting) {
+    var p = proposedBucket;
+    if (!p) return;
+    if (!p.trends || typeof p.trends !== 'object') p.trends = {};
+
+    var allGameIds = (p.activeGames || []).map(function (g) { return g.id; });
+
+    // Gather every game that belongs to this bucket
+    var bucketGames = [];
+    var seen = {};
+    function collectGame(fk) {
+      if (seen[fk]) return;
+      seen[fk] = true;
+      var g = gameIndex[fk];
+      if (g) bucketGames.push(g);
+    }
+    Object.keys(expectedNewGameRouting || {}).forEach(function (fk) {
+      if (expectedNewGameRouting[fk] === bucketName) collectGame(fk);
+    });
+    allGameIds.forEach(function (fk) { collectGame(fk); });
+
+    // Group by YYYY-MM
+    var byMonth = {};
+    bucketGames.forEach(function (g) {
+      var mk = monthKey(g.savedAt);
+      if (!mk) return;
+      if (!byMonth[mk]) byMonth[mk] = [];
+      byMonth[mk].push(g);
+    });
+
+    var accuracyByMonth = {};
+    var blundersPerGameByMonth = {};
+    var totalGamesByMonth = {};
+
+    Object.keys(byMonth).forEach(function (mk) {
+      var games = byMonth[mk];
+      totalGamesByMonth[mk] = games.length;
+
+      var accSum = 0, accCount = 0;
+      var blunderSum = 0, blunderCount = 0;
+      games.forEach(function (g) {
+        var s = g.analysis && g.analysis.summary;
+        if (s && typeof s.accuracy === 'number' && isFinite(s.accuracy) && s.accuracy >= 0) {
+          accSum   += s.accuracy;
+          accCount++;
+        }
+        if (s && typeof s.blunders === 'number' && isFinite(s.blunders) && s.blunders >= 0) {
+          blunderSum   += s.blunders;
+          blunderCount++;
+        }
+      });
+
+      accuracyByMonth[mk]        = accCount     > 0 ? accSum   / accCount     : 0;
+      blundersPerGameByMonth[mk] = blunderCount > 0 ? blunderSum / blunderCount : 0;
+    });
+
+    p.trends.accuracyByMonth        = accuracyByMonth;
+    p.trends.blundersPerGameByMonth = blundersPerGameByMonth;
+    p.trends.totalGamesByMonth      = totalGamesByMonth;
+
+    console.log('[MemoryRepair] repairTrendValues: recalculated trends from',
+      bucketGames.length, 'games in bucket', bucketName);
+  }
+
   // Repairs Claude-narrative enum fields before validation.
   // trend and severity are narrative judgements Claude writes — safe to default.
   // stockfishClassification is a Stockfish fact — must NOT be healed; invalid = real fabrication.
@@ -810,7 +883,7 @@
       '1. Update activeOccurrences for each weakness based on new game data',
       '2. Update historicalOccurrences (lifetime counter — can only go up)',
       '3. Add new weaknesses ONLY if a clear pattern emerges in 3+ new games',
-      '4. Update trends.accuracyByMonth, blundersPerGameByMonth, totalGamesByMonth for months containing new games',
+      '4. Leave trends.accuracyByMonth, blundersPerGameByMonth, and totalGamesByMonth empty ({}) — these are calculated in code from Stockfish data and will be overwritten; do not invent values for them',
       '5. Move aged-out game data into archivedSummaries for the appropriate month',
       '6. Update narrativeDescription for weaknesses where the pattern has meaningfully changed',
       '7. Update openings dictionary with new games openings',
@@ -1259,6 +1332,7 @@
           );
           repairFirstSeenDates(proposedBucket, bn2, gameIndex, expectedRouting);
           repairNarrativeFields(proposedBucket);
+          repairTrendValues(proposedBucket, bn2, gameIndex, expectedRouting);
           working.buckets[bn2] = proposedBucket;
           bucketsTouched.push(bn2);
         } catch (err) {
