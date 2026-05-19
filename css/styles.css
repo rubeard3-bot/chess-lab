@@ -8013,3 +8013,477 @@ body.pf-page {
 }
 .pb-od-drill-retry-btn:hover { background: rgba(59,130,246,0.25); }
 .pb-od-drill-restart-btn:hover { border-color: rgba(255,255,255,0.18); }
+
+/* ════════════════════════════════════════════════════════════════════════
+   WEAKNESS DRILL MODE  —  all classes prefixed pb-wd-
+   ════════════════════════════════════════════════════════════════════════ */
+
+/* ── Selection: empty state ── */
+.pb-wd-empty-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 40px 32px;
+  text-align: center;
+  max-width: 520px;
+  margin: 0 auto;
+}
+.pb-wd-empty-icon { font-size: 40px; display: block; margin-bottom: 12px; }
+.pb-wd-empty-heading {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 10px;
+}
+.pb-wd-empty-body {
+  font-size: 13px;
+  color: var(--text2);
+  line-height: 1.6;
+  margin-bottom: 20px;
+}
+.pb-wd-empty-btn {
+  display: inline-block;
+  padding: 10px 22px;
+  background: rgba(127,166,80,0.15);
+  border: 1px solid rgba(127,166,80,0.40);
+  color: var(--accent);
+  border-radius: 7px;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 0.15s;
+}
+.pb-wd-empty-btn:hover { background: rgba(127,166,80,0.25); }
+
+/* ── Selection: sub-mode cards ── */
+.pb-wd-mode-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  max-width: 860px;
+}
+.pb-wd-card {
+  background: #111827;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 22px 20px 18px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  position: relative;
+  user-select: none;
+}
+.pb-wd-card:hover { border-color: #3b82f6; background: #131f35; }
+.pb-wd-card-primary {
+  background: #0c1a3a;
+  border-color: #1e3a5f;
+}
+.pb-wd-card-primary:hover { border-color: #3b82f6; background: #0f2040; }
+.pb-wd-card-disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+.pb-wd-card-badge {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: rgba(59,130,246,0.18);
+  color: #93c5fd;
+  border: 1px solid rgba(59,130,246,0.35);
+}
+.pb-wd-card-icon { font-size: 28px; display: block; margin-bottom: 8px; }
+.pb-wd-card-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+.pb-wd-card-desc {
+  font-size: 12px;
+  color: var(--text2);
+  line-height: 1.55;
+  margin-bottom: 12px;
+}
+.pb-wd-card-pills { display: flex; gap: 6px; flex-wrap: wrap; }
+.pb-wd-pill {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.06);
+  color: var(--text2);
+  border: 1px solid rgba(255,255,255,0.10);
+}
+
+/* ── Selection: stats preview ── */
+.pb-wd-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  max-width: 600px;
+  margin-top: 8px;
+}
+.pb-wd-stat-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px 16px;
+}
+.pb-wd-stat-title {
+  font-size: 11px;
+  color: var(--text2);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 6px;
+}
+.pb-wd-stat-value {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+/* ── Drilling topbar ── */
+.pb-wd-topbar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 16px;
+}
+.pb-wd-exit-link {
+  font-size: 12px;
+  color: var(--text2);
+  text-decoration: none;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.pb-wd-exit-link:hover { color: var(--text); }
+.pb-wd-topbar-center {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.pb-wd-topbar-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+}
+.pb-wd-progress-text {
+  font-size: 11px;
+  color: var(--text2);
+}
+.pb-wd-progress-bar-wrap {
+  width: 200px;
+  height: 5px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 3px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.pb-wd-progress-bar {
+  height: 100%;
+  background: #3b82f6;
+  border-radius: 3px;
+  transition: width 0.4s ease;
+}
+
+/* ── Drill layout ── */
+.pb-wd-drill-layout {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+.pb-wd-board-col {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.pb-wd-right-col {
+  width: 290px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* ── Real moment banner ── */
+.pb-wd-real-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #0c1a3a;
+  border: 1px solid #1e3a5f;
+  border-radius: 7px;
+  padding: 10px 14px;
+  font-size: 12px;
+  color: #93c5fd;
+  font-weight: 500;
+}
+
+/* ── Drill card ── */
+.pb-wd-drill-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px 16px;
+}
+.pb-wd-weakness-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 3px 9px;
+  border-radius: 4px;
+  background: rgba(251,191,36,0.12);
+  color: #fbbf24;
+  border: 1px solid rgba(251,191,36,0.30);
+  margin-bottom: 8px;
+}
+.pb-wd-task-desc {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+.pb-wd-hint-line {
+  font-size: 12px;
+  color: var(--text2);
+  font-style: italic;
+  margin-bottom: 4px;
+  min-height: 16px;
+}
+.pb-wd-prompt {
+  font-size: 11px;
+  color: var(--text2);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-top: 4px;
+}
+
+/* ── Board wrap ── */
+.pb-wd-board-wrap {
+  position: relative;
+  width: 480px;
+  height: 480px;
+  flex-shrink: 0;
+}
+.pb-wd-board-wrap canvas { display: block; cursor: pointer; }
+
+/* ── Eval line ── */
+.pb-wd-eval-line {
+  font-size: 11px;
+  color: var(--text2);
+  text-align: center;
+  font-weight: 500;
+}
+
+/* ── Coach feedback card ── */
+.pb-wd-coach-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.pb-wd-coach-hd {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.pb-wd-coach-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+}
+.pb-wd-coach-waiting {
+  font-size: 12px;
+  color: var(--text2);
+  font-style: italic;
+}
+.pb-wd-coach-result {
+  font-size: 13px;
+  font-weight: 700;
+}
+.pb-wd-result-correct { color: #4ade80; }
+.pb-wd-result-wrong   { color: #f87171; }
+.pb-wd-coach-msg {
+  font-size: 12px;
+  color: var(--text);
+  line-height: 1.55;
+}
+.pb-wd-coach-btns {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.pb-wd-btn-primary {
+  padding: 8px 18px;
+  border-radius: 7px;
+  border: 1px solid rgba(59,130,246,0.45);
+  background: rgba(59,130,246,0.15);
+  color: #93c5fd;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s;
+}
+.pb-wd-btn-primary:hover { background: rgba(59,130,246,0.25); }
+.pb-wd-btn-secondary {
+  padding: 8px 14px;
+  border-radius: 7px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text2);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s;
+}
+.pb-wd-btn-secondary:hover { border-color: rgba(255,255,255,0.18); color: var(--text); }
+
+/* ── Session stats card ── */
+.pb-wd-session-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px 16px;
+}
+.pb-wd-session-title {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text2);
+  margin-bottom: 10px;
+}
+.pb-wd-session-rows { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+.pb-wd-session-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  color: var(--text2);
+}
+.pb-wd-session-row span:last-child {
+  font-weight: 700;
+  color: var(--text);
+}
+
+/* ── Dots row ── */
+.pb-wd-dots {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+.pb-wd-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+.pb-wd-dot-correct  { background: #4ade80; }
+.pb-wd-dot-wrong    { background: #f87171; }
+.pb-wd-dot-current  { background: transparent; border: 2px solid #3b82f6; }
+.pb-wd-dot-upcoming { background: rgba(255,255,255,0.12); }
+
+/* ── Drilling info section ── */
+.pb-wd-drilling-info { display: flex; flex-direction: column; gap: 6px; }
+.pb-wd-info-val {
+  font-size: 11px;
+  color: #9ca3af;
+  text-align: right;
+  max-width: 140px;
+  word-break: break-word;
+  font-weight: 600;
+}
+
+/* ── Summary screen ── */
+.pb-wd-summary-score-wrap {
+  text-align: center;
+  padding: 24px 0 20px;
+}
+.pb-wd-summary-score {
+  font-size: 56px;
+  font-weight: 800;
+  color: var(--text);
+  line-height: 1;
+  letter-spacing: -2px;
+  margin-bottom: 8px;
+}
+.pb-wd-summary-trend {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text2);
+}
+.pb-wd-summary-section { margin-bottom: 20px; }
+.pb-wd-breakdown-grid { display: flex; flex-direction: column; gap: 6px; max-width: 520px; }
+.pb-wd-breakdown-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 9px 14px;
+  border-radius: 7px;
+  font-size: 13px;
+  font-weight: 600;
+  border: 1px solid transparent;
+}
+.pb-wd-bd-green  { background: #052e16; color: #86efac; border-color: #14532d; }
+.pb-wd-bd-amber  { background: #422006; color: #fde68a; border-color: #92400e; }
+.pb-wd-bd-red    { background: #450a0a; color: #fca5a5; border-color: #7f1d1d; }
+.pb-wd-sum-stats-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 520px;
+}
+.pb-wd-sum-stat-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 9px 14px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  font-size: 13px;
+  color: var(--text2);
+}
+.pb-wd-sum-stat-item span:last-child { font-weight: 700; color: var(--text); }
+.pb-wd-sum-stat-highlight { border-color: #92400e; background: #422006; }
+.pb-wd-sum-stat-highlight span:last-child { color: #fde68a; }
+.pb-wd-sum-real-note {
+  font-size: 12px;
+  color: #93c5fd;
+  background: rgba(59,130,246,0.08);
+  border: 1px solid rgba(59,130,246,0.20);
+  border-radius: 6px;
+  padding: 8px 12px;
+  margin-bottom: 16px;
+  max-width: 520px;
+}
+.pb-wd-sum-btns {
+  display: flex;
+  gap: 10px;
+  padding: 8px 0 24px;
+}

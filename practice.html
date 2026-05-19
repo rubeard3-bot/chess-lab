@@ -698,31 +698,227 @@
       </div><!-- /pb-view-free -->
 
       <!-- ══════════════════════════════════
-           VIEW: WEAKNESS DRILL — Coming Soon
+           VIEW: WEAKNESS DRILL
+           Sub-states: selection → drilling → summary
            ══════════════════════════════════ -->
       <div id="pb-view-weakness" class="hidden">
 
-        <div class="pb-view-header">
-          <a href="#" class="pb-back-link" id="pb-back-weakness">← Back to modes</a>
-          <div class="pb-mode-headline">🎯 Weakness Drill</div>
-          <div class="pb-mode-subtitle">Practice positions tailored to your specific weaknesses</div>
-        </div>
+        <!-- ── SUB-VIEW: SELECTION ── -->
+        <div id="pb-wd-selection">
 
-        <div class="pb-cs-card">
-          <span class="pb-cs-icon">🎯</span>
-          <div class="pb-cs-title">Weakness Drill — Coming soon</div>
-          <div class="pb-cs-desc">
-            Chess Lab has already identified your patterns — blunder tendencies, missed tactics, conversion failures. The Weakness Drill mode will take the positions where you go wrong and drill them until they become automatic. Every session is generated from your real game history, so there's no generic content — only your specific blind spots.
+          <div class="pb-view-header">
+            <a href="#" class="pb-back-link" id="pb-back-weakness">← Back to modes</a>
+            <div class="pb-mode-headline">🎯 Weakness Drill</div>
+            <div class="pb-mode-subtitle">Positions pulled from your actual games and your specific patterns.</div>
           </div>
-          <ul class="pb-cs-list">
-            <li>Drill actual blunder moments from your analyzed games</li>
-            <li>AI-generated scenarios for your conversion and endgame weaknesses</li>
-            <li>Tactics pattern drills targeting your most common mistake types</li>
-            <li>Coach commentary explaining what you should have seen</li>
-            <li>Danger zone warnings on critical positions with your pattern</li>
-          </ul>
-          <div class="pb-cs-note">Building this in the next phase. For now, try Free Play or come back soon.</div>
-        </div>
+
+          <!-- Empty state (no recommendations yet) -->
+          <div id="pb-wd-empty" class="hidden">
+            <div class="pb-wd-empty-card">
+              <span class="pb-wd-empty-icon">📊</span>
+              <div class="pb-wd-empty-heading">Analyze games first</div>
+              <div class="pb-wd-empty-body">Weakness Drill needs to know your patterns. Analyze 3+ games and generate recommendations, then come back.</div>
+              <a href="recommendations.html" class="pb-wd-empty-btn">Go to Recommendations</a>
+            </div>
+          </div>
+
+          <!-- Cards + stats (when recommendations exist) -->
+          <div id="pb-wd-cards" class="hidden">
+
+            <div class="pb-wd-mode-cards">
+
+              <!-- Card 1: Train your weaknesses -->
+              <div class="pb-wd-card pb-wd-card-primary" id="pb-wd-card-mixed">
+                <span class="pb-wd-card-badge">Recommended</span>
+                <span class="pb-wd-card-icon">🎯</span>
+                <div class="pb-wd-card-title">Train your weaknesses</div>
+                <div class="pb-wd-card-desc">5-10 positions per session. Mostly generated scenarios that match your specific patterns, with occasional real moments from your past games.</div>
+                <div class="pb-wd-card-pills">
+                  <span class="pb-wd-pill" id="pb-wd-pill-weakness-count">0 weaknesses identified</span>
+                  <span class="pb-wd-pill">5-10 positions</span>
+                </div>
+              </div>
+
+              <!-- Card 2: Drill past blunders -->
+              <div class="pb-wd-card" id="pb-wd-card-past">
+                <span class="pb-wd-card-icon">🔁</span>
+                <div class="pb-wd-card-title">Drill past blunders</div>
+                <div class="pb-wd-card-desc">Replay the exact critical moments from your past games. Find the move you should have played.</div>
+                <div class="pb-wd-card-pills">
+                  <span class="pb-wd-pill" id="pb-wd-pill-blunder-count">0 critical moments saved</span>
+                </div>
+              </div>
+
+            </div><!-- /pb-wd-mode-cards -->
+
+            <!-- Training progress stats -->
+            <div class="pb-section-label" style="margin-top:28px">Your weakness training progress</div>
+            <div class="pb-wd-stat-grid">
+              <div class="pb-wd-stat-card">
+                <div class="pb-wd-stat-title">Sessions completed</div>
+                <div class="pb-wd-stat-value" id="pb-wd-stat-sessions">0</div>
+              </div>
+              <div class="pb-wd-stat-card">
+                <div class="pb-wd-stat-title">All-time accuracy</div>
+                <div class="pb-wd-stat-value" id="pb-wd-stat-accuracy">—</div>
+              </div>
+              <div class="pb-wd-stat-card">
+                <div class="pb-wd-stat-title">Best streak</div>
+                <div class="pb-wd-stat-value" id="pb-wd-stat-streak">0</div>
+              </div>
+            </div>
+
+          </div><!-- /pb-wd-cards -->
+
+        </div><!-- /pb-wd-selection -->
+
+        <!-- ── SUB-VIEW: DRILLING ── -->
+        <div id="pb-wd-drilling" class="hidden">
+
+          <!-- Topbar -->
+          <div class="pb-wd-topbar">
+            <a href="#" class="pb-wd-exit-link" id="pb-wd-back-to-select">← Exit drill</a>
+            <div class="pb-wd-topbar-center">
+              <span class="pb-wd-topbar-title" id="pb-wd-mode-title">Train your weaknesses</span>
+              <span class="pb-wd-progress-text" id="pb-wd-progress-text">Position 1 of 8</span>
+            </div>
+            <div class="pb-wd-progress-bar-wrap">
+              <div class="pb-wd-progress-bar" id="pb-wd-progress-bar" style="width:0%"></div>
+            </div>
+          </div>
+
+          <!-- Drill layout: board col | right col -->
+          <div class="pb-wd-drill-layout">
+
+            <!-- Left: board column -->
+            <div class="pb-wd-board-col">
+
+              <!-- Real moment banner (shown only for real moments) -->
+              <div class="pb-wd-real-banner hidden" id="pb-wd-real-banner">
+                <span>📍</span>
+                <span id="pb-wd-real-banner-text">This is a moment from your real game</span>
+              </div>
+
+              <!-- Drill card -->
+              <div class="pb-wd-drill-card">
+                <div class="pb-wd-weakness-badge">
+                  <span>⚠</span>
+                  <span id="pb-wd-weakness-label">Pattern</span>
+                </div>
+                <div class="pb-wd-task-desc" id="pb-wd-task-desc">Find the best move.</div>
+                <div class="pb-wd-hint-line" id="pb-wd-hint-line"></div>
+                <div class="pb-wd-prompt">What's your move?</div>
+              </div>
+
+              <!-- Chess board -->
+              <div class="pb-wd-board-wrap" id="pb-wd-board-wrap">
+                <canvas id="pb-wd-canvas" width="480" height="480"></canvas>
+                <!-- Promotion picker -->
+                <div class="promo-overlay hidden" id="pb-wd-promo-overlay">
+                  <div class="promo-card">
+                    <div class="promo-label">Choose promotion piece</div>
+                    <div class="promo-options" id="pb-wd-promo-options"></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Side / eval line -->
+              <div class="pb-wd-eval-line" id="pb-wd-eval-line">White to move</div>
+
+            </div><!-- /pb-wd-board-col -->
+
+            <!-- Right: coach card + session stats -->
+            <div class="pb-wd-right-col">
+
+              <!-- Coach feedback card -->
+              <div class="pb-wd-coach-card">
+                <div class="pb-wd-coach-hd">
+                  <div class="pb-coach-avatar">♟</div>
+                  <span class="pb-wd-coach-name">Coach</span>
+                </div>
+                <div class="pb-wd-coach-waiting" id="pb-wd-coach-waiting">Play your move to get feedback.</div>
+                <div class="pb-wd-coach-result hidden" id="pb-wd-coach-result"></div>
+                <div class="pb-wd-coach-msg hidden" id="pb-wd-coach-msg"></div>
+                <div class="pb-wd-coach-btns hidden" id="pb-wd-coach-btns">
+                  <button class="pb-wd-btn-secondary" id="pb-wd-btn-retry">Try again</button>
+                  <button class="pb-wd-btn-primary" id="pb-wd-btn-next">Next →</button>
+                </div>
+              </div>
+
+              <!-- Session stats card -->
+              <div class="pb-wd-session-card">
+                <div class="pb-wd-session-title">This session</div>
+                <div class="pb-wd-session-rows">
+                  <div class="pb-wd-session-row">
+                    <span>Correct</span>
+                    <span id="pb-wd-sess-correct">0 / 0</span>
+                  </div>
+                  <div class="pb-wd-session-row">
+                    <span>Current streak</span>
+                    <span id="pb-wd-sess-streak">0</span>
+                  </div>
+                  <div class="pb-wd-session-row">
+                    <span>Best streak</span>
+                    <span id="pb-wd-sess-best">0</span>
+                  </div>
+                </div>
+                <div class="pb-wd-dots" id="pb-wd-dots"></div>
+
+                <div class="pb-wd-drilling-info">
+                  <div class="pb-wd-session-title" style="margin-top:14px;border-top:1px solid var(--border);padding-top:12px">Drilling</div>
+                  <div class="pb-wd-session-row" style="margin-top:4px">
+                    <span>Pattern</span>
+                    <span id="pb-wd-info-pattern" class="pb-wd-info-val">—</span>
+                  </div>
+                  <div class="pb-wd-session-row">
+                    <span>All-time accuracy</span>
+                    <span id="pb-wd-info-alltime">—</span>
+                  </div>
+                </div>
+              </div>
+
+            </div><!-- /pb-wd-right-col -->
+
+          </div><!-- /pb-wd-drill-layout -->
+
+        </div><!-- /pb-wd-drilling -->
+
+        <!-- ── SUB-VIEW: SUMMARY ── -->
+        <div id="pb-wd-summary" class="hidden">
+
+          <div class="pb-view-header">
+            <div class="pb-mode-headline">Session complete</div>
+            <div class="pb-mode-subtitle">Here's how you did</div>
+          </div>
+
+          <!-- Big score -->
+          <div class="pb-wd-summary-score-wrap">
+            <div class="pb-wd-summary-score" id="pb-wd-sum-score">0 / 0</div>
+            <div class="pb-wd-summary-trend" id="pb-wd-sum-trend"></div>
+          </div>
+
+          <!-- Per-weakness breakdown -->
+          <div class="pb-wd-summary-section">
+            <div class="pb-section-label">By pattern</div>
+            <div id="pb-wd-sum-breakdown"></div>
+          </div>
+
+          <!-- Updated stats -->
+          <div class="pb-wd-summary-section">
+            <div class="pb-section-label">Stats updated</div>
+            <div class="pb-wd-sum-stats-grid" id="pb-wd-sum-stats"></div>
+          </div>
+
+          <!-- Real moments note -->
+          <div class="pb-wd-sum-real-note hidden" id="pb-wd-sum-real-note"></div>
+
+          <!-- Action buttons -->
+          <div class="pb-wd-sum-btns">
+            <button class="pb-wd-btn-primary" id="pb-wd-sum-again">Drill again</button>
+            <button class="pb-wd-btn-secondary" id="pb-wd-sum-back">Back to modes</button>
+          </div>
+
+        </div><!-- /pb-wd-summary -->
 
       </div><!-- /pb-view-weakness -->
 

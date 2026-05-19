@@ -3172,3 +3172,1153 @@ No other text, no header, no numbering.`;
   });
 
 })();
+
+/* ═══════════════════════════════════════════════════════════════════════
+   WEAKNESS DRILL MODE — separate IIFE, never touches other modes' state
+   ═══════════════════════════════════════════════════════════════════════ */
+(function () {
+  'use strict';
+
+  const WD_API_URL = window.location.hostname === 'localhost'
+    ? 'http://localhost:4000/api/analyze'
+    : 'https://chess-lab-production.up.railway.app/api/analyze';
+
+  const WD_PX = 480;
+  const WD_SQ = WD_PX / 8; // 60
+
+  const WD_LIGHT = window.BOARD_LIGHT || '#f0d9b5';
+  const WD_DARK  = window.BOARD_DARK  || '#b58863';
+
+  const WD_PIECE_URLS = {
+    wK:'https://lichess1.org/assets/piece/cburnett/wK.svg',
+    wQ:'https://lichess1.org/assets/piece/cburnett/wQ.svg',
+    wR:'https://lichess1.org/assets/piece/cburnett/wR.svg',
+    wB:'https://lichess1.org/assets/piece/cburnett/wB.svg',
+    wN:'https://lichess1.org/assets/piece/cburnett/wN.svg',
+    wP:'https://lichess1.org/assets/piece/cburnett/wP.svg',
+    bK:'https://lichess1.org/assets/piece/cburnett/bK.svg',
+    bQ:'https://lichess1.org/assets/piece/cburnett/bQ.svg',
+    bR:'https://lichess1.org/assets/piece/cburnett/bR.svg',
+    bB:'https://lichess1.org/assets/piece/cburnett/bB.svg',
+    bN:'https://lichess1.org/assets/piece/cburnett/bN.svg',
+    bP:'https://lichess1.org/assets/piece/cburnett/bP.svg'
+  };
+  const WD_SYM = {
+    wK:'♔',wQ:'♕',wR:'♖',wB:'♗',wN:'♘',wP:'♙',
+    bK:'♚',bQ:'♛',bR:'♜',bB:'♝',bN:'♞',bP:'♟'
+  };
+
+  const wdImg = {};
+  let wdImgLoaded = false;
+
+  // ── Sub-state ──────────────────────────────────────────────────────────
+  let wdSubState   = 'selection';
+  let wdDrillMode  = null;     // 'mixed' | 'past_only'
+  let wdSessionId  = 0;        // incremented each start; guards stale async
+
+  // ── Session ────────────────────────────────────────────────────────────
+  let wdPositions     = [];
+  let wdCurrentIdx    = 0;
+  let wdSessionResults = [];   // per-position: 'correct'|'wrong_close'|'wrong_significant'
+  let wdSessionFirstTry = [];  // boolean per position (first-try result)
+  let wdAttempted     = false; // has current position been attempted?
+  let wdCurrentStreak = 0;
+  let wdBestStreak    = 0;
+
+  // ── Board state ────────────────────────────────────────────────────────
+  let wdChess        = null;
+  let wdFlipped      = false;
+  let wdSelSq        = null;
+  let wdLegDests     = [];
+  let wdLastFrom     = null;
+  let wdLastTo       = null;
+  let wdBoardFrozen  = false;
+  let wdPendingPromo = null;
+
+  // ── Canvas ─────────────────────────────────────────────────────────────
+  let wdCanvas = null;
+  let wdCtx    = null;
+  let wdCanvasInited = false;
+
+  // ── Stockfish eval worker ──────────────────────────────────────────────
+  let wdEvalSF       = null;
+  let wdEvalSFReady  = false;
+  let wdEvalPending  = null;  // { resolve, fen }
+  let wdEvalAccumCp  = null;
+
+  // ── localStorage helpers ───────────────────────────────────────────────
+  function lsGet(k)       { try { return localStorage.getItem(k); }         catch(_) { return null; } }
+  function lsJSON(k)      { try { return JSON.parse(localStorage.getItem(k)); } catch(_) { return null; } }
+  function lsSetJSON(k,v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch(_) {} }
+
+  // ── Toast ──────────────────────────────────────────────────────────────
+  let _wdToastTimer;
+  function wdToast(msg) {
+    const el = document.getElementById('az-toast');
+    if (!el) return;
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(_wdToastTimer);
+    _wdToastTimer = setTimeout(() => el.classList.remove('show'), 2800);
+  }
+
+  // ── Image loading ──────────────────────────────────────────────────────
+  function loadWDImg() {
+    if (wdImgLoaded) return Promise.resolve();
+    return Promise.all(Object.entries(WD_PIECE_URLS).map(([k, url]) =>
+      new Promise(resolve => {
+        const img = new Image();
+        img.onload  = () => { wdImg[k] = img; resolve(); };
+        img.onerror = () => resolve();
+        img.src = url;
+      })
+    )).then(() => { wdImgLoaded = true; });
+  }
+
+  // ── Coord helpers ──────────────────────────────────────────────────────
+  function wdSqToRC(sq) {
+    const file = sq.charCodeAt(0) - 97;
+    const rank = 8 - parseInt(sq[1]);
+    return wdFlipped
+      ? { c: 7 - file, r: 7 - rank }
+      : { c: file, r: rank };
+  }
+  function wdRcToSq(c, r) {
+    if (c < 0 || c > 7 || r < 0 || r > 7) return null;
+    return wdFlipped
+      ? String.fromCharCode(97 + (7 - c)) + (r + 1)
+      : String.fromCharCode(97 + c) + (8 - r);
+  }
+  function wdCanvasToSq(x, y) {
+    return wdRcToSq(Math.floor(x / WD_SQ), Math.floor(y / WD_SQ));
+  }
+
+  // ── Rendering ──────────────────────────────────────────────────────────
+  function wdRender() {
+    if (!wdCtx || !wdChess) return;
+    wdCtx.clearRect(0, 0, WD_PX, WD_PX);
+    wdDrawSquares();
+    wdDrawHighlights();
+    if (wdSelSq && !wdBoardFrozen) wdDrawSelected();
+    if (!wdBoardFrozen) wdDrawDots();
+    wdDrawPieces();
+    wdDrawCoords();
+  }
+
+  function wdDrawSquares() {
+    for (let r = 0; r < 8; r++)
+      for (let c = 0; c < 8; c++) {
+        wdCtx.fillStyle = (r + c) % 2 === 0 ? WD_LIGHT : WD_DARK;
+        wdCtx.fillRect(c * WD_SQ, r * WD_SQ, WD_SQ, WD_SQ);
+      }
+  }
+
+  function wdDrawHighlights() {
+    [wdLastFrom, wdLastTo].forEach(sq => {
+      if (!sq) return;
+      const { c, r } = wdSqToRC(sq);
+      wdCtx.fillStyle = 'rgba(255,200,0,0.40)';
+      wdCtx.fillRect(c * WD_SQ, r * WD_SQ, WD_SQ, WD_SQ);
+    });
+  }
+
+  function wdDrawSelected() {
+    if (!wdSelSq) return;
+    const { c, r } = wdSqToRC(wdSelSq);
+    wdCtx.fillStyle = 'rgba(80,160,255,0.42)';
+    wdCtx.fillRect(c * WD_SQ, r * WD_SQ, WD_SQ, WD_SQ);
+  }
+
+  function wdDrawDots() {
+    wdLegDests.forEach(sq => {
+      const { c, r } = wdSqToRC(sq);
+      const cx = c * WD_SQ + WD_SQ / 2;
+      const cy = r * WD_SQ + WD_SQ / 2;
+      wdCtx.save();
+      if (wdChess.get(sq)) {
+        wdCtx.strokeStyle = 'rgba(0,0,0,0.30)';
+        wdCtx.lineWidth   = WD_SQ * 0.09;
+        wdCtx.beginPath();
+        wdCtx.arc(cx, cy, WD_SQ * 0.46, 0, Math.PI * 2);
+        wdCtx.stroke();
+      } else {
+        wdCtx.fillStyle = 'rgba(0,0,0,0.22)';
+        wdCtx.beginPath();
+        wdCtx.arc(cx, cy, WD_SQ * 0.155, 0, Math.PI * 2);
+        wdCtx.fill();
+      }
+      wdCtx.restore();
+    });
+  }
+
+  function wdDrawPieces() {
+    wdChess.board().forEach((row, ri) => {
+      row.forEach((p, ci) => {
+        if (!p) return;
+        const key = p.color + p.type.toUpperCase();
+        const dc  = wdFlipped ? 7 - ci : ci;
+        const dr  = wdFlipped ? 7 - ri : ri;
+        const x   = dc * WD_SQ;
+        const y   = dr * WD_SQ;
+        if (wdImg[key]) {
+          wdCtx.drawImage(wdImg[key], x, y, WD_SQ, WD_SQ);
+        } else {
+          const sym = WD_SYM[key];
+          if (!sym) return;
+          const cx2 = x + WD_SQ / 2;
+          const cy2 = y + WD_SQ / 2;
+          const fs = Math.floor(WD_SQ * 0.70);
+          wdCtx.font         = `${fs}px "Segoe UI Emoji","Apple Color Emoji",serif`;
+          wdCtx.textAlign    = 'center';
+          wdCtx.textBaseline = 'middle';
+          wdCtx.fillStyle    = 'rgba(0,0,0,0.28)';
+          wdCtx.fillText(sym, cx2 + 1.2, cy2 + 1.2);
+          wdCtx.fillStyle    = p.color === 'w' ? '#ffffff' : '#1a1a1a';
+          wdCtx.fillText(sym, cx2, cy2);
+        }
+      });
+    });
+  }
+
+  function wdDrawCoords() {
+    const fs = Math.max(8, Math.floor(WD_SQ * 0.17));
+    wdCtx.font = `600 ${fs}px "Segoe UI",sans-serif`;
+    for (let r = 0; r < 8; r++) {
+      const num = wdFlipped ? (r + 1) : (8 - r);
+      wdCtx.fillStyle    = r % 2 === 0 ? WD_DARK : WD_LIGHT;
+      wdCtx.textAlign    = 'left';
+      wdCtx.textBaseline = 'top';
+      wdCtx.fillText(String(num), 2, r * WD_SQ + 2);
+    }
+    for (let c = 0; c < 8; c++) {
+      const ch = wdFlipped
+        ? String.fromCharCode(97 + (7 - c))
+        : String.fromCharCode(97 + c);
+      wdCtx.fillStyle    = c % 2 !== 0 ? WD_DARK : WD_LIGHT;
+      wdCtx.textAlign    = 'right';
+      wdCtx.textBaseline = 'bottom';
+      wdCtx.fillText(ch, (c + 1) * WD_SQ - 2, WD_PX - 2);
+    }
+  }
+
+  // ── Canvas click handler ───────────────────────────────────────────────
+  function wdHandleClick(sq) {
+    if (!wdChess || wdBoardFrozen || wdPendingPromo) return;
+
+    if (wdSelSq) {
+      if (wdLegDests.includes(sq)) {
+        const piece  = wdChess.get(wdSelSq);
+        const isPromo = piece && piece.type === 'p' &&
+          ((piece.color === 'w' && sq[1] === '8') || (piece.color === 'b' && sq[1] === '1'));
+        if (isPromo) {
+          wdPendingPromo = { from: wdSelSq, to: sq };
+          wdSelSq = null; wdLegDests = [];
+          wdRender();
+          wdShowPromo(piece.color);
+          return;
+        }
+        const m = wdChess.move({ from: wdSelSq, to: sq });
+        if (m) {
+          wdLastFrom = wdSelSq; wdLastTo = sq;
+          wdSelSq = null; wdLegDests = [];
+          wdBoardFrozen = true;
+          wdRender();
+          wdProcessMove(m.san);
+          return;
+        }
+      }
+      const p = wdChess.get(sq);
+      if (p && p.color === wdChess.turn()) wdDoSelect(sq);
+      else { wdSelSq = null; wdLegDests = []; wdRender(); }
+    } else {
+      const p = wdChess.get(sq);
+      if (p && p.color === wdChess.turn()) wdDoSelect(sq);
+    }
+  }
+
+  function wdDoSelect(sq) {
+    wdSelSq    = sq;
+    wdLegDests = wdChess.moves({ square: sq, verbose: true }).map(m => m.to);
+    wdRender();
+  }
+
+  // ── Promotion ──────────────────────────────────────────────────────────
+  function wdShowPromo(color) {
+    const opts = document.getElementById('pb-wd-promo-options');
+    if (!opts) return;
+    opts.innerHTML = '';
+    ['q','r','b','n'].forEach(type => {
+      const key = color + type.toUpperCase();
+      const div = document.createElement('div');
+      div.className = 'promo-piece';
+      const img = document.createElement('img');
+      img.src = WD_PIECE_URLS[key];
+      img.alt = key;
+      div.appendChild(img);
+      div.addEventListener('click', () => wdCompletePromo(type));
+      opts.appendChild(div);
+    });
+    const overlay = document.getElementById('pb-wd-promo-overlay');
+    if (overlay) overlay.classList.remove('hidden');
+  }
+
+  function wdCompletePromo(type) {
+    const overlay = document.getElementById('pb-wd-promo-overlay');
+    if (overlay) overlay.classList.add('hidden');
+    if (!wdPendingPromo) return;
+    const { from, to } = wdPendingPromo;
+    wdPendingPromo = null;
+    const m = wdChess.move({ from, to, promotion: type });
+    if (m) {
+      wdLastFrom = from; wdLastTo = to;
+      wdBoardFrozen = true;
+      wdRender();
+      wdProcessMove(m.san);
+    }
+  }
+
+  // ── Move processing ────────────────────────────────────────────────────
+  async function wdProcessMove(userSan) {
+    const pos = wdPositions[wdCurrentIdx];
+    if (!pos) return;
+
+    // Normalize SAN by stripping annotations
+    function normSan(s) { return (s || '').replace(/[+#!?]/g, ''); }
+    const userNorm = normSan(userSan);
+    const bestNorm = normSan(pos.bestMove || '');
+
+    let result;
+    if (pos.bestMove && userNorm === bestNorm) {
+      result = 'correct';
+    } else if (pos.alternativeAcceptable && pos.alternativeAcceptable.some(a => normSan(a) === userNorm)) {
+      result = 'correct';
+    } else if (!pos.bestMove) {
+      // No best move recorded; can't determine correctness
+      result = 'wrong_close';
+    } else {
+      result = await wdEvaluateWrongMove(pos, userSan);
+    }
+
+    const isFirstTry = !wdAttempted;
+    wdAttempted = true;
+
+    if (isFirstTry) {
+      wdSessionResults.push(result);
+      wdSessionFirstTry.push(result === 'correct');
+
+      if (result === 'correct') {
+        wdCurrentStreak++;
+        if (wdCurrentStreak > wdBestStreak) wdBestStreak = wdCurrentStreak;
+      } else {
+        wdCurrentStreak = 0;
+      }
+
+      wdSaveLog({
+        timestamp:      new Date().toISOString(),
+        mode:           wdDrillMode,
+        weaknessType:   pos.weaknessType || 'Unknown',
+        positionSource: pos.source,
+        realGameId:     pos.realGameId || null,
+        fen:            pos.fen,
+        bestMove:       pos.bestMove || '',
+        userMove:       userSan,
+        result,
+        firstTry:       true
+      });
+      wdUpdateStreaks(result === 'correct');
+    }
+
+    wdUpdateDots();
+    wdUpdateSessionStats();
+    await wdShowCoachFeedback(pos, userSan, result);
+    wdShowResultButtons(result);
+  }
+
+  // ── Stockfish eval for wrong move ──────────────────────────────────────
+  async function wdEvaluateWrongMove(pos, userSan) {
+    try {
+      const tmp = new Chess(pos.fen);
+      tmp.move(userSan);
+      const fenAfter = tmp.fen();
+      const scoreCp = await wdEvalPosition(fenAfter);
+      if (scoreCp === null) return 'wrong_close';
+      // evalDrop from mover's perspective (positive = dropped)
+      const evalBeforeMover = typeof pos.evalBeforeMove === 'number' ? pos.evalBeforeMove : 0;
+      const evalAfterMover  = -(scoreCp / 100);
+      const evalDrop = Math.max(0, evalBeforeMover - evalAfterMover);
+      return evalDrop >= 0.5 ? 'wrong_significant' : 'wrong_close';
+    } catch (_) {
+      return 'wrong_close';
+    }
+  }
+
+  // ── Stockfish eval worker ──────────────────────────────────────────────
+  function wdInitEvalSF() {
+    try { wdEvalSF = new Worker('js/stockfish.js'); }
+    catch(_) { return; }
+
+    wdEvalSF.onmessage = function(e) {
+      const line = typeof e === 'string' ? e : (e.data || '');
+      if (line === 'uciok') {
+        wdEvalSF.postMessage('setoption name Hash value 16');
+        wdEvalSF.postMessage('isready');
+      } else if (line === 'readyok') {
+        wdEvalSFReady = true;
+        if (wdEvalPending) wdDoEvalNow(wdEvalPending.fen);
+      } else {
+        const cm = line.match(/\bscore cp (-?\d+)/);
+        const mm = line.match(/\bscore mate (-?\d+)/);
+        if (cm) wdEvalAccumCp = parseInt(cm[1], 10);
+        if (mm) wdEvalAccumCp = parseInt(mm[1], 10) > 0 ? 9900 : -9900;
+
+        if (line.startsWith('bestmove') && wdEvalPending) {
+          const { resolve } = wdEvalPending;
+          wdEvalPending  = null;
+          const val      = wdEvalAccumCp;
+          wdEvalAccumCp  = null;
+          resolve(val);
+        }
+      }
+    };
+    wdEvalSF.onerror = () => {
+      if (wdEvalPending) { wdEvalPending.resolve(null); wdEvalPending = null; }
+    };
+    wdEvalSF.postMessage('uci');
+  }
+
+  function wdDoEvalNow(fen) {
+    wdEvalAccumCp = null;
+    wdEvalSF.postMessage('position fen ' + fen);
+    wdEvalSF.postMessage('go depth 14');
+  }
+
+  function wdEvalPosition(fen) {
+    return new Promise(resolve => {
+      const timeoutId = setTimeout(() => {
+        if (wdEvalPending) {
+          const old = wdEvalPending;
+          wdEvalPending = null;
+          if (wdEvalSF) wdEvalSF.postMessage('stop');
+          old.resolve(null);
+        }
+        resolve(null);
+      }, 5000);
+
+      const wrapped = (val) => { clearTimeout(timeoutId); resolve(val); };
+      wdEvalPending = { resolve: wrapped, fen };
+      if (wdEvalSFReady && wdEvalSF) wdDoEvalNow(fen);
+    });
+  }
+
+  // ── Claude call helper ─────────────────────────────────────────────────
+  async function wdClaudeCall(system, userMsg, maxTokens) {
+    const controller = new AbortController();
+    const tid = setTimeout(() => controller.abort(), 10000);
+    try {
+      const res = await fetch(WD_API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        signal: controller.signal,
+        body: JSON.stringify({
+          model:      'claude-sonnet-4-6',
+          max_tokens: maxTokens || 200,
+          system,
+          messages:   [{ role: 'user', content: userMsg }]
+        })
+      });
+      clearTimeout(tid);
+      if (!res.ok) return null;
+      const data = await res.json();
+      return data?.content?.[0]?.text?.trim() || null;
+    } catch(_) {
+      clearTimeout(tid);
+      return null;
+    }
+  }
+
+  // ── Coach feedback ─────────────────────────────────────────────────────
+  async function wdShowCoachFeedback(pos, userSan, result) {
+    const resultEl = document.getElementById('pb-wd-coach-result');
+    const msgEl    = document.getElementById('pb-wd-coach-msg');
+    const waitEl   = document.getElementById('pb-wd-coach-waiting');
+    if (!resultEl || !msgEl || !waitEl) return;
+
+    waitEl.classList.add('hidden');
+    resultEl.classList.remove('hidden');
+    msgEl.classList.remove('hidden');
+
+    if (result === 'correct') {
+      resultEl.textContent = '✓ Correct';
+      resultEl.className   = 'pb-wd-coach-result pb-wd-result-correct';
+    } else {
+      resultEl.textContent = '✗ Not quite';
+      resultEl.className   = 'pb-wd-coach-result pb-wd-result-wrong';
+    }
+
+    msgEl.textContent = 'Getting feedback…';
+
+    const rawName    = lsGet('pf_display_name') || lsGet('csa_chesscom_username') || 'there';
+    const firstName  = rawName.split(' ')[0];
+    const elo        = lsGet('csa_elo_current') || '1000';
+    const tone       = lsGet('pf_coach_tone') || 'Encouraging';
+    const evalBefore = typeof pos.evalBeforeMove === 'number' ? pos.evalBeforeMove.toFixed(1) : '?';
+    const resultLabel = result === 'correct' ? 'CORRECT'
+      : result === 'wrong_close' ? 'WRONG_CLOSE' : 'WRONG_SIGNIFICANT';
+
+    const system = `You are a chess coach giving feedback on a drill position. The student is named ${firstName}, rated ${elo}, and uses ${tone} tone (Encouraging / Direct / Tough love).
+
+This drill targets their weakness: ${pos.weaknessType || 'General pattern'}
+Position FEN: ${pos.fen}
+Side to move: ${pos.sideToMove}
+Best move: ${pos.bestMove || 'unknown'}
+What the student played: ${userSan}
+Result: ${resultLabel}
+Eval before: ${evalBefore} pawns (from mover's perspective)
+
+Generate a 1-2 sentence feedback message that:
+- Uses the student's first name
+- Matches the tone setting
+- If correct: acknowledge specifically what was good
+- If WRONG_CLOSE: mention the best move, note theirs wasn't terrible
+- If WRONG_SIGNIFICANT: name the best move and briefly explain why it was stronger
+- Reference the weakness pattern when relevant
+
+Respond with ONLY the feedback text. No JSON, no markdown.`;
+
+    try {
+      const text = await wdClaudeCall(system, 'Give feedback now.', 150);
+      msgEl.textContent = text || (result === 'correct'
+        ? `Good move, ${firstName}!`
+        : `Best was ${pos.bestMove || 'a different move'}. Keep practising this pattern.`);
+    } catch(_) {
+      msgEl.textContent = result === 'correct' ? 'Correct!' : `Best was ${pos.bestMove || 'a different move'}.`;
+    }
+  }
+
+  // ── Result buttons ─────────────────────────────────────────────────────
+  function wdShowResultButtons(result) {
+    const btnsEl  = document.getElementById('pb-wd-coach-btns');
+    const retryEl = document.getElementById('pb-wd-btn-retry');
+    const nextEl  = document.getElementById('pb-wd-btn-next');
+    if (!btnsEl || !retryEl || !nextEl) return;
+    btnsEl.classList.remove('hidden');
+    retryEl.classList.toggle('hidden', result === 'correct');
+    const isLast = (wdCurrentIdx >= wdPositions.length - 1);
+    nextEl.textContent = isLast ? 'Finish →' : 'Next →';
+  }
+
+  // ── Dots and stats ─────────────────────────────────────────────────────
+  function wdUpdateDots() {
+    const container = document.getElementById('pb-wd-dots');
+    if (!container) return;
+    const total = wdPositions.length;
+    let html = '';
+    for (let i = 0; i < total; i++) {
+      if (i === wdCurrentIdx) {
+        html += '<span class="pb-wd-dot pb-wd-dot-current"></span>';
+      } else if (i < wdSessionResults.length) {
+        const cls = wdSessionFirstTry[i] ? 'pb-wd-dot-correct' : 'pb-wd-dot-wrong';
+        html += `<span class="pb-wd-dot ${cls}"></span>`;
+      } else {
+        html += '<span class="pb-wd-dot pb-wd-dot-upcoming"></span>';
+      }
+    }
+    container.innerHTML = html;
+  }
+
+  function wdUpdateSessionStats() {
+    const correct = wdSessionFirstTry.filter(Boolean).length;
+    const total   = wdSessionResults.length;
+    const el = id => document.getElementById(id);
+    if (el('pb-wd-sess-correct')) el('pb-wd-sess-correct').textContent = correct + ' / ' + total;
+    if (el('pb-wd-sess-streak'))  el('pb-wd-sess-streak').textContent  = wdCurrentStreak;
+    if (el('pb-wd-sess-best'))    el('pb-wd-sess-best').textContent    = wdBestStreak;
+  }
+
+  // ── Position loading ───────────────────────────────────────────────────
+  function wdLoadPosition(idx) {
+    const pos = wdPositions[idx];
+    if (!pos) return;
+
+    wdCurrentIdx    = idx;
+    wdAttempted     = false;
+    wdBoardFrozen   = false;
+    wdSelSq         = null;
+    wdLegDests      = [];
+    wdLastFrom      = null;
+    wdLastTo        = null;
+    wdPendingPromo  = null;
+
+    try { wdChess = new Chess(pos.fen); }
+    catch(_) {
+      wdToast('Invalid position — skipping…');
+      if (idx + 1 < wdPositions.length) wdLoadPosition(idx + 1);
+      return;
+    }
+
+    wdFlipped = (pos.sideToMove === 'black');
+
+    // Real moment banner
+    const banner     = document.getElementById('pb-wd-real-banner');
+    const bannerText = document.getElementById('pb-wd-real-banner-text');
+    if (banner && bannerText) {
+      if (pos.source === 'real' && pos.gameMetadata) {
+        bannerText.textContent =
+          `This is a moment from your real game vs ${pos.gameMetadata.opponent} on ${pos.gameMetadata.date} — find the move you missed`;
+        banner.classList.remove('hidden');
+      } else {
+        banner.classList.add('hidden');
+      }
+    }
+
+    // Drill card
+    const labelEl = document.getElementById('pb-wd-weakness-label');
+    if (labelEl) labelEl.textContent = pos.weaknessType || 'Pattern';
+
+    const taskEl = document.getElementById('pb-wd-task-desc');
+    if (taskEl) taskEl.textContent = pos.taskDescription || 'Find the best move.';
+
+    const hintEl = document.getElementById('pb-wd-hint-line');
+    if (hintEl) hintEl.textContent = pos.hint || '';
+
+    // Eval line
+    const evalEl = document.getElementById('pb-wd-eval-line');
+    if (evalEl) {
+      const side    = pos.sideToMove === 'white' ? 'White' : 'Black';
+      const evalStr = typeof pos.evalBeforeMove === 'number'
+        ? ` · Engine eval: ${pos.evalBeforeMove >= 0 ? '+' : ''}${pos.evalBeforeMove.toFixed(1)}`
+        : '';
+      evalEl.textContent = side + ' to move' + evalStr;
+    }
+
+    // Progress bar
+    const total   = wdPositions.length;
+    const progEl  = document.getElementById('pb-wd-progress-text');
+    const barEl   = document.getElementById('pb-wd-progress-bar');
+    if (progEl) progEl.textContent = `Position ${idx + 1} of ${total}`;
+    if (barEl)  barEl.style.width  = (idx / total * 100) + '%';
+
+    // Drilling info panel
+    const patEl = document.getElementById('pb-wd-info-pattern');
+    if (patEl) patEl.textContent = pos.weaknessType || '—';
+
+    const log       = lsJSON('pb_weakness_drill_log') || [];
+    const typeLog   = log.filter(e => e.firstTry && e.weaknessType === pos.weaknessType);
+    const alltime   = typeLog.length > 0
+      ? Math.round(typeLog.filter(e => e.result === 'correct').length / typeLog.length * 100) + '%'
+      : '—';
+    const altEl = document.getElementById('pb-wd-info-alltime');
+    if (altEl) altEl.textContent = alltime;
+
+    // Reset coach card
+    const waitEl   = document.getElementById('pb-wd-coach-waiting');
+    const resultEl = document.getElementById('pb-wd-coach-result');
+    const msgEl    = document.getElementById('pb-wd-coach-msg');
+    const btnsEl   = document.getElementById('pb-wd-coach-btns');
+    if (waitEl)   { waitEl.textContent = 'Play your move to get feedback.'; waitEl.classList.remove('hidden'); }
+    if (resultEl) resultEl.classList.add('hidden');
+    if (msgEl)    msgEl.classList.add('hidden');
+    if (btnsEl)   btnsEl.classList.add('hidden');
+
+    wdUpdateDots();
+    wdUpdateSessionStats();
+    wdRender();
+  }
+
+  // ── Real moments sourcing ──────────────────────────────────────────────
+  function wdGetRealMoments() {
+    const moments = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (!key || !key.startsWith('csa_game_')) continue;
+      try {
+        const game = JSON.parse(localStorage.getItem(key));
+        if (!game || !game.analysis || !Array.isArray(game.fens)) continue;
+        const playerColor = game.playerColor || 'white';
+        const moves = game.analysis.moves || [];
+        moves.forEach(m => {
+          if (m.color !== playerColor)                            return;
+          if (!['blunder','miss'].includes(m.classification))    return;
+          if (!m.bestMoveSan)                                     return;
+          const fenBefore = game.fens[m.ply - 1];
+          if (!fenBefore)                                         return;
+          try { new Chess(fenBefore); } catch(_) { return; }
+
+          const sideToMove = fenBefore.split(' ')[1] === 'w' ? 'white' : 'black';
+          const opponent   = playerColor === 'white'
+            ? (game.metadata && game.metadata.black  || 'Unknown')
+            : (game.metadata && game.metadata.white  || 'Unknown');
+          const date = (game.savedAt || '').slice(0, 10) || (game.metadata && game.metadata.date || '');
+
+          const evalWhite = typeof m.evalBefore === 'number' ? m.evalBefore : 0;
+          const evalBeforeMove = sideToMove === 'white' ? evalWhite : -evalWhite;
+
+          moments.push({
+            source:       'real',
+            realGameId:   game.id || '',
+            fen:          fenBefore,
+            sideToMove,
+            bestMove:     m.bestMoveSan,
+            userActualMove: m.san,
+            evalBeforeMove,
+            gameMetadata: {
+              opponent: (opponent || 'Unknown').slice(0, 24),
+              date:     date || 'unknown date'
+            },
+            taskDescription: `You're ${sideToMove === 'white' ? 'White' : 'Black'}. Find the move you should have played.`,
+            hint:            `Think about ${m.bestMoveSan} — why is it the strongest?`,
+            alternativeAcceptable: [],
+            weaknessType: m.classification === 'blunder' ? 'Blunder pattern' : 'Missed opportunity'
+          });
+        });
+      } catch(_) {}
+    }
+    return moments;
+  }
+
+  // ── AI position generation ─────────────────────────────────────────────
+  async function wdGeneratePosition(weakness, simple) {
+    const elo  = lsGet('csa_elo_current') || '1000';
+    const tone = lsGet('pf_coach_tone')   || 'Encouraging';
+
+    const system = simple
+      ? `Generate a chess position for a "${weakness.title}" drill. Return ONLY valid JSON (no markdown fences):
+{"fen":"...","sideToMove":"white","bestMove":"...","alternativeAcceptable":[],"taskDescription":"Find the best move.","hint":"Look for the key idea.","evalBeforeMove":0.5}`
+      : `Generate a chess position that drills the following weakness pattern: ${weakness.title}. Description: ${weakness.description}.
+
+The user is rated ${elo}. Their preferred tone is ${tone}.
+
+Return ONLY valid JSON (no markdown, no code fences) with this exact shape:
+{
+  "fen": "...",
+  "sideToMove": "white" or "black",
+  "bestMove": "..." (SAN notation),
+  "alternativeAcceptable": ["..."],
+  "taskDescription": "You're White/Black and..." (1-sentence),
+  "hint": "Look at..." (1-sentence),
+  "evalBeforeMove": 1.5
+}
+
+Requirements: legal FEN, bestMove is legal in that position, realistic eval.`;
+
+    const raw = await wdClaudeCall(system, 'Generate the position now.', 350);
+    if (!raw) return null;
+
+    try {
+      const cleaned = raw.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
+      const pos = JSON.parse(cleaned);
+      if (!pos.fen || !pos.bestMove || !pos.sideToMove) return null;
+
+      let chessTest;
+      try { chessTest = new Chess(pos.fen); } catch(_) { return null; }
+      if (!chessTest) return null;
+
+      // Validate bestMove is legal
+      const legalSans = chessTest.moves();
+      function normSan(s) { return (s || '').replace(/[+#!?]/g, ''); }
+      const bestNorm = normSan(pos.bestMove);
+      const isLegal  = legalSans.some(s => normSan(s) === bestNorm);
+      if (!isLegal) return null;
+
+      return {
+        source:                'generated',
+        fen:                   pos.fen,
+        sideToMove:            pos.sideToMove,
+        bestMove:              pos.bestMove,
+        alternativeAcceptable: Array.isArray(pos.alternativeAcceptable) ? pos.alternativeAcceptable : [],
+        taskDescription:       pos.taskDescription || `You're ${pos.sideToMove}. Find the best move.`,
+        hint:                  pos.hint || '',
+        evalBeforeMove:        typeof pos.evalBeforeMove === 'number' ? pos.evalBeforeMove : 0,
+        weaknessType:          weakness.title,
+        weaknessDescription:   weakness.description || ''
+      };
+    } catch(_) { return null; }
+  }
+
+  // ── Session position builder ───────────────────────────────────────────
+  async function wdBuildSessionPositions(mode, sessionId) {
+    const recs       = lsJSON('csa_recommendations');
+    const weaknesses = (recs && recs.topWeaknesses) ? recs.topWeaknesses : [];
+    const realAll    = wdGetRealMoments();
+
+    if (mode === 'past_only') {
+      const shuffled = realAll.slice().sort(() => Math.random() - 0.5);
+      return shuffled.slice(0, Math.min(10, shuffled.length));
+    }
+
+    // mixed: generate up to 7 from weaknesses, add 1-2 real
+    const generated = [];
+    const realCopy  = realAll.slice();
+
+    for (const weakness of weaknesses.slice(0, 5)) {
+      if (sessionId !== wdSessionId) return [];
+      if (generated.length >= 7) break;
+
+      let pos = await wdGeneratePosition(weakness, false);
+      if (!pos) pos = await wdGeneratePosition(weakness, true);
+
+      if (pos) {
+        generated.push(pos);
+      } else if (realCopy.length > 0) {
+        // Fallback to a real moment
+        const ri = Math.floor(Math.random() * realCopy.length);
+        generated.push(realCopy.splice(ri, 1)[0]);
+      }
+    }
+
+    // Add 1-2 real moments
+    const toAdd = Math.min(2, realCopy.length);
+    for (let i = 0; i < toAdd; i++) {
+      const ri = Math.floor(Math.random() * realCopy.length);
+      generated.push(realCopy.splice(ri, 1)[0]);
+    }
+
+    return generated.slice().sort(() => Math.random() - 0.5).slice(0, 10);
+  }
+
+  // ── localStorage ops ───────────────────────────────────────────────────
+  function wdSaveLog(entry) {
+    let log = lsJSON('pb_weakness_drill_log') || [];
+    log.push(entry);
+    if (log.length > 500) log = log.slice(log.length - 500);
+    lsSetJSON('pb_weakness_drill_log', log);
+  }
+
+  function wdUpdateStreaks(correct) {
+    const streaks = lsJSON('pb_weakness_streaks') || { current: 0, best: 0, lastUpdated: '' };
+    if (correct) {
+      streaks.current++;
+      if (streaks.current > streaks.best) streaks.best = streaks.current;
+    } else {
+      streaks.current = 0;
+    }
+    streaks.lastUpdated = new Date().toISOString();
+    lsSetJSON('pb_weakness_streaks', streaks);
+    wdBestStreak = streaks.best;
+  }
+
+  function wdSaveSessionHistory(entry) {
+    let hist = lsJSON('pb_weakness_session_history') || [];
+    hist.unshift(entry);
+    if (hist.length > 50) hist = hist.slice(0, 50);
+    lsSetJSON('pb_weakness_session_history', hist);
+  }
+
+  // ── Sub-view management ────────────────────────────────────────────────
+  function wdShowSub(name) {
+    ['pb-wd-selection','pb-wd-drilling','pb-wd-summary'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.classList.toggle('hidden', id !== 'pb-wd-' + name);
+    });
+    wdSubState = name;
+  }
+
+  // ── Selection screen ───────────────────────────────────────────────────
+  function wdInitSelection() {
+    const recs         = lsJSON('csa_recommendations');
+    const hasWeaknesses = recs && recs.topWeaknesses && recs.topWeaknesses.length > 0;
+
+    const emptyEl = document.getElementById('pb-wd-empty');
+    const cardsEl = document.getElementById('pb-wd-cards');
+    if (!emptyEl || !cardsEl) return;
+
+    if (!hasWeaknesses) {
+      emptyEl.classList.remove('hidden');
+      cardsEl.classList.add('hidden');
+      return;
+    }
+
+    emptyEl.classList.add('hidden');
+    cardsEl.classList.remove('hidden');
+
+    // Weakness count pill
+    const weakCount = recs.topWeaknesses.length;
+    const wcEl = document.getElementById('pb-wd-pill-weakness-count');
+    if (wcEl) wcEl.textContent = weakCount + ' weakness' + (weakCount !== 1 ? 'es' : '') + ' identified';
+
+    // Blunder count
+    const realMoments = wdGetRealMoments();
+    const bcEl = document.getElementById('pb-wd-pill-blunder-count');
+    if (bcEl) bcEl.textContent = realMoments.length + ' critical moment' + (realMoments.length !== 1 ? 's' : '') + ' saved';
+
+    const pastCard = document.getElementById('pb-wd-card-past');
+    if (pastCard) pastCard.classList.toggle('pb-wd-card-disabled', realMoments.length === 0);
+
+    // Stats
+    const log     = lsJSON('pb_weakness_drill_log')      || [];
+    const history = lsJSON('pb_weakness_session_history') || [];
+    const streaks = lsJSON('pb_weakness_streaks')         || { best: 0 };
+
+    const sessEl = document.getElementById('pb-wd-stat-sessions');
+    if (sessEl) sessEl.textContent = history.length;
+
+    const firstTryLog = log.filter(e => e.firstTry);
+    const accEl = document.getElementById('pb-wd-stat-accuracy');
+    if (accEl) {
+      accEl.textContent = firstTryLog.length > 0
+        ? Math.round(firstTryLog.filter(e => e.result === 'correct').length / firstTryLog.length * 100) + '%'
+        : '—';
+    }
+
+    const bestEl = document.getElementById('pb-wd-stat-streak');
+    if (bestEl) bestEl.textContent = streaks.best;
+  }
+
+  // ── Summary screen ─────────────────────────────────────────────────────
+  function wdShowSummaryScreen() {
+    wdShowSub('summary');
+
+    const total   = wdPositions.length;
+    const correct = wdSessionFirstTry.filter(Boolean).length;
+
+    const scoreEl = document.getElementById('pb-wd-sum-score');
+    if (scoreEl) scoreEl.textContent = correct + ' / ' + total;
+
+    // Trend vs last session
+    const history   = lsJSON('pb_weakness_session_history') || [];
+    const lastSess  = history[0];
+    const trendEl   = document.getElementById('pb-wd-sum-trend');
+    if (trendEl && lastSess) {
+      const diff = correct - lastSess.score.correct;
+      if (diff > 0) {
+        trendEl.textContent = `↑ Up from last session's ${lastSess.score.correct} / ${lastSess.score.total}`;
+        trendEl.style.color = '#4ade80';
+      } else if (diff < 0) {
+        trendEl.textContent = `↓ Down from last session's ${lastSess.score.correct} / ${lastSess.score.total}`;
+        trendEl.style.color = '#f87171';
+      } else {
+        trendEl.textContent = `Same as last session (${lastSess.score.correct} / ${lastSess.score.total})`;
+        trendEl.style.color = '#9ca3af';
+      }
+    } else if (trendEl) {
+      trendEl.textContent = 'First session!';
+      trendEl.style.color = '#4ade80';
+    }
+
+    // Per-weakness breakdown
+    const byType = {};
+    wdPositions.forEach((pos, i) => {
+      const t = pos.weaknessType || 'Unknown';
+      if (!byType[t]) byType[t] = { correct: 0, total: 0 };
+      byType[t].total++;
+      if (wdSessionFirstTry[i]) byType[t].correct++;
+    });
+
+    const bdEl = document.getElementById('pb-wd-sum-breakdown');
+    if (bdEl) {
+      bdEl.innerHTML = '<div class="pb-wd-breakdown-grid">' +
+        Object.entries(byType).map(([type, data]) => {
+          const pct = data.total > 0 ? data.correct / data.total : 0;
+          const cls = pct === 1 ? 'pb-wd-bd-green' : pct >= 0.5 ? 'pb-wd-bd-amber' : 'pb-wd-bd-red';
+          return `<div class="pb-wd-breakdown-row ${cls}">
+            <span>${type}</span>
+            <span>${data.correct}/${data.total}${pct === 1 ? ' ✓' : ''}</span>
+          </div>`;
+        }).join('') +
+      '</div>';
+    }
+
+    // Save session history first (so counts below are up-to-date)
+    wdSaveSessionHistory({
+      timestamp:         new Date().toISOString(),
+      mode:              wdDrillMode,
+      score:             { correct, total },
+      weaknessBreakdown: byType,
+      streak:            wdBestStreak
+    });
+
+    // Stats updated card
+    const streaks    = lsJSON('pb_weakness_streaks')         || { best: 0 };
+    const log        = lsJSON('pb_weakness_drill_log')       || [];
+    const savedHist  = lsJSON('pb_weakness_session_history') || [];
+    const ftLog      = log.filter(e => e.firstTry);
+    const allTimeAcc = ftLog.length > 0
+      ? Math.round(ftLog.filter(e => e.result === 'correct').length / ftLog.length * 100)
+      : 0;
+    const isNewBest = streaks.best === wdBestStreak && wdBestStreak > (lastSess ? lastSess.streak : 0);
+    const statsEl = document.getElementById('pb-wd-sum-stats');
+    if (statsEl) {
+      statsEl.innerHTML = [
+        `<div class="pb-wd-sum-stat-item${isNewBest ? ' pb-wd-sum-stat-highlight' : ''}">
+          <span>Best session streak</span><span>${streaks.best}${isNewBest ? ' 🏆' : ''}</span>
+        </div>`,
+        `<div class="pb-wd-sum-stat-item">
+          <span>All-time accuracy</span><span>${allTimeAcc}%</span>
+        </div>`,
+        `<div class="pb-wd-sum-stat-item">
+          <span>Sessions completed</span><span>${savedHist.length}</span>
+        </div>`
+      ].join('');
+    }
+
+    // Real moments note
+    const realCount  = wdPositions.filter(p => p.source === 'real').length;
+    const realNoteEl = document.getElementById('pb-wd-sum-real-note');
+    if (realNoteEl) {
+      realNoteEl.classList.toggle('hidden', realCount === 0);
+      if (realCount > 0) {
+        realNoteEl.textContent =
+          `${realCount} of these ${realCount === 1 ? 'was a real moment' : 'were real moments'} from your past games.`;
+      }
+    }
+  }
+
+  // ── Session start ──────────────────────────────────────────────────────
+  async function wdStartSession(mode) {
+    const myId = ++wdSessionId;
+    wdDrillMode         = mode;
+    wdPositions         = [];
+    wdCurrentIdx        = 0;
+    wdSessionResults    = [];
+    wdSessionFirstTry   = [];
+    wdCurrentStreak     = 0;
+    wdBestStreak        = (lsJSON('pb_weakness_streaks') || { best: 0 }).best;
+
+    wdShowSub('drilling');
+
+    const titleEl = document.getElementById('pb-wd-mode-title');
+    if (titleEl) titleEl.textContent = mode === 'past_only' ? 'Drill past blunders' : 'Train your weaknesses';
+
+    // Lazy canvas init
+    if (!wdCanvasInited) {
+      wdCanvas = document.getElementById('pb-wd-canvas');
+      if (wdCanvas) {
+        wdCtx = wdCanvas.getContext('2d');
+        wdCanvas.addEventListener('click', function(e) {
+          const rect = wdCanvas.getBoundingClientRect();
+          const sq   = wdCanvasToSq(
+            (e.clientX - rect.left) * (wdCanvas.width  / rect.width),
+            (e.clientY - rect.top)  * (wdCanvas.height / rect.height)
+          );
+          if (sq) wdHandleClick(sq);
+        });
+        wdCanvasInited = true;
+      }
+    }
+
+    if (!wdImgLoaded) await loadWDImg();
+
+    // Show loading state in coach card
+    const waitEl = document.getElementById('pb-wd-coach-waiting');
+    if (waitEl) waitEl.textContent = 'Generating your session…';
+
+    const positions = await wdBuildSessionPositions(mode, myId);
+    if (myId !== wdSessionId) return; // navigated away
+
+    if (!positions || positions.length === 0) {
+      wdToast('No positions available. Analyze more games or try again.');
+      wdShowSub('selection');
+      return;
+    }
+
+    wdPositions = positions;
+    wdUpdateDots();
+    wdLoadPosition(0);
+  }
+
+  // ── DOMContentLoaded ───────────────────────────────────────────────────
+  document.addEventListener('DOMContentLoaded', function () {
+    wdInitEvalSF();
+
+    // Observe when pb-view-weakness becomes visible
+    const viewEl = document.getElementById('pb-view-weakness');
+    if (viewEl) {
+      const trigger = () => {
+        if (!viewEl.classList.contains('hidden')) {
+          wdShowSub('selection');
+          wdInitSelection();
+        }
+      };
+      new MutationObserver(trigger).observe(viewEl, { attributes: true, attributeFilter: ['class'] });
+      trigger(); // handle direct URL load ?mode=weakness
+    }
+
+    // Exit drill → selection
+    const exitLink = document.getElementById('pb-wd-back-to-select');
+    if (exitLink) {
+      exitLink.addEventListener('click', function(e) {
+        e.preventDefault();
+        wdSessionId++; // cancel any in-flight session
+        wdShowSub('selection');
+        wdInitSelection();
+      });
+    }
+
+    // Sub-mode card: Train weaknesses
+    const mixedCard = document.getElementById('pb-wd-card-mixed');
+    if (mixedCard) {
+      mixedCard.addEventListener('click', function() {
+        wdStartSession('mixed');
+      });
+    }
+
+    // Sub-mode card: Drill past blunders
+    const pastCard = document.getElementById('pb-wd-card-past');
+    if (pastCard) {
+      pastCard.addEventListener('click', function() {
+        if (pastCard.classList.contains('pb-wd-card-disabled')) return;
+        wdStartSession('past_only');
+      });
+    }
+
+    // Retry button
+    const retryBtn = document.getElementById('pb-wd-btn-retry');
+    if (retryBtn) {
+      retryBtn.addEventListener('click', function() {
+        const pos = wdPositions[wdCurrentIdx];
+        if (!pos) return;
+        try { wdChess = new Chess(pos.fen); } catch(_) { return; }
+        wdBoardFrozen = false;
+        wdSelSq       = null;
+        wdLegDests    = [];
+        wdLastFrom    = null;
+        wdLastTo      = null;
+        wdRender();
+        const waitEl   = document.getElementById('pb-wd-coach-waiting');
+        const resultEl = document.getElementById('pb-wd-coach-result');
+        const msgEl    = document.getElementById('pb-wd-coach-msg');
+        const btnsEl   = document.getElementById('pb-wd-coach-btns');
+        if (waitEl)   { waitEl.textContent = 'Play your move to get feedback.'; waitEl.classList.remove('hidden'); }
+        if (resultEl) resultEl.classList.add('hidden');
+        if (msgEl)    msgEl.classList.add('hidden');
+        if (btnsEl)   btnsEl.classList.add('hidden');
+      });
+    }
+
+    // Next button
+    const nextBtn = document.getElementById('pb-wd-btn-next');
+    if (nextBtn) {
+      nextBtn.addEventListener('click', function() {
+        const next = wdCurrentIdx + 1;
+        if (next >= wdPositions.length) {
+          wdShowSummaryScreen();
+        } else {
+          wdLoadPosition(next);
+        }
+      });
+    }
+
+    // Summary: Drill again
+    const sumAgainBtn = document.getElementById('pb-wd-sum-again');
+    if (sumAgainBtn) {
+      sumAgainBtn.addEventListener('click', function() {
+        wdStartSession(wdDrillMode || 'mixed');
+      });
+    }
+
+    // Summary: Back to modes (goes to landing via routing)
+    const sumBackBtn = document.getElementById('pb-wd-sum-back');
+    if (sumBackBtn) {
+      sumBackBtn.addEventListener('click', function() {
+        wdSessionId++;
+        wdShowSub('selection');
+        wdInitSelection();
+        // Trigger landing navigation via the existing routing mechanism
+        const backLink = document.getElementById('pb-back-weakness');
+        if (backLink) backLink.click();
+      });
+    }
+
+  }); // end DOMContentLoaded
+
+})();
