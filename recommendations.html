@@ -36,6 +36,18 @@
     /* ── Empty / scroll hide ── */
     .rec-empty.hidden  { display: none !important; }
     .rec-scroll.hidden { display: none !important; }
+
+    /* ── Memory health UI ── */
+    .mem-broken-banner { background:#1a0808; color:#fca5a5; border-bottom:1px solid #7f1d1d; padding:10px 16px; font-size:12px; display:flex; align-items:center; gap:10px; flex-shrink:0; }
+    .mem-broken-banner.hidden { display:none; }
+    .mem-broken-banner-text { flex:1; }
+    .mem-broken-banner button { background:#7f1d1d; color:#fca5a5; border:1px solid #b91c1c; padding:4px 10px; border-radius:5px; font-size:11px; cursor:pointer; }
+    .mem-broken-banner button:hover { filter:brightness(1.15); }
+
+    .mem-health-footer { padding:8px 14px; font-size:11px; color:#6b7280; border-top:1px solid #1a2236; flex-shrink:0; }
+    .mem-health-footer.degraded { background:#1c1207; color:#fcd34d; }
+    .mem-health-footer.broken   { background:#1a0808; color:#fca5a5; }
+    .mem-health-footer a { color:inherit; text-decoration:underline; cursor:pointer; }
   </style>
 </head>
 <body class="rec-page">
@@ -136,6 +148,14 @@
 
     <!-- ── MAIN AREA ── -->
     <div class="rec-main">
+
+      <!-- Memory broken banner (only when 3+ consecutive rejections) -->
+      <div id="mem-broken-banner" class="mem-broken-banner hidden">
+        <span>⚠</span>
+        <span class="mem-broken-banner-text">Memory updates have been rejected 3 times in a row. Your recommendations may be out of date.</span>
+        <button id="mem-broken-audit-btn" type="button">View audit log</button>
+        <button id="mem-broken-force-btn" type="button">Force full regenerate</button>
+      </div>
 
       <!-- TOPBAR (44px) -->
       <header class="rec-topbar">
@@ -276,11 +296,15 @@
 
       </div><!-- /rec-scroll -->
 
+      <!-- Memory health footer (always rendered; class reflects status) -->
+      <div id="mem-health-footer" class="mem-health-footer"></div>
+
     </div><!-- /rec-main -->
 
   </div><!-- /rec-layout -->
 
   <script src="js/storage.js"></script>
+  <script src="js/memory.js"></script>
   <script src="js/recommendations.js"></script>
   <script src="js/nav.js"></script>
   <script>
@@ -289,6 +313,33 @@
       initNav('recommendations');
       loadSidebarProfile();
       init();
+      renderMemoryHealth();
+
+      // Re-render health after every memory rejection so footer/banner reflect new state.
+      window.addEventListener('memory-rejection', function (e) {
+        renderMemoryHealth();
+        showToast('Memory update rejected: ' + (e.detail && e.detail.reason ? e.detail.reason : 'unknown'));
+      });
+
+      var auditBtn = document.getElementById('mem-broken-audit-btn');
+      if (auditBtn) auditBtn.addEventListener('click', function () { window.location.href = 'profile.html#memory-audit'; });
+
+      var forceBtn = document.getElementById('mem-broken-force-btn');
+      if (forceBtn) forceBtn.addEventListener('click', async function () {
+        if (!window.ChessLabMemory) return;
+        forceBtn.disabled = true;
+        var origText = forceBtn.textContent;
+        forceBtn.textContent = 'Regenerating...';
+        try {
+          var res = await window.ChessLabMemory.update('force_full_regenerate');
+          showToast(res && res.success ? 'Memory regenerated' : ('Failed: ' + (res && res.reason)));
+        } catch (e) {
+          showToast('Force regenerate failed: ' + (e && e.message));
+        }
+        renderMemoryHealth();
+        forceBtn.textContent = origText;
+        forceBtn.disabled = false;
+      });
 
       document.getElementById('rec-reset-btn').addEventListener('click', () => {
         if (!confirm('This will clear all saved recommendations. You can regenerate them at any time. Are you sure?')) return;
@@ -312,6 +363,8 @@
         } else {
           showToast('Generation failed — please try again.');
         }
+        // Health may have shifted (memory.update fires from inside generateRecommendations)
+        setTimeout(renderMemoryHealth, 200);
         btn.disabled    = false;
         btn.textContent = '↺ Regenerate';
       });
@@ -436,6 +489,40 @@
       el.classList.add('show');
       clearTimeout(_toastTimer);
       _toastTimer = setTimeout(() => el.classList.remove('show'), 3200);
+    }
+
+    function renderMemoryHealth() {
+      if (!window.ChessLabMemory) return;
+      var h = window.ChessLabMemory.getHealth();
+      var footer = document.getElementById('mem-health-footer');
+      var banner = document.getElementById('mem-broken-banner');
+      if (!footer || !banner) return;
+
+      footer.classList.remove('degraded', 'broken');
+      if (h.status === 'broken') {
+        banner.classList.remove('hidden');
+        footer.classList.add('broken');
+      } else {
+        banner.classList.add('hidden');
+        if (h.status === 'degraded') footer.classList.add('degraded');
+      }
+
+      var counts = h.bucketCounts || { bullet: 0, blitz: 0, rapid: 0 };
+      var total  = h.totalActiveGames || (counts.bullet + counts.blitz + counts.rapid);
+      var bucketStr = '[bullet ' + counts.bullet + ' · blitz ' + counts.blitz + ' · rapid ' + counts.rapid + ']';
+      var when = h.lastUpdated ? new Date(h.lastUpdated).toLocaleString() : 'never';
+
+      if (h.status === 'healthy') {
+        footer.innerHTML = 'Memory: ' + total + ' active games ' + esc(bucketStr) +
+          ' · Last updated ' + esc(when) + ' · ✓ Healthy';
+      } else if (h.status === 'degraded') {
+        footer.innerHTML = '⚠ Memory: Last update rejected (' + esc(h.message || '') +
+          '). Recommendations still working from previous state. ' +
+          '<a href="profile.html#memory-audit">View audit log →</a>';
+      } else {
+        footer.innerHTML = '⚠ Memory: 3+ consecutive rejections — see banner above. ' +
+          '<a href="profile.html#memory-audit">View audit log →</a>';
+      }
     }
 
     function showStaleBanner() {

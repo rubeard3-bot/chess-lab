@@ -95,6 +95,23 @@ const Recommendations = (() => {
         generatedAt: new Date().toISOString()
       }));
 
+      // Update coaching memory — never throws; failures surface in health + toast
+      if (window.ChessLabMemory && typeof window.ChessLabMemory.update === 'function') {
+        try {
+          window.ChessLabMemory.update('manual_regenerate')
+            .then(function (res) {
+              if (res && !res.success) {
+                console.warn('[Recommendations] Memory update rejected:', res.reason);
+              }
+            })
+            .catch(function (e) {
+              console.warn('[Recommendations] Memory update threw:', e && e.message);
+            });
+        } catch (e) {
+          console.warn('[Recommendations] Memory update call failed synchronously:', e && e.message);
+        }
+      }
+
       _notify('Recommendations ready!');
       return merged;
 

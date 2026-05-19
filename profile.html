@@ -349,6 +349,47 @@
                 <button class="pf-danger-btn pf-danger-btn-solid" data-action="reset-all" type="button">Reset everything</button>
               </div>
 
+              <!-- ── Coaching memory controls (Step 1) ── -->
+              <div class="pf-danger-row">
+                <div class="pf-danger-row-info">
+                  <div class="pf-danger-row-label">Backup recommendations now</div>
+                  <div class="pf-danger-row-desc">Save a manual backup of your current recommendations and memory state. You can restore from this backup later.</div>
+                </div>
+                <button class="pf-danger-btn" data-action="memory-backup" type="button">Backup now</button>
+              </div>
+
+              <div class="pf-danger-row">
+                <div class="pf-danger-row-info">
+                  <div class="pf-danger-row-label">Restore from latest auto-backup</div>
+                  <div class="pf-danger-row-desc" id="pf-auto-backup-desc">Memory auto-backs up every 5 new games. Restore from the most recent automatic backup.</div>
+                </div>
+                <button class="pf-danger-btn" data-action="memory-restore-auto" type="button">Restore auto-backup</button>
+              </div>
+
+              <div class="pf-danger-row">
+                <div class="pf-danger-row-info">
+                  <div class="pf-danger-row-label">Undo last memory update</div>
+                  <div class="pf-danger-row-desc">Roll memory back to the previous version. Use this if the last update looked wrong.</div>
+                </div>
+                <button class="pf-danger-btn" data-action="memory-undo" type="button">Undo last update</button>
+              </div>
+
+              <div class="pf-danger-row">
+                <div class="pf-danger-row-info">
+                  <div class="pf-danger-row-label">View memory history and audit log</div>
+                  <div class="pf-danger-row-desc">See all saved memory versions and the full audit log of every update attempt.</div>
+                </div>
+                <button class="pf-danger-btn" data-action="memory-view" type="button" id="pf-memory-view-btn">View history &amp; audit</button>
+              </div>
+
+              <div class="pf-danger-row">
+                <div class="pf-danger-row-info">
+                  <div class="pf-danger-row-label">Reset memory completely</div>
+                  <div class="pf-danger-row-desc">Wipe the coaching memory file entirely. Your analyzed games and recommendations are preserved. Memory rebuilds on next regenerate.</div>
+                </div>
+                <button class="pf-danger-btn" data-action="memory-reset" type="button">Reset memory</button>
+              </div>
+
             </div>
           </div>
 
@@ -395,6 +436,53 @@
 
   </div><!-- /pf-layout -->
 
+  <!-- ── Memory history & audit modal ── -->
+  <div id="mem-modal" class="mem-modal hidden" role="dialog" aria-modal="true">
+    <div class="mem-modal-backdrop" data-mem-close="1"></div>
+    <div class="mem-modal-panel">
+      <div class="mem-modal-header">
+        <div class="mem-modal-title">Memory history &amp; audit</div>
+        <button class="mem-modal-close" data-mem-close="1" type="button" aria-label="Close">✕</button>
+      </div>
+      <div class="mem-modal-tabs">
+        <button class="mem-tab mem-tab-active" data-mem-tab="history" type="button">History</button>
+        <button class="mem-tab" data-mem-tab="audit" type="button">Audit log</button>
+      </div>
+      <div class="mem-modal-body">
+        <div class="mem-tab-panel" id="mem-tab-history"></div>
+        <div class="mem-tab-panel hidden" id="mem-tab-audit"></div>
+      </div>
+    </div>
+  </div>
+
+  <style>
+    .mem-modal { position:fixed; inset:0; z-index:9000; display:flex; align-items:center; justify-content:center; }
+    .mem-modal.hidden { display:none; }
+    .mem-modal-backdrop { position:absolute; inset:0; background:rgba(0,0,0,0.7); }
+    .mem-modal-panel { position:relative; width:min(820px, 92vw); height:min(640px, 86vh); background:#0f1626; border:1px solid #233047; border-radius:10px; display:flex; flex-direction:column; box-shadow:0 12px 60px rgba(0,0,0,0.6); }
+    .mem-modal-header { display:flex; align-items:center; justify-content:space-between; padding:12px 16px; border-bottom:1px solid #1a2236; }
+    .mem-modal-title { color:#e5e7eb; font-size:14px; font-weight:600; }
+    .mem-modal-close { background:transparent; border:none; color:#9ca3af; font-size:16px; cursor:pointer; padding:4px 8px; }
+    .mem-modal-tabs { display:flex; gap:0; border-bottom:1px solid #1a2236; }
+    .mem-tab { background:transparent; border:none; color:#9ca3af; padding:10px 18px; font-size:12px; cursor:pointer; border-bottom:2px solid transparent; }
+    .mem-tab-active { color:#e5e7eb; border-bottom-color:#3b82f6; }
+    .mem-modal-body { flex:1; overflow-y:auto; padding:14px 16px; }
+    .mem-tab-panel.hidden { display:none; }
+    .mem-entry { background:#121a2c; border:1px solid #1a2236; border-radius:8px; padding:10px 12px; margin-bottom:8px; font-size:12px; color:#cbd5e1; }
+    .mem-entry-row { display:flex; justify-content:space-between; gap:10px; align-items:center; }
+    .mem-entry-ts { color:#9ca3af; font-size:11px; }
+    .mem-entry-trigger { color:#60a5fa; font-size:11px; }
+    .mem-entry-diff { color:#94a3b8; font-size:11px; margin-top:4px; }
+    .mem-entry-restore { background:#1e293b; color:#cbd5e1; border:1px solid #334155; padding:4px 10px; border-radius:5px; font-size:11px; cursor:pointer; }
+    .mem-entry-restore:hover { filter:brightness(1.2); }
+    .mem-entry-pass { color:#4ade80; font-size:11px; }
+    .mem-entry-fail { color:#fca5a5; font-size:11px; }
+    .mem-entry-reason { color:#fca5a5; font-size:11px; margin-top:4px; }
+    .mem-entry-skipped { color:#fcd34d; font-size:11px; margin-top:4px; }
+    .mem-empty { color:#6b7280; font-size:12px; text-align:center; padding:30px 0; }
+  </style>
+
+  <script src="js/memory.js"></script>
   <script src="js/nav.js"></script>
   <script>
   document.addEventListener('DOMContentLoaded', function () {
@@ -887,7 +975,113 @@
           }).forEach(function (k) { localStorage.removeItem(k); });
         } catch (_) {}
         window.location.href = 'index.html';
+
+      } else if (action === 'memory-backup') {
+        if (!window.ChessLabMemory) { showToast('Memory module not loaded'); return; }
+        var rB = window.ChessLabMemory.backup();
+        showToast(rB.success ? 'Backed up at ' + new Date(rB.timestamp).toLocaleString() : 'Backup failed: ' + rB.reason);
+
+      } else if (action === 'memory-restore-auto') {
+        if (!window.ChessLabMemory) { showToast('Memory module not loaded'); return; }
+        var rA = window.ChessLabMemory.restoreFromAutoBackup();
+        showToast(rA.success ? 'Restored from auto-backup' : 'Restore failed: ' + rA.reason);
+
+      } else if (action === 'memory-undo') {
+        if (!window.ChessLabMemory) { showToast('Memory module not loaded'); return; }
+        var rU = window.ChessLabMemory.undoLastUpdate();
+        showToast(rU.success ? 'Memory restored to ' + new Date(rU.restoredTo).toLocaleString() : 'Undo failed: ' + rU.reason);
+
+      } else if (action === 'memory-view') {
+        openMemoryModal();
+
+      } else if (action === 'memory-reset') {
+        if (!window.ChessLabMemory) { showToast('Memory module not loaded'); return; }
+        var rR = window.ChessLabMemory.reset();
+        showToast(rR.success ? 'Memory reset — run a regeneration to rebuild' : 'Reset failed: ' + rR.reason);
       }
+    }
+
+    /* ── Memory history & audit modal ── */
+    function openMemoryModal() {
+      if (!window.ChessLabMemory) { showToast('Memory module not loaded'); return; }
+      renderMemoryHistory();
+      renderMemoryAudit();
+      var modal = document.getElementById('mem-modal');
+      if (modal) modal.classList.remove('hidden');
+    }
+    function closeMemoryModal() {
+      var modal = document.getElementById('mem-modal');
+      if (modal) modal.classList.add('hidden');
+    }
+    function memEsc(s) {
+      if (s == null) return '';
+      return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+    function renderMemoryHistory() {
+      var pane = document.getElementById('mem-tab-history');
+      if (!pane) return;
+      var hist = window.ChessLabMemory.getHistory();
+      if (!hist.length) { pane.innerHTML = '<div class="mem-empty">No memory history yet.</div>'; return; }
+      pane.innerHTML = hist.map(function (h, i) {
+        return '<div class="mem-entry">' +
+          '<div class="mem-entry-row">' +
+            '<div><span class="mem-entry-ts">' + memEsc(new Date(h.timestamp).toLocaleString()) + '</span> · ' +
+              '<span class="mem-entry-trigger">' + memEsc(h.trigger) + '</span></div>' +
+            '<button class="mem-entry-restore" data-mem-restore="' + i + '" type="button">Restore to this</button>' +
+          '</div>' +
+          '<div class="mem-entry-diff">' + memEsc(h.diffSummary || '') + '</div>' +
+        '</div>';
+      }).join('');
+      pane.querySelectorAll('[data-mem-restore]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          var idx = parseInt(b.getAttribute('data-mem-restore'), 10);
+          var r = window.ChessLabMemory.restoreToVersion(idx);
+          showToast(r.success ? 'Restored to ' + new Date(r.restoredTo).toLocaleString() : 'Restore failed: ' + r.reason);
+          renderMemoryHistory();
+        });
+      });
+    }
+    function renderMemoryAudit() {
+      var pane = document.getElementById('mem-tab-audit');
+      if (!pane) return;
+      var log = window.ChessLabMemory.getAuditLog();
+      if (!log.length) { pane.innerHTML = '<div class="mem-empty">No audit entries yet.</div>'; return; }
+      pane.innerHTML = log.map(function (e) {
+        var skipped = (e.skippedGames && e.skippedGames.length)
+          ? '<div class="mem-entry-skipped">Skipped: ' +
+            e.skippedGames.map(function (s) { return memEsc(s.id) + ' (' + memEsc(s.reason) + ')'; }).join(', ') +
+            '</div>'
+          : '';
+        return '<div class="mem-entry">' +
+          '<div class="mem-entry-row">' +
+            '<div><span class="mem-entry-ts">' + memEsc(new Date(e.timestamp).toLocaleString()) + '</span> · ' +
+              '<span class="mem-entry-trigger">' + memEsc(e.trigger) + '</span></div>' +
+            '<span class="' + (e.validationResult === 'passed' ? 'mem-entry-pass' : 'mem-entry-fail') + '">' +
+              memEsc(e.validationResult) + '</span>' +
+          '</div>' +
+          '<div class="mem-entry-diff">' + memEsc(e.diffSummary || '') + '</div>' +
+          (e.rejectionReason ? '<div class="mem-entry-reason">Reason: ' + memEsc(e.rejectionReason) + '</div>' : '') +
+          (e.gamesAdded && e.gamesAdded.length ? '<div class="mem-entry-diff">+' + e.gamesAdded.length + ' games · -' + (e.gamesAgedOut ? e.gamesAgedOut.length : 0) + ' aged-out</div>' : '') +
+          (e.autoBackupCreated ? '<div class="mem-entry-diff">Auto-backup created</div>' : '') +
+          skipped +
+        '</div>';
+      }).join('');
+    }
+    document.addEventListener('click', function (e) {
+      if (e.target && e.target.getAttribute && e.target.getAttribute('data-mem-close') === '1') {
+        closeMemoryModal();
+      }
+      if (e.target && e.target.getAttribute && e.target.getAttribute('data-mem-tab')) {
+        var which = e.target.getAttribute('data-mem-tab');
+        document.querySelectorAll('.mem-tab').forEach(function (t) { t.classList.toggle('mem-tab-active', t === e.target); });
+        document.getElementById('mem-tab-history').classList.toggle('hidden', which !== 'history');
+        document.getElementById('mem-tab-audit').classList.toggle('hidden', which !== 'audit');
+      }
+    });
+
+    /* Auto-open modal if URL has #memory-audit */
+    if (window.location.hash === '#memory-audit') {
+      setTimeout(openMemoryModal, 100);
     }
 
     /* ════════════════════════════════════════
