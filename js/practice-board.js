@@ -1846,7 +1846,8 @@ Respond with ONLY the coach message text.`;
     ? 'http://localhost:4000/api/analyze'
     : 'https://chess-lab-production.up.railway.app/api/analyze';
 
-  const MASTERS_EP = 'https://explorer.lichess.ovh/masters';
+  const LICHESS_EP = 'https://explorer.lichess.ovh/lichess';
+  let _odLastFetchErr = null; // 'auth' | 'network' | null
 
   const OD_PX = 480;
   const OD_SQ = OD_PX / 8; // 60
@@ -2107,16 +2108,21 @@ Respond with ONLY the coach message text.`;
     _odToastTimer = setTimeout(() => el.classList.remove('show'), 2800);
   }
 
-  // ── Lichess masters ─────────────────────────────────────────────────────
+  // ── Lichess opening explorer ─────────────────────────────────────────────
   async function odFetchMasters(fen) {
     if (odFenCache.has(fen)) return odFenCache.get(fen);
+    _odLastFetchErr = null;
+    let r;
     try {
-      const r = await fetch(`${MASTERS_EP}?fen=${encodeURIComponent(fen)}&moves=8`);
-      if (!r.ok) return null;
-      const data = await r.json();
-      odFenCache.set(fen, data);
-      return data;
-    } catch (_) { return null; }
+      r = await fetch(`${LICHESS_EP}?fen=${encodeURIComponent(fen)}&speeds=blitz,rapid,classical&ratings=2000,2200,2500&moves=10`);
+    } catch (_) {
+      _odLastFetchErr = 'network';
+      return null;
+    }
+    if (!r.ok) { _odLastFetchErr = 'auth'; return null; }
+    const data = await r.json();
+    odFenCache.set(fen, data);
+    return data;
   }
 
   // Total master games seen at this position
@@ -2498,7 +2504,11 @@ Each section should be 1-2 sentences. No other markdown.`;
     const data = await odFetchMasters(startChess.fen());
 
     if (!data || !data.moves || !data.moves.length) {
-      content.innerHTML = '<div class="pb-od-coach-placeholder">Lichess returned no master games for this position. Try another opening.</div>';
+      let msg;
+      if (!data && _odLastFetchErr === 'auth') msg = "Couldn't reach Lichess. Please try again.";
+      else if (!data && _odLastFetchErr === 'network') msg = 'Network error — check your connection.';
+      else msg = 'Theory has thinned out at this position. Good drilling!';
+      content.innerHTML = `<div class="pb-od-coach-placeholder">${msg}</div>`;
       return;
     }
 
