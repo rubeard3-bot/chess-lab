@@ -680,15 +680,20 @@
 
   // ── State ───────────────────────────────────────────────────────────────
   let cChess        = null;
-  let cSF           = null;
-  let cSFReady      = false;
-  let cSFBusy       = false;
-  let cSFSkip       = false;   // true → ignore next bestmove (from stopped search)
-  let cSFPhase      = 'idle';  // 'analysis' | 'eval' | 'engineMove'
-  let cSFCp         = 0;
-  let cSFMate       = false;
-  let cSFMateIn     = 0;
-  let cSFTurn       = 'w';
+
+  // Stockfish worker + strict serial command system.
+  // Every UCI command goes through cSFTaskQueue. Only one `go` is ever in
+  // flight; pending awaiters are resolved by onCSFMsg as readyok/bestmove
+  // lines arrive. Per-task FEN guards make stale results no-ops.
+  let cSF              = null;
+  let cSFReady         = false;
+  let cSFInitialized   = false;
+  let cSFTaskQueue     = Promise.resolve();
+  let cSFPendingReady  = null;   // resolver fn waiting on next readyok
+  let cSFPendingBest   = null;   // resolver fn waiting on next bestmove
+  let cSFAccumCp       = 0;
+  let cSFAccumMate     = null;   // null or signed mate-in (engine perspective)
+  let cSFRecovering    = false;
 
   let cGameActive   = false;
   let cUserColor    = 'w';     // 'w' | 'b'
@@ -947,23 +952,31 @@
 
   // ── Stockfish ────────────────────────────────────────────────────────────
   function cInitSF() {
+    cSFReady = false;
+    cSFInitialized = false;
     try { cSF = new Worker('js/stockfish.js'); }
     catch(e) { cSetStatus('Engine unavailable', 'err'); return; }
     cSF.onmessage = onCSFMsg;
-    cSF.onerror   = () => cSetStatus('Engine error', 'err');
-    cSF.postMessage('uci');
+    cSF.onerror   = (err) => cHandleEngineCrash(err && err.message);
+    try { cSF.postMessage('uci'); } catch(e) { cHandleEngineCrash(e.message); }
   }
 
   function onCSFMsg(e) {
-    const line = typeof e === 'string' ? e : (e.data || '');
+    const line = typeof e === 'string' ? e : (e && e.data) || '';
+    if (!line) return;
 
-    if (!cSFReady) {
+    // Initial UCI handshake (uci → setoption + ucinewgame → isready → readyok)
+    if (!cSFInitialized) {
       if (line === 'uciok') {
-        cSF.postMessage('setoption name Hash value 32');
-        cSF.postMessage('isready');
+        try {
+          cSF.postMessage('setoption name Hash value 32');
+          cSF.postMessage('ucinewgame');
+          cSF.postMessage('isready');
+        } catch(e) { cHandleEngineCrash(e.message); }
       } else if (line === 'readyok') {
+        cSFInitialized = true;
         cSFReady = true;
-        cSetStatus('Click New Game to start', '');
+        if (!cSFRecovering) cSetStatus('Click New Game to start', '');
       }
       return;
     }
@@ -971,89 +984,200 @@
     if (line.startsWith('info') && line.includes('score')) {
       const mm = line.match(/\bscore mate (-?\d+)/);
       const cm = line.match(/\bscore cp (-?\d+)/);
-      if (mm)      { cSFMate = true;  cSFMateIn = parseInt(mm[1],10); cSFCp = cSFMateIn > 0 ? 9900 : -9900; }
-      else if (cm) { cSFMate = false; cSFCp = parseInt(cm[1],10); }
+      if (mm)      { cSFAccumMate = parseInt(mm[1], 10); cSFAccumCp = cSFAccumMate > 0 ? 9900 : -9900; }
+      else if (cm) { cSFAccumMate = null; cSFAccumCp = parseInt(cm[1], 10); }
+      return;
     }
 
-    if (!line.startsWith('bestmove')) return;
+    if (line === 'readyok') {
+      const r = cSFPendingReady;
+      if (r) { cSFPendingReady = null; r(); }
+      return;
+    }
 
-    cSFBusy = false;
-    if (cSFSkip) { cSFSkip = false; return; }
+    if (line.startsWith('bestmove')) {
+      const parts = line.split(' ');
+      const uci = (parts[1] && parts[1] !== '(none)') ? parts[1] : null;
+      const result = { uci: uci, cp: cSFAccumCp, mate: cSFAccumMate };
+      cSFAccumCp = 0; cSFAccumMate = null;
+      const r = cSFPendingBest;
+      if (r) { cSFPendingBest = null; r(result); }
+      // No pending awaiter → stale bestmove, drop silently
+    }
+  }
 
-    const parts = line.split(' ');
-    const bmUci = (parts[1] && parts[1] !== '(none)') ? parts[1] : null;
+  // Promise-wrapped UCI helpers — each waits for the worker's reply.
 
-    // Convert engine cp to White's perspective
-    const whiteCP = cSFTurn === 'w' ? cSFCp : -cSFCp;
-    const mateW   = cSFMate ? (cSFTurn === 'w' ? cSFMateIn : -cSFMateIn) : null;
+  function cSFWaitReady(timeoutMs) {
+    timeoutMs = timeoutMs || 5000;
+    return new Promise((resolve, reject) => {
+      if (!cSF) return reject(new Error('no worker'));
+      cSFPendingReady = null;
+      const t = setTimeout(() => {
+        if (cSFPendingReady) { cSFPendingReady = null; reject(new Error('readyok timeout')); }
+      }, timeoutMs);
+      cSFPendingReady = () => { clearTimeout(t); resolve(); };
+      try { cSF.postMessage('isready'); }
+      catch(e) { clearTimeout(t); cSFPendingReady = null; reject(e); }
+    });
+  }
 
-    if (cSFPhase === 'analysis') {
-      cEvalWhiteCP = cSFMate ? (mateW > 0 ? 9900 : -9900) : whiteCP;
+  function cSFRunGo(depth, skill, timeoutMs) {
+    timeoutMs = timeoutMs || 30000;
+    return new Promise((resolve, reject) => {
+      if (!cSF) return reject(new Error('no worker'));
+      cSFPendingBest = null;
+      cSFAccumCp = 0; cSFAccumMate = null;
+      const t = setTimeout(() => {
+        if (cSFPendingBest) { cSFPendingBest = null; reject(new Error('bestmove timeout')); }
+      }, timeoutMs);
+      cSFPendingBest = (result) => { clearTimeout(t); resolve(result); };
+      try {
+        if (typeof skill === 'number') cSF.postMessage('setoption name Skill Level value ' + skill);
+        cSF.postMessage('go depth ' + depth);
+      } catch(e) { clearTimeout(t); cSFPendingBest = null; reject(e); }
+    });
+  }
+
+  async function cSFSetPosition(fen) {
+    if (!cSF) throw new Error('no worker');
+    cSF.postMessage('ucinewgame');
+    await cSFWaitReady();
+    cSF.postMessage('position fen ' + fen);
+    await cSFWaitReady();
+  }
+
+  // Pre-empts an in-flight `go` — caller still awaits the bestmove (which
+  // arrives quickly after `stop`), then bails via the FEN guard.
+  function cSFAbortInFlight() {
+    if (cSFPendingBest && cSF) {
+      try { cSF.postMessage('stop'); } catch(_) {}
+    }
+  }
+
+  function cEnqueueSF(task, taskName) {
+    cSFTaskQueue = cSFTaskQueue
+      .then(() => {
+        if (!cSF || !cSFReady || cSFRecovering) return null;
+        return task();
+      })
+      .catch(err => {
+        console.error('Stockfish task ' + (taskName || '?') + ' failed:', err);
+        return cHandleEngineCrash(err && err.message || String(err));
+      });
+    return cSFTaskQueue;
+  }
+
+  // Tear down a wedged worker, spawn a new one, resume from current position.
+  async function cHandleEngineCrash(detail) {
+    if (cSFRecovering) return;
+    cSFRecovering = true;
+    cSFReady = false;
+    cSFInitialized = false;
+    cSetStatus('Engine hiccup — restarting…', 'err');
+
+    // Release any waiters so the queue can drain
+    if (cSFPendingReady) { try { cSFPendingReady(); } catch(_){} cSFPendingReady = null; }
+    if (cSFPendingBest)  { try { cSFPendingBest({ uci: null, cp: 0, mate: null }); } catch(_){} cSFPendingBest = null; }
+
+    try { if (cSF) cSF.terminate(); } catch(_) {}
+    cSF = null;
+    cSFTaskQueue = Promise.resolve();
+    cSFAccumCp = 0; cSFAccumMate = null;
+
+    await new Promise(res => setTimeout(res, 250));
+
+    let spawned;
+    try { spawned = new Worker('js/stockfish.js'); }
+    catch(e) { cSetStatus('Engine unavailable', 'err'); cSFRecovering = false; return; }
+    cSF = spawned;
+    cSF.onmessage = onCSFMsg;
+    cSF.onerror   = (err) => { cSFRecovering = false; cHandleEngineCrash(err && err.message); };
+
+    // Drive a fresh UCI handshake and wait for readyok
+    const ready = new Promise((resolve) => {
+      const iv = setInterval(() => {
+        if (cSFReady) { clearInterval(iv); resolve(); }
+      }, 100);
+      setTimeout(() => { clearInterval(iv); resolve(); }, 10000);
+    });
+    try { cSF.postMessage('uci'); } catch(_) {}
+    await ready;
+
+    cSFRecovering = false;
+    if (!cSFReady) { cSetStatus('Engine restart failed', 'err'); return; }
+
+    cSetStatus('Engine restarted — resuming', 'ok');
+    if (cGameActive && cChess && !cChess.game_over()) {
+      if (cChess.turn() === cUserColor) cRunAnalysis();
+      else                              cEnginePlayMove();
+    }
+  }
+
+  // Background analysis on the user's position (sets eval bar + cLastBestUci).
+  function cRunAnalysis() {
+    return cEnqueueSF(async () => {
+      if (!cChess || cChess.game_over()) return;
+      const turn     = cChess.turn();
+      const startFen = cChess.fen();
+      await cSFSetPosition(startFen);
+      if (!cChess || cChess.fen() !== startFen) return;   // pre-empted
+      const result = await cSFRunGo(18);
+      if (!cChess || cChess.fen() !== startFen) return;   // pre-empted
+      const whiteCP = turn === 'w' ? result.cp : -result.cp;
+      const mateW   = result.mate !== null ? (turn === 'w' ? result.mate : -result.mate) : null;
+      cEvalWhiteCP  = result.mate !== null ? (mateW > 0 ? 9900 : -9900) : whiteCP;
       cSetEval(whiteCP, mateW);
-      cUpdateHistEval(whiteCP, mateW, bmUci);
-      cLastBestUci = bmUci;
+      cUpdateHistEval(whiteCP, mateW, result.uci);
+      cLastBestUci  = result.uci;
+    }, 'analysis');
+  }
 
-    } else if (cSFPhase === 'eval') {
-      // Post-user-move eval — classify then hand off to engine
-      const afterCP = cSFMate ? (mateW > 0 ? 9900 : -9900) : whiteCP;
+  // Eval the post-user-move position, then classify for the coach popup.
+  function cRunPostMoveEval() {
+    return cEnqueueSF(async () => {
+      if (!cChess) return;
+      const turn     = cChess.turn();
+      const startFen = cChess.fen();
+      await cSFSetPosition(startFen);
+      if (!cChess || cChess.fen() !== startFen) return;
+      const result = await cSFRunGo(14);
+      if (!cChess || cChess.fen() !== startFen) return;
+      const whiteCP = turn === 'w' ? result.cp : -result.cp;
+      const mateW   = result.mate !== null ? (turn === 'w' ? result.mate : -result.mate) : null;
+      const afterCP = result.mate !== null ? (mateW > 0 ? 9900 : -9900) : whiteCP;
       cSetEval(whiteCP, mateW);
       cClassifyAndFireCoach(afterCP);
-      cEnginePlayMove();
-
-    } else if (cSFPhase === 'engineMove') {
-      if (bmUci && cChess) {
-        const m = cChess.move({ from: bmUci.slice(0,2), to: bmUci.slice(2,4), promotion: bmUci[4] || undefined });
-        if (m) {
-          cLastFrom = bmUci.slice(0,2);
-          cLastTo   = bmUci.slice(2,4);
-          cMoveHist.push({ san: m.san, byEngine: true });
-          cRenderHistory();
-          cRender();
-          if (cCheckGameOver()) return;
-          cSetStatus("Your turn", '');
-          cRunAnalysis();
-        } else {
-          cSetStatus('Engine move error', 'err');
-        }
-      }
-    }
+    }, 'eval');
   }
 
-  function cRunAnalysis() {
-    if (!cSFReady || !cSF || !cChess || cChess.game_over()) return;
-    if (cSFBusy) { cSFSkip = true; cSF.postMessage('stop'); cSFBusy = false; }
-    cSFPhase = 'analysis';
-    cSFTurn  = cChess.turn();
-    cSFCp = 0; cSFMate = false; cSFMateIn = 0;
-    cSFBusy = true;
-    cSF.postMessage('position fen ' + cChess.fen());
-    cSF.postMessage('go depth 18');
-  }
-
-  function cRunPostMoveEval() {
-    if (!cSFReady || !cSF || !cChess) return;
-    if (cSFBusy) { cSFSkip = true; cSF.postMessage('stop'); cSFBusy = false; }
-    cSFPhase = 'eval';
-    cSFTurn  = cChess.turn();
-    cSFCp = 0; cSFMate = false; cSFMateIn = 0;
-    cSFBusy = true;
-    cSF.postMessage('position fen ' + cChess.fen());
-    cSF.postMessage('go depth 14');
-  }
-
+  // Engine plays a move; chains analysis for the user's reply.
   function cEnginePlayMove() {
-    if (!cSFReady || !cSF || !cChess || cChess.game_over()) return;
-    const diff   = parseInt(lsGet(LS_DIFF) || '20', 10);
-    const config = cDiffConfig(diff);
-    if (cSFBusy) { cSFSkip = true; cSF.postMessage('stop'); cSFBusy = false; }
-    cSFPhase = 'engineMove';
-    cSFTurn  = cChess.turn();
-    cSFCp = 0; cSFMate = false; cSFMateIn = 0;
-    cSFBusy = true;
-    cSetStatus('Stockfish is thinking…', '');
-    cSF.postMessage('setoption name Skill Level value ' + config.skill);
-    cSF.postMessage('position fen ' + cChess.fen());
-    cSF.postMessage('go depth ' + config.depth);
+    return cEnqueueSF(async () => {
+      if (!cChess || cChess.game_over()) return;
+      const diff     = parseInt(lsGet(LS_DIFF) || '20', 10);
+      const config   = cDiffConfig(diff);
+      cSetStatus('Stockfish is thinking…', '');
+      const startFen = cChess.fen();
+      await cSFSetPosition(startFen);
+      if (!cChess || cChess.fen() !== startFen) return;
+      const result = await cSFRunGo(config.depth, config.skill);
+      if (!cChess || cChess.fen() !== startFen) return;
+      if (!result.uci) { cSetStatus('Engine move error', 'err'); return; }
+      const m = cChess.move({ from: result.uci.slice(0,2), to: result.uci.slice(2,4), promotion: result.uci[4] || undefined });
+      if (!m) { cSetStatus('Engine move error', 'err'); return; }
+      cLastFrom = result.uci.slice(0,2);
+      cLastTo   = result.uci.slice(2,4);
+      cMoveHist.push({ san: m.san, byEngine: true });
+      cRenderHistory();
+      cRender();
+      if (cCheckGameOver()) return;
+      cSetStatus("Your turn", '');
+    }, 'engineMove').then(() => {
+      if (cGameActive && cChess && !cChess.game_over() && cChess.turn() === cUserColor) {
+        cRunAnalysis();
+      }
+    });
   }
 
   function cDiffConfig(level) {
@@ -1066,6 +1190,10 @@
 
   // ── Game flow ─────────────────────────────────────────────────────────────
   function cNewGame() {
+    // Abort any search left over from a previous game; queued tasks will
+    // see the new starting FEN and bail via the FEN guard.
+    cSFAbortInFlight();
+
     const saved = lsGet(LS_COL) || 'white';
     if (saved === 'random')      cUserColor = Math.random() < 0.5 ? 'w' : 'b';
     else if (saved === 'black')  cUserColor = 'b';
@@ -1116,7 +1244,6 @@
   function onCCanvasClick(e) {
     if (!cGameActive || !cChess || cChess.game_over()) return;
     if (cChess.turn() !== cUserColor) return;
-    if (cSFPhase === 'engineMove' || cSFPhase === 'eval') return;
     if (cPendingPromo) return;
 
     const rect = cCanvas.getBoundingClientRect();
@@ -1160,9 +1287,11 @@
   function cDoMove(from, to, promotion) {
     // Snapshot pre-move state for classification
     cEvalBeforeCP = cEvalWhiteCP;
-    const savedBestUci = cLastBestUci;
 
-    if (cSFBusy) { cSFSkip = true; cSF.postMessage('stop'); cSFBusy = false; }
+    // Pre-empt any analysis search running in the background.
+    // The stale bestmove will still arrive; the analysis task's FEN guard
+    // makes it a no-op.
+    cSFAbortInFlight();
 
     const m = cChess.move({ from, to, promotion });
     if (!m) return;
@@ -1178,8 +1307,10 @@
 
     if (cCheckGameOver()) return;
 
-    cRunPostMoveEval();
     cSetStatus('Evaluating…', '');
+    cRunPostMoveEval().then(() => {
+      if (cGameActive && cChess && !cChess.game_over()) cEnginePlayMove();
+    });
   }
 
   function cShowPromoModal(color) {
@@ -1207,8 +1338,7 @@
   // ── Game over ─────────────────────────────────────────────────────────────
   function cCheckGameOver(resigned) {
     if (!resigned && !cChess.game_over()) return false;
-    if (cSF && cSFBusy) { cSFSkip = true; cSF.postMessage('stop'); cSFBusy = false; }
-    cSFPhase = 'idle';
+    cSFAbortInFlight();
 
     let result, text, cls;
     if (resigned) {
