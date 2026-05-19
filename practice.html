@@ -842,31 +842,152 @@
       </div><!-- /pb-view-coach -->
 
       <!-- ══════════════════════════════════
-           VIEW: OPENING DRILL — Coming Soon
+           VIEW: OPENING DRILL
            ══════════════════════════════════ -->
       <div id="pb-view-opening" class="hidden">
 
-        <div class="pb-view-header">
-          <a href="#" class="pb-back-link" id="pb-back-opening">← Back to modes</a>
-          <div class="pb-mode-headline">📖 Opening Drill</div>
-          <div class="pb-mode-subtitle">Practice your repertoire openings against book moves</div>
-        </div>
-
-        <div class="pb-cs-card">
-          <span class="pb-cs-icon">📖</span>
-          <div class="pb-cs-title">Opening Drill — Coming soon</div>
-          <div class="pb-cs-desc">
-            The Opening Drill puts you against a book-move opponent that plays the mainline theory for your chosen opening. Every deviation from theory triggers an immediate coach explanation showing the move you should have played and why. Over multiple sessions, your accuracy per opening is tracked so you can see exactly where your preparation breaks down.
+        <!-- ── SUB-VIEW: SELECTION ── -->
+        <div id="pb-od-selection">
+          <div class="pb-view-header">
+            <a href="#" class="pb-back-link" id="pb-back-opening">← Back to modes</a>
+            <div class="pb-mode-headline">📖 Opening Drill</div>
+            <div class="pb-mode-subtitle">Study, watch, and drill any opening line</div>
           </div>
-          <ul class="pb-cs-list">
-            <li>Book-move opponent plays known theory for any selected opening</li>
-            <li>Coach warns when you leave theory and shows the correct move</li>
-            <li>Select openings from your repertoire or from recommendations</li>
-            <li>Accuracy percentage tracked per opening per session</li>
-            <li>Priority drilling for openings flagged as needing work</li>
-          </ul>
-          <div class="pb-cs-note">Building this in the next phase. For now, try Free Play or come back soon.</div>
-        </div>
+
+          <!-- Recommended openings -->
+          <div id="pb-od-recommended-section" class="hidden">
+            <div class="pb-od-section-label">Recommended for you</div>
+            <div class="pb-od-rec-list" id="pb-od-rec-list"></div>
+          </div>
+
+          <!-- Browse openings -->
+          <div class="pb-od-section-label">Browse openings</div>
+          <div class="pb-od-search-wrap">
+            <input type="text" class="pb-od-search" id="pb-od-search" placeholder="Search openings...">
+          </div>
+          <div class="pb-od-browse" id="pb-od-browse"></div>
+
+          <div class="pb-od-disclaimer">
+            Move theory pulled from Lichess masters database (real tournament games). Strategic explanations are AI-generated to help you understand the ideas. For deep tournament prep, supplement with a chess book or course on your chosen opening.
+          </div>
+        </div><!-- /pb-od-selection -->
+
+        <!-- ── SUB-VIEW: COACHING ROOM ── -->
+        <div id="pb-od-coaching" class="hidden">
+          <div class="pb-view-header">
+            <a href="#" class="pb-od-sub-back" id="pb-od-back-to-selection">← Back to openings</a>
+            <div class="pb-mode-headline" id="pb-od-coaching-title">Opening</div>
+            <div class="pb-mode-subtitle" id="pb-od-coaching-moves"></div>
+          </div>
+
+          <div class="pb-od-side-row">
+            <span class="pb-od-side-label">Drill as:</span>
+            <button class="pb-od-side-btn" id="pb-od-side-white" data-side="white">White</button>
+            <button class="pb-od-side-btn" id="pb-od-side-black" data-side="black">Black</button>
+          </div>
+
+          <div class="pb-od-coaching-layout">
+
+            <!-- Board column -->
+            <div class="pb-od-board-col">
+              <div class="pb-od-board-wrap" id="pb-od-coaching-board-wrap">
+                <canvas id="pb-od-coaching-canvas" width="480" height="480"></canvas>
+                <div class="pb-od-watch-tooltip hidden" id="pb-od-watch-tooltip"></div>
+              </div>
+              <div class="pb-od-watch-controls hidden" id="pb-od-watch-controls">
+                <button class="prac-btn" id="pb-od-watch-pause">⏸ Pause</button>
+                <select class="pb-coach-select" id="pb-od-watch-speed">
+                  <option value="2500">Slow</option>
+                  <option value="1500" selected>Normal</option>
+                  <option value="800">Fast</option>
+                </select>
+                <button class="prac-btn" id="pb-od-watch-stop">⏹ Stop</button>
+              </div>
+            </div>
+
+            <!-- Coach panel -->
+            <div class="pb-od-coach-panel">
+              <div class="pb-od-coach-hd">
+                <div class="pb-coach-avatar">♟</div>
+                <span class="pb-od-coach-title">Coach</span>
+              </div>
+
+              <div class="pb-od-coach-actions">
+                <button class="pb-od-coach-btn" id="pb-od-btn-ideas">Walk me through the ideas</button>
+                <button class="pb-od-coach-btn" id="pb-od-btn-lines">Show me the main lines</button>
+                <button class="pb-od-coach-btn" id="pb-od-btn-chat">Ask the coach anything</button>
+              </div>
+
+              <div class="pb-od-coach-content" id="pb-od-coach-content">
+                <div class="pb-od-coach-placeholder">Pick a button above to start learning, or jump straight into the drill below.</div>
+              </div>
+
+              <div class="pb-od-coach-chat hidden" id="pb-od-coach-chat">
+                <div class="pb-od-chat-msgs" id="pb-od-chat-msgs"></div>
+                <div class="pb-od-chat-input-row">
+                  <input type="text" class="pb-od-chat-input" id="pb-od-chat-input" placeholder="Ask about this opening...">
+                  <button class="pb-od-chat-send" id="pb-od-chat-send">Send</button>
+                </div>
+              </div>
+
+              <button class="pb-od-drill-cta" id="pb-od-start-drill">🎯 Drill this opening</button>
+            </div>
+
+          </div><!-- /pb-od-coaching-layout -->
+        </div><!-- /pb-od-coaching -->
+
+        <!-- ── SUB-VIEW: DRILL ── -->
+        <div id="pb-od-drilling" class="hidden">
+          <div class="pb-view-header">
+            <a href="#" class="pb-od-sub-back" id="pb-od-back-to-coaching">← Exit drill</a>
+            <div class="pb-mode-headline" id="pb-od-drill-title">Drilling Opening</div>
+          </div>
+
+          <div class="pb-od-drill-statusbar">
+            <div class="pb-od-drill-stat">
+              <span class="pb-od-drill-stat-label">Drilling as</span>
+              <span class="pb-od-drill-stat-val" id="pb-od-drill-side">White</span>
+            </div>
+            <div class="pb-od-drill-stat">
+              <span class="pb-od-drill-stat-label">Current streak</span>
+              <span class="pb-od-drill-stat-val pb-od-drill-stat-accent" id="pb-od-drill-streak">0</span>
+            </div>
+            <div class="pb-od-drill-stat">
+              <span class="pb-od-drill-stat-label">Best streak</span>
+              <span class="pb-od-drill-stat-val" id="pb-od-drill-best">0</span>
+            </div>
+            <div class="pb-od-drill-stat">
+              <span class="pb-od-drill-stat-label">Attempts</span>
+              <span class="pb-od-drill-stat-val" id="pb-od-drill-attempts">0</span>
+            </div>
+          </div>
+
+          <div class="pb-od-drill-layout">
+            <div class="pb-od-board-col">
+              <div class="pb-od-board-wrap" id="pb-od-drill-board-wrap">
+                <canvas id="pb-od-drill-canvas" width="480" height="480"></canvas>
+                <div class="pb-od-drill-popup hidden" id="pb-od-drill-popup">
+                  <div class="pb-od-drill-popup-hd">
+                    <div class="pb-coach-avatar">♟</div>
+                    <span class="pb-od-drill-popup-name">Coach</span>
+                    <button class="pb-coach-popup-x" id="pb-od-drill-popup-x">✕</button>
+                  </div>
+                  <div class="pb-od-drill-popup-badge" id="pb-od-drill-popup-badge"></div>
+                  <div class="pb-od-drill-popup-msg" id="pb-od-drill-popup-msg"></div>
+                  <div class="pb-od-drill-popup-footer">
+                    <button class="pb-od-drill-retry-btn" id="pb-od-drill-btn-retry">Try again here</button>
+                    <button class="pb-od-drill-restart-btn" id="pb-od-drill-btn-restart">Start over</button>
+                  </div>
+                </div>
+              </div>
+              <div class="pb-od-drill-status" id="pb-od-drill-status">Your turn</div>
+              <div class="pb-od-drill-controls">
+                <button class="prac-btn" id="pb-od-drill-btn-hint">💡 Hint</button>
+                <button class="prac-btn" id="pb-od-drill-btn-reset">↺ Reset to start</button>
+              </div>
+            </div>
+          </div>
+        </div><!-- /pb-od-drilling -->
 
       </div><!-- /pb-view-opening -->
 

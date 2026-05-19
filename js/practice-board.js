@@ -1834,3 +1834,1325 @@ Respond with ONLY the coach message text.`;
   });
 
 })();
+
+/* ═══════════════════════════════════════════════════════════════════════
+   OPENING DRILL MODE — separate IIFE
+   Three sub-views: selection → coaching → drilling
+   ═══════════════════════════════════════════════════════════════════════ */
+(function () {
+  'use strict';
+
+  const OD_API_URL = window.location.hostname === 'localhost'
+    ? 'http://localhost:4000/api/analyze'
+    : 'https://chess-lab-production.up.railway.app/api/analyze';
+
+  const MASTERS_EP = 'https://explorer.lichess.ovh/masters';
+
+  const OD_PX = 480;
+  const OD_SQ = OD_PX / 8; // 60
+
+  const OD_LIGHT = window.BOARD_LIGHT || '#f0d9b5';
+  const OD_DARK  = window.BOARD_DARK  || '#b58863';
+
+  const OD_PIECE_URLS = {
+    wK:'https://lichess1.org/assets/piece/cburnett/wK.svg',
+    wQ:'https://lichess1.org/assets/piece/cburnett/wQ.svg',
+    wR:'https://lichess1.org/assets/piece/cburnett/wR.svg',
+    wB:'https://lichess1.org/assets/piece/cburnett/wB.svg',
+    wN:'https://lichess1.org/assets/piece/cburnett/wN.svg',
+    wP:'https://lichess1.org/assets/piece/cburnett/wP.svg',
+    bK:'https://lichess1.org/assets/piece/cburnett/bK.svg',
+    bQ:'https://lichess1.org/assets/piece/cburnett/bQ.svg',
+    bR:'https://lichess1.org/assets/piece/cburnett/bR.svg',
+    bB:'https://lichess1.org/assets/piece/cburnett/bB.svg',
+    bN:'https://lichess1.org/assets/piece/cburnett/bN.svg',
+    bP:'https://lichess1.org/assets/piece/cburnett/bP.svg',
+  };
+  const OD_SYM = {
+    wK:'♔',wQ:'♕',wR:'♖',wB:'♗',wN:'♘',wP:'♙',
+    bK:'♚',bQ:'♛',bR:'♜',bB:'♝',bN:'♞',bP:'♟'
+  };
+
+  const odImg = {};
+  let odImgLoaded = false;
+
+  // ── Curated opening library ────────────────────────────────────────────
+  const OD_LIBRARY = [
+    { group: "Queen's Pawn", openings: [
+      { name: "Queen's Gambit Accepted", moves: ['d4','d5','c4','dxc4'] },
+      { name: "Queen's Gambit Declined", moves: ['d4','d5','c4','e6'] },
+      { name: 'Slav Defense',            moves: ['d4','d5','c4','c6'] },
+      { name: "King's Indian Defense",   moves: ['d4','Nf6','c4','g6'] },
+      { name: 'Nimzo-Indian Defense',    moves: ['d4','Nf6','c4','e6','Nc3','Bb4'] },
+      { name: 'Catalan Opening',         moves: ['d4','Nf6','c4','e6','g3'] }
+    ]},
+    { group: "King's Pawn", openings: [
+      { name: 'Italian Game',         moves: ['e4','e5','Nf3','Nc6','Bc4'] },
+      { name: 'Ruy Lopez',            moves: ['e4','e5','Nf3','Nc6','Bb5'] },
+      { name: 'Sicilian Defense',     moves: ['e4','c5'] },
+      { name: 'French Defense',       moves: ['e4','e6'] },
+      { name: 'Caro-Kann Defense',    moves: ['e4','c6'] },
+      { name: 'Pirc Defense',         moves: ['e4','d6'] },
+      { name: 'Scandinavian Defense', moves: ['e4','d5'] }
+    ]},
+    { group: 'Other', openings: [
+      { name: 'English Opening', moves: ['c4'] },
+      { name: 'Reti Opening',    moves: ['Nf3'] },
+      { name: 'London System',   moves: ['d4','d5','Nf3','Nf6','Bf4'] }
+    ]}
+  ];
+
+  // ── localStorage helpers ────────────────────────────────────────────────
+  function odLsGet(k)       { try { return localStorage.getItem(k); } catch(_) { return null; } }
+  function odLsSet(k, v)    { try { localStorage.setItem(k, v); } catch(_) {} }
+  function odLsJSON(k)      { try { return JSON.parse(localStorage.getItem(k)); } catch(_) { return null; } }
+  function odLsSetJSON(k,v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch(_) {} }
+
+  // ── State ──────────────────────────────────────────────────────────────
+  let odMode             = 'selection';   // selection | coaching | drilling
+  let odCurrentOpening   = null;          // {name, moves}
+  let odUserSide         = 'white';       // 'white' | 'black'
+
+  // Coaching room
+  let odCoachingChess    = null;
+  let odCanvasCoach      = null;
+  let odCtxCoach         = null;
+  let odIdeasCache       = {};            // by `${name}|${side}`
+  let odLinesCache       = {};
+  let odChatHistory      = [];            // [{role, content}] for current session
+  let odWatchActive      = false;
+  let odWatchPaused      = false;
+  let odWatchTimer       = null;
+  let odWatchMoves       = [];            // full UCI sequence to play
+  let odWatchIdx         = 0;
+  let odCoachingActiveBtn = null;         // 'ideas' | 'lines' | 'chat'
+
+  // Drilling
+  let odDrillChess       = null;
+  let odCanvasDrill      = null;
+  let odCtxDrill         = null;
+  let odDrillStreak      = 0;
+  let odDrillFailed      = false;
+  let odDrillSelSq       = null;
+  let odDrillLegDests    = [];
+  let odDrillLastFrom    = null;
+  let odDrillLastTo      = null;
+  let odDrillBusy        = false;
+  let odDrillFinishedThisAttempt = false;
+  let odDrillHintFromTo  = null;           // {from, to} for green arrow
+
+  // Lichess cache (session-only, in-memory)
+  const odFenCache = new Map();
+
+  // ── Image loading ───────────────────────────────────────────────────────
+  function odLoadImg() {
+    if (odImgLoaded) return Promise.resolve();
+    return Promise.all(Object.entries(OD_PIECE_URLS).map(([k, url]) =>
+      new Promise(resolve => {
+        const img = new Image();
+        img.onload  = () => { odImg[k] = img; resolve(); };
+        img.onerror = () => resolve();
+        img.src = url;
+      })
+    )).then(() => { odImgLoaded = true; });
+  }
+
+  // ── Coordinate helpers (flip when playing black) ────────────────────────
+  function odSqToRC(sq) {
+    const file = sq.charCodeAt(0) - 97;
+    const rank = 8 - parseInt(sq[1]);
+    return odUserSide === 'black'
+      ? { c: 7 - file, r: 7 - rank }
+      : { c: file, r: rank };
+  }
+  function odRcToSq(c, r) {
+    if (c < 0 || c > 7 || r < 0 || r > 7) return null;
+    return odUserSide === 'black'
+      ? String.fromCharCode(97 + (7 - c)) + (r + 1)
+      : String.fromCharCode(97 + c) + (8 - r);
+  }
+  function odSqCenter(sq) {
+    const { c, r } = odSqToRC(sq);
+    return { x: c * OD_SQ + OD_SQ / 2, y: r * OD_SQ + OD_SQ / 2 };
+  }
+
+  // ── Rendering (shared between coaching + drill canvases) ────────────────
+  function odRenderBoard(ctx, chess, opts) {
+    if (!ctx || !chess) return;
+    opts = opts || {};
+    ctx.clearRect(0, 0, OD_PX, OD_PX);
+
+    // squares
+    for (let r = 0; r < 8; r++)
+      for (let c = 0; c < 8; c++) {
+        ctx.fillStyle = (r + c) % 2 === 0 ? OD_LIGHT : OD_DARK;
+        ctx.fillRect(c * OD_SQ, r * OD_SQ, OD_SQ, OD_SQ);
+      }
+
+    // last move highlights
+    [opts.lastFrom, opts.lastTo].forEach(sq => {
+      if (!sq) return;
+      const { c, r } = odSqToRC(sq);
+      ctx.fillStyle = 'rgba(255,200,0,0.40)';
+      ctx.fillRect(c * OD_SQ, r * OD_SQ, OD_SQ, OD_SQ);
+    });
+
+    // selected
+    if (opts.selSq) {
+      const { c, r } = odSqToRC(opts.selSq);
+      ctx.fillStyle = 'rgba(80,160,255,0.42)';
+      ctx.fillRect(c * OD_SQ, r * OD_SQ, OD_SQ, OD_SQ);
+    }
+
+    // dots / rings
+    if (opts.legDests && opts.legDests.length) {
+      opts.legDests.forEach(sq => {
+        const { c, r } = odSqToRC(sq);
+        const cx = c * OD_SQ + OD_SQ / 2;
+        const cy = r * OD_SQ + OD_SQ / 2;
+        ctx.save();
+        if (chess.get(sq)) {
+          ctx.strokeStyle = 'rgba(0,0,0,0.30)';
+          ctx.lineWidth   = OD_SQ * 0.09;
+          ctx.beginPath();
+          ctx.arc(cx, cy, OD_SQ * 0.46, 0, Math.PI * 2);
+          ctx.stroke();
+        } else {
+          ctx.fillStyle = 'rgba(0,0,0,0.22)';
+          ctx.beginPath();
+          ctx.arc(cx, cy, OD_SQ * 0.155, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.restore();
+      });
+    }
+
+    // pieces
+    chess.board().forEach((row, ri) => {
+      row.forEach((p, ci) => {
+        if (!p) return;
+        const key = p.color + p.type.toUpperCase();
+        const dc  = odUserSide === 'black' ? 7 - ci : ci;
+        const dr  = odUserSide === 'black' ? 7 - ri : ri;
+        const x   = dc * OD_SQ;
+        const y   = dr * OD_SQ;
+        if (odImg[key]) {
+          ctx.drawImage(odImg[key], x, y, OD_SQ, OD_SQ);
+        } else {
+          const sym = OD_SYM[key];
+          if (!sym) return;
+          const cx2 = x + OD_SQ / 2;
+          const cy2 = y + OD_SQ / 2;
+          const fs = Math.floor(OD_SQ * 0.70);
+          ctx.font = `${fs}px "Segoe UI Emoji","Apple Color Emoji",serif`;
+          ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          ctx.fillStyle = 'rgba(0,0,0,0.28)';
+          ctx.fillText(sym, cx2 + 1.2, cy2 + 1.2);
+          ctx.fillStyle = p.color === 'w' ? '#ffffff' : '#1a1a1a';
+          ctx.fillText(sym, cx2, cy2);
+        }
+      });
+    });
+
+    // hint arrow
+    if (opts.hintFrom && opts.hintTo) {
+      const f = odSqCenter(opts.hintFrom);
+      const t = odSqCenter(opts.hintTo);
+      const a = Math.atan2(t.y - f.y, t.x - f.x);
+      const hl = OD_SQ * 0.38;
+      const lw = OD_SQ * 0.14;
+      const bx = t.x - hl * 0.65 * Math.cos(a);
+      const by = t.y - hl * 0.65 * Math.sin(a);
+      ctx.save();
+      ctx.strokeStyle = 'rgba(0,210,90,0.85)';
+      ctx.fillStyle   = 'rgba(0,210,90,0.85)';
+      ctx.lineWidth   = lw;
+      ctx.lineCap     = 'round';
+      ctx.beginPath(); ctx.moveTo(f.x, f.y); ctx.lineTo(bx, by); ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(t.x, t.y);
+      ctx.lineTo(t.x - hl * Math.cos(a - Math.PI / 6), t.y - hl * Math.sin(a - Math.PI / 6));
+      ctx.lineTo(t.x - hl * Math.cos(a + Math.PI / 6), t.y - hl * Math.sin(a + Math.PI / 6));
+      ctx.closePath(); ctx.fill();
+      ctx.restore();
+    }
+
+    // coords
+    const fs = Math.max(8, Math.floor(OD_SQ * 0.17));
+    ctx.font = `600 ${fs}px "Segoe UI",sans-serif`;
+    for (let r = 0; r < 8; r++) {
+      const num = odUserSide === 'black' ? (r + 1) : (8 - r);
+      ctx.fillStyle = r % 2 === 0 ? OD_DARK : OD_LIGHT;
+      ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+      ctx.fillText(String(num), 2, r * OD_SQ + 2);
+    }
+    for (let c = 0; c < 8; c++) {
+      const ch = odUserSide === 'black'
+        ? String.fromCharCode(97 + (7 - c))
+        : String.fromCharCode(97 + c);
+      ctx.fillStyle = c % 2 !== 0 ? OD_DARK : OD_LIGHT;
+      ctx.textAlign = 'right'; ctx.textBaseline = 'bottom';
+      ctx.fillText(ch, (c + 1) * OD_SQ - 2, OD_PX - 2);
+    }
+  }
+
+  // ── Toast (reuse #az-toast) ─────────────────────────────────────────────
+  let _odToastTimer;
+  function odToast(msg) {
+    const el = document.getElementById('az-toast');
+    if (!el) return;
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(_odToastTimer);
+    _odToastTimer = setTimeout(() => el.classList.remove('show'), 2800);
+  }
+
+  // ── Lichess masters ─────────────────────────────────────────────────────
+  async function odFetchMasters(fen) {
+    if (odFenCache.has(fen)) return odFenCache.get(fen);
+    try {
+      const r = await fetch(`${MASTERS_EP}?fen=${encodeURIComponent(fen)}&moves=8`);
+      if (!r.ok) return null;
+      const data = await r.json();
+      odFenCache.set(fen, data);
+      return data;
+    } catch (_) { return null; }
+  }
+
+  // Total master games seen at this position
+  function odTotalGames(data) {
+    if (!data || !data.moves) return 0;
+    return data.moves.reduce((sum, m) => sum + (m.white || 0) + (m.draws || 0) + (m.black || 0), 0);
+  }
+
+  // Sort moves descending by total game count
+  function odSortedMoves(data) {
+    if (!data || !data.moves) return [];
+    return data.moves.slice().sort((a, b) => {
+      const at = (a.white || 0) + (a.draws || 0) + (a.black || 0);
+      const bt = (b.white || 0) + (b.draws || 0) + (b.black || 0);
+      return bt - at;
+    });
+  }
+
+  // Acceptable moves: top + any others within 50% of top game count
+  function odAcceptableMoves(data) {
+    const sorted = odSortedMoves(data);
+    if (!sorted.length) return [];
+    const topCount = (sorted[0].white || 0) + (sorted[0].draws || 0) + (sorted[0].black || 0);
+    if (!topCount) return [];
+    const out = [];
+    for (let i = 0; i < sorted.length && i < 3; i++) {
+      const m = sorted[i];
+      const ct = (m.white || 0) + (m.draws || 0) + (m.black || 0);
+      if (i === 0 || ct >= topCount * 0.5) out.push(m);
+    }
+    return out;
+  }
+
+  // ── Claude API helper ───────────────────────────────────────────────────
+  async function odClaudeCall(system, userMsg, maxTokens) {
+    const controller = new AbortController();
+    const tid = setTimeout(() => controller.abort(), 15000);
+    try {
+      const res = await fetch(OD_API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        signal: controller.signal,
+        body: JSON.stringify({
+          model:      'claude-sonnet-4-6',
+          max_tokens: maxTokens,
+          system,
+          messages:   [{ role: 'user', content: userMsg }]
+        })
+      });
+      clearTimeout(tid);
+      if (!res.ok) return '';
+      const data = await res.json();
+      return (data?.content?.[0]?.text || '').trim();
+    } catch (_) {
+      clearTimeout(tid);
+      return '';
+    }
+  }
+
+  // ── Build starting position chess instance from SAN moves ───────────────
+  function odStartingChess(opening) {
+    const c = new Chess();
+    if (opening && opening.moves) {
+      opening.moves.forEach(san => { try { c.move(san); } catch(_) {} });
+    }
+    return c;
+  }
+
+  // ── Main view switcher ──────────────────────────────────────────────────
+  function odShowSub(name) {
+    odMode = name;
+    ['selection', 'coaching', 'drilling'].forEach(s => {
+      const el = document.getElementById('pb-od-' + s);
+      if (el) el.classList.toggle('hidden', s !== name);
+    });
+    if (name === 'selection') {
+      odTeardownWatch();
+    } else if (name === 'coaching') {
+      odTeardownWatch();
+      odEnterCoaching();
+    } else if (name === 'drilling') {
+      odTeardownWatch();
+      odEnterDrill();
+    }
+  }
+
+  // ════════════════════════════════════════════════════════════════════════
+  // SELECTION SCREEN
+  // ════════════════════════════════════════════════════════════════════════
+  function odRenderSelection() {
+    odRenderRecommended();
+    odRenderBrowse('');
+    const searchEl = document.getElementById('pb-od-search');
+    if (searchEl) {
+      searchEl.value = '';
+      searchEl.oninput = function () { odRenderBrowse(searchEl.value.trim().toLowerCase()); };
+    }
+  }
+
+  function odRenderRecommended() {
+    const section = document.getElementById('pb-od-recommended-section');
+    const list    = document.getElementById('pb-od-rec-list');
+    if (!section || !list) return;
+
+    const recs = odLsJSON('csa_recommendations');
+    const arr  = recs && (recs.openingRepertoire || (recs.openingReport && recs.openingReport.openings) || recs.openingRecommendations);
+    if (!Array.isArray(arr) || !arr.length) { section.classList.add('hidden'); return; }
+
+    const weak = arr.filter(o => {
+      const v = String(o.verdict || o.recommendation || '').toLowerCase();
+      return v === 'modify' || v === 'replace';
+    });
+    if (!weak.length) { section.classList.add('hidden'); return; }
+
+    section.classList.remove('hidden');
+    list.innerHTML = '';
+
+    weak.forEach(o => {
+      const verdict = String(o.verdict || o.recommendation || '').toLowerCase();
+      const name    = o.name || 'Unknown opening';
+      const desc    = o.commonMistake || o.description || '';
+      const acc     = (o.averageAccuracy != null ? o.averageAccuracy : o.avgAccuracy);
+      const accStr  = (acc != null) ? `Your accuracy: ${Math.round(acc)}%` : '';
+      const card = document.createElement('div');
+      card.className = 'pb-od-rec-card';
+      card.innerHTML =
+        `<div class="pb-od-rec-top">
+           <span class="pb-od-rec-name">${odEscape(name)}</span>
+           <span class="pb-od-rec-verdict ${verdict === 'replace' ? 'replace' : ''}">${verdict || 'review'}</span>
+         </div>
+         ${desc ? `<div class="pb-od-rec-desc">${odEscape(desc)}</div>` : ''}
+         <div class="pb-od-rec-meta">
+           <span>${accStr}</span>
+           <span class="pb-od-rec-cta">Start drilling →</span>
+         </div>`;
+      card.addEventListener('click', () => {
+        // Find a matching library entry, else build one with no moves
+        const lib = odFindLibraryOpening(name);
+        const opening = lib || { name: name, moves: [] };
+        odPickOpening(opening);
+      });
+      list.appendChild(card);
+    });
+  }
+
+  function odFindLibraryOpening(name) {
+    const lc = String(name || '').toLowerCase();
+    for (const grp of OD_LIBRARY) {
+      for (const o of grp.openings) {
+        if (o.name.toLowerCase() === lc) return o;
+        // partial / prefix match
+        if (lc.startsWith(o.name.toLowerCase()) || o.name.toLowerCase().includes(lc)) return o;
+      }
+    }
+    return null;
+  }
+
+  function odRenderBrowse(query) {
+    const cont = document.getElementById('pb-od-browse');
+    if (!cont) return;
+    cont.innerHTML = '';
+    let totalShown = 0;
+    OD_LIBRARY.forEach(grp => {
+      const filtered = grp.openings.filter(o =>
+        !query || o.name.toLowerCase().includes(query) ||
+        o.moves.join(' ').toLowerCase().includes(query)
+      );
+      if (!filtered.length) return;
+      const groupEl = document.createElement('div');
+      groupEl.className = 'pb-od-group';
+      groupEl.innerHTML = `<div class="pb-od-group-label">${odEscape(grp.group)}</div>`;
+      filtered.forEach(o => {
+        const movesStr = odMovesToSanString(o.moves);
+        const card = document.createElement('div');
+        card.className = 'pb-od-card';
+        card.innerHTML =
+          `<div class="pb-od-card-left">
+             <div class="pb-od-card-name">${odEscape(o.name)}</div>
+             <div class="pb-od-card-moves">${movesStr}</div>
+           </div>
+           <span class="pb-od-card-cta">Study →</span>`;
+        card.addEventListener('click', () => odPickOpening(o));
+        groupEl.appendChild(card);
+        totalShown++;
+      });
+      cont.appendChild(groupEl);
+    });
+    if (!totalShown) {
+      const empty = document.createElement('div');
+      empty.className = 'pb-od-empty';
+      empty.textContent = 'No openings match "' + query + '".';
+      cont.appendChild(empty);
+    }
+  }
+
+  function odMovesToSanString(moves) {
+    let s = '';
+    for (let i = 0; i < moves.length; i++) {
+      if (i % 2 === 0) s += (Math.floor(i / 2) + 1) + '.';
+      s += moves[i];
+      if (i < moves.length - 1) s += ' ';
+    }
+    return s;
+  }
+
+  function odEscape(s) {
+    return String(s || '').replace(/[&<>"']/g, ch =>
+      ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+  }
+
+  function odPickOpening(opening) {
+    odCurrentOpening = opening;
+    // Restore saved side preference per opening
+    const sides = odLsJSON('pb_opening_side') || {};
+    odUserSide = sides[opening.name] === 'black' ? 'black' : 'white';
+    odShowSub('coaching');
+  }
+
+  // ════════════════════════════════════════════════════════════════════════
+  // COACHING ROOM
+  // ════════════════════════════════════════════════════════════════════════
+  function odEnterCoaching() {
+    if (!odCurrentOpening) { odShowSub('selection'); return; }
+
+    document.getElementById('pb-od-coaching-title').textContent = odCurrentOpening.name;
+    document.getElementById('pb-od-coaching-moves').textContent =
+      odCurrentOpening.moves.length
+        ? odMovesToSanString(odCurrentOpening.moves)
+        : 'Starting position';
+
+    odUpdateSideButtons();
+    odCoachingChess = odStartingChess(odCurrentOpening);
+    odLoadImg().then(() => {
+      odRenderBoard(odCtxCoach, odCoachingChess, {});
+    });
+
+    // Reset coach panel
+    odCoachingActiveBtn = null;
+    odRefreshActionBtnState();
+    const content = document.getElementById('pb-od-coach-content');
+    if (content) content.innerHTML =
+      '<div class="pb-od-coach-placeholder">Pick a button above to start learning, or jump straight into the drill below.</div>';
+    odHideChat();
+    odChatHistory = [];
+
+    odTeardownWatch();
+  }
+
+  function odUpdateSideButtons() {
+    const w = document.getElementById('pb-od-side-white');
+    const b = document.getElementById('pb-od-side-black');
+    if (w) w.classList.toggle('active', odUserSide === 'white');
+    if (b) b.classList.toggle('active', odUserSide === 'black');
+  }
+
+  function odSetSide(side) {
+    if (side !== 'white' && side !== 'black') return;
+    odUserSide = side;
+    if (odCurrentOpening) {
+      const sides = odLsJSON('pb_opening_side') || {};
+      sides[odCurrentOpening.name] = side;
+      odLsSetJSON('pb_opening_side', sides);
+    }
+    odUpdateSideButtons();
+    // Re-render board with flipped orientation
+    if (odMode === 'coaching') {
+      odRenderBoard(odCtxCoach, odCoachingChess, {});
+    }
+    // Invalidate caches that depend on side
+    odCoachingActiveBtn = null;
+    odRefreshActionBtnState();
+  }
+
+  function odRefreshActionBtnState() {
+    ['ideas','lines','chat'].forEach(name => {
+      const id = 'pb-od-btn-' + name;
+      const el = document.getElementById(id);
+      if (el) el.classList.toggle('active', odCoachingActiveBtn === name);
+    });
+  }
+
+  function odCacheKey() {
+    return `${odCurrentOpening ? odCurrentOpening.name : '?'}|${odUserSide}`;
+  }
+
+  // ── Action 1: Walk me through the ideas ─────────────────────────────────
+  async function odActionIdeas() {
+    odTeardownWatch();
+    if (odCurrentOpening) {
+      odCoachingChess = odStartingChess(odCurrentOpening);
+      odRenderBoard(odCtxCoach, odCoachingChess, {});
+    }
+    odCoachingActiveBtn = 'ideas';
+    odRefreshActionBtnState();
+    odHideChat();
+
+    const content = document.getElementById('pb-od-coach-content');
+    if (!content) return;
+    const key = odCacheKey();
+    if (odIdeasCache[key]) { content.innerHTML = odIdeasCache[key]; return; }
+
+    content.innerHTML = '<div class="pb-coach-loading"><span></span><span></span><span></span></div>';
+
+    const elo  = odLsGet('csa_elo_current') || 'unknown';
+    const tone = odLsGet('pf_coach_tone') || 'Direct';
+    const system =
+`You are a chess coach teaching the ${odCurrentOpening.name} from ${odUserSide}'s perspective. The student is rated ${elo} and uses ${tone} coaching style. Explain the strategic ideas of this opening in clear, structured language. Cover: pawn structure, piece development priorities, attacking plans, key squares, common mistakes at this rating level. Be concrete and specific — give actual square names and move sequences. Keep response under 300 words.
+
+Format your response with these EXACT section headers, each on its own line:
+PAWN STRUCTURE:
+PIECE DEVELOPMENT:
+ATTACKING PLANS:
+KEY SQUARES:
+COMMON MISTAKES:
+
+Each section should be 1-2 sentences. No other markdown.`;
+    const user = `Teach me the ideas of the ${odCurrentOpening.name} from ${odUserSide}'s side. Starting moves: ${odMovesToSanString(odCurrentOpening.moves || [])}.`;
+
+    const text = await odClaudeCall(system, user, 600);
+    if (!text) {
+      content.innerHTML = '<div class="pb-od-coach-placeholder">Coach unavailable right now. Try again in a moment.</div>';
+      return;
+    }
+    const html = odFormatIdeas(text);
+    odIdeasCache[key] = html;
+    content.innerHTML = html;
+  }
+
+  function odFormatIdeas(text) {
+    const sections = [
+      { key: 'PAWN STRUCTURE',    label: 'Pawn structure'    },
+      { key: 'PIECE DEVELOPMENT', label: 'Piece development' },
+      { key: 'ATTACKING PLANS',   label: 'Attacking plans'   },
+      { key: 'KEY SQUARES',       label: 'Key squares'       },
+      { key: 'COMMON MISTAKES',   label: 'Common mistakes'   }
+    ];
+    let html = '';
+    let found = false;
+    for (let i = 0; i < sections.length; i++) {
+      const s = sections[i];
+      const re = new RegExp(s.key + '\\s*:\\s*([\\s\\S]*?)(?=' +
+        sections.map(x => x.key + '\\s*:').join('|') + '|$)', 'i');
+      const m = text.match(re);
+      if (m && m[1] && m[1].trim()) {
+        found = true;
+        html += `<div class="pb-od-ideas-block">
+          <div class="pb-od-ideas-heading">${s.label}</div>
+          <div class="pb-od-ideas-body">${odEscape(m[1].trim())}</div>
+        </div>`;
+      }
+    }
+    if (!found) {
+      html = `<div class="pb-od-ideas-body">${odEscape(text)}</div>`;
+    }
+    return html;
+  }
+
+  // ── Action 2: Show me the main lines ────────────────────────────────────
+  async function odActionLines() {
+    odTeardownWatch();
+    if (odCurrentOpening) {
+      odCoachingChess = odStartingChess(odCurrentOpening);
+      odRenderBoard(odCtxCoach, odCoachingChess, {});
+    }
+    odCoachingActiveBtn = 'lines';
+    odRefreshActionBtnState();
+    odHideChat();
+
+    const content = document.getElementById('pb-od-coach-content');
+    if (!content) return;
+
+    const key = odCacheKey();
+    if (odLinesCache[key]) { content.innerHTML = odLinesCache[key]; odBindWatchButtons(); return; }
+
+    content.innerHTML = '<div class="pb-coach-loading"><span></span><span></span><span></span></div>';
+
+    // Build the FEN at the starting position
+    const startChess = odStartingChess(odCurrentOpening);
+    const data = await odFetchMasters(startChess.fen());
+
+    if (!data || !data.moves || !data.moves.length) {
+      content.innerHTML = '<div class="pb-od-coach-placeholder">Lichess returned no master games for this position. Try another opening.</div>';
+      return;
+    }
+
+    const sorted = odSortedMoves(data).slice(0, 4);
+    // For each top move, get the SAN + 1-line description from Claude
+    const movesList = sorted.map(m => m.san).join(', ');
+    const tone = odLsGet('pf_coach_tone') || 'Direct';
+    const system = `You are a chess coach. For each main variation of the ${odCurrentOpening.name}, give a 1-sentence description of its character. Be specific and use chess terminology. Plain text only, no markdown.
+
+Output format — one variation per line, exactly:
+<SAN move>: <one-sentence description>
+
+No other text, no header, no numbering.`;
+    const user = `From the position after ${odMovesToSanString(odCurrentOpening.moves || [])}, the main move replies are: ${movesList}. Describe each.`;
+
+    const text = await odClaudeCall(system, user, 400);
+    const descMap = {};
+    if (text) {
+      text.split('\n').forEach(line => {
+        const m = line.match(/^([A-Za-z0-9+#=\-]+):\s*(.+)$/);
+        if (m) descMap[m[1]] = m[2].trim();
+      });
+    }
+
+    let html = '';
+    sorted.forEach(mv => {
+      const desc = descMap[mv.san] || 'A common continuation in master games.';
+      html += `<div class="pb-od-line-item">
+        <div class="pb-od-line-name">${odEscape(mv.san)}</div>
+        <div class="pb-od-line-desc">${odEscape(desc)}</div>
+        <button class="pb-od-line-watch-btn" data-uci="${odEscape(mv.uci)}" data-san="${odEscape(mv.san)}">Watch this line →</button>
+      </div>`;
+    });
+    odLinesCache[key] = html;
+    content.innerHTML = html;
+    odBindWatchButtons();
+  }
+
+  function odBindWatchButtons() {
+    document.querySelectorAll('.pb-od-line-watch-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const uci = btn.getAttribute('data-uci');
+        const san = btn.getAttribute('data-san');
+        await odStartWatch(uci, san);
+      });
+    });
+  }
+
+  // ── Watch mode ─────────────────────────────────────────────────────────
+  async function odStartWatch(firstUci, firstSan) {
+    odTeardownWatch();
+    odWatchActive = true;
+    odWatchPaused = false;
+    odWatchMoves = [];
+    odWatchIdx = 0;
+
+    // Reset board to opening starting position
+    odCoachingChess = odStartingChess(odCurrentOpening);
+    odRenderBoard(odCtxCoach, odCoachingChess, {});
+
+    // Push the chosen first move
+    odWatchMoves.push({ uci: firstUci, san: firstSan });
+
+    // Walk the most-popular line for ~8 more plies
+    let walker = odStartingChess(odCurrentOpening);
+    walker.move({ from: firstUci.slice(0,2), to: firstUci.slice(2,4), promotion: firstUci[4] || undefined });
+
+    for (let i = 0; i < 8; i++) {
+      const data = await odFetchMasters(walker.fen());
+      if (!data || !data.moves || !data.moves.length) break;
+      const sorted = odSortedMoves(data);
+      const top = sorted[0];
+      walker.move({ from: top.uci.slice(0,2), to: top.uci.slice(2,4), promotion: top.uci[4] || undefined });
+      odWatchMoves.push({ uci: top.uci, san: top.san });
+    }
+
+    // Show controls
+    const controls = document.getElementById('pb-od-watch-controls');
+    if (controls) controls.classList.remove('hidden');
+    odSetWatchPauseLabel();
+
+    odPlayNextWatchMove();
+  }
+
+  function odSetWatchPauseLabel() {
+    const btn = document.getElementById('pb-od-watch-pause');
+    if (btn) btn.textContent = odWatchPaused ? '▶ Resume' : '⏸ Pause';
+  }
+
+  async function odPlayNextWatchMove() {
+    if (!odWatchActive || odWatchPaused) return;
+    if (odWatchIdx >= odWatchMoves.length) {
+      odShowWatchTooltip('End of line. The book continues but with rarer moves.');
+      return;
+    }
+    const move = odWatchMoves[odWatchIdx];
+    const m = odCoachingChess.move({ from: move.uci.slice(0,2), to: move.uci.slice(2,4), promotion: move.uci[4] || undefined });
+    if (!m) { odTeardownWatch(); return; }
+    odRenderBoard(odCtxCoach, odCoachingChess, { lastFrom: m.from, lastTo: m.to });
+
+    // Tooltip — short idea
+    const idea = await odFetchWatchTooltip(move.san, odCoachingChess.fen());
+    odShowWatchTooltip(`${m.san}: ${idea}`);
+
+    odWatchIdx++;
+
+    const speedEl = document.getElementById('pb-od-watch-speed');
+    const speed = speedEl ? parseInt(speedEl.value, 10) : 1500;
+    odWatchTimer = setTimeout(odPlayNextWatchMove, speed);
+  }
+
+  // Cache watch tooltips per opening + ply index
+  const odWatchTooltipCache = {};
+  async function odFetchWatchTooltip(san, fenAfter) {
+    const key = `${odCacheKey()}|${odWatchIdx}|${san}`;
+    if (odWatchTooltipCache[key]) return odWatchTooltipCache[key];
+    const system = "You are a chess coach. Give a single 6-12 word fragment describing the idea behind the move (e.g., 'Develops the knight and prepares castling'). No period, no preamble, no quotes.";
+    const user = `Opening: ${odCurrentOpening.name}. After move ${san}. FEN: ${fenAfter}.`;
+    const txt = await odClaudeCall(system, user, 50);
+    const out = txt || 'A typical move in this line';
+    odWatchTooltipCache[key] = out;
+    return out;
+  }
+
+  function odShowWatchTooltip(msg) {
+    const el = document.getElementById('pb-od-watch-tooltip');
+    if (!el) return;
+    el.textContent = msg;
+    el.classList.remove('hidden');
+  }
+
+  function odTeardownWatch() {
+    odWatchActive = false;
+    odWatchPaused = false;
+    if (odWatchTimer) { clearTimeout(odWatchTimer); odWatchTimer = null; }
+    odWatchMoves = [];
+    odWatchIdx = 0;
+    const controls = document.getElementById('pb-od-watch-controls');
+    if (controls) controls.classList.add('hidden');
+    const tip = document.getElementById('pb-od-watch-tooltip');
+    if (tip) tip.classList.add('hidden');
+  }
+
+  // ── Action 3: Chat ──────────────────────────────────────────────────────
+  function odActionChat() {
+    odTeardownWatch();
+    if (odCurrentOpening) {
+      odCoachingChess = odStartingChess(odCurrentOpening);
+      odRenderBoard(odCtxCoach, odCoachingChess, {});
+    }
+    odCoachingActiveBtn = 'chat';
+    odRefreshActionBtnState();
+    const content = document.getElementById('pb-od-coach-content');
+    if (content) content.innerHTML = '';
+    const chat = document.getElementById('pb-od-coach-chat');
+    if (chat) chat.classList.remove('hidden');
+    odRenderChat();
+    const input = document.getElementById('pb-od-chat-input');
+    if (input) setTimeout(() => input.focus(), 50);
+  }
+
+  function odHideChat() {
+    const chat = document.getElementById('pb-od-coach-chat');
+    if (chat) chat.classList.add('hidden');
+  }
+
+  function odRenderChat() {
+    const list = document.getElementById('pb-od-chat-msgs');
+    if (!list) return;
+    list.innerHTML = '';
+    if (!odChatHistory.length) {
+      const hint = document.createElement('div');
+      hint.className = 'pb-od-chat-msg pb-od-chat-bot';
+      hint.textContent = `Ask me anything about the ${odCurrentOpening ? odCurrentOpening.name : 'opening'} — pawn breaks, move orders, traps, anything.`;
+      list.appendChild(hint);
+      return;
+    }
+    odChatHistory.forEach(m => {
+      const div = document.createElement('div');
+      div.className = 'pb-od-chat-msg ' + (m.role === 'user' ? 'pb-od-chat-user' : 'pb-od-chat-bot');
+      div.textContent = m.content;
+      list.appendChild(div);
+    });
+    list.scrollTop = list.scrollHeight;
+  }
+
+  async function odSendChat() {
+    const input = document.getElementById('pb-od-chat-input');
+    const sendBtn = document.getElementById('pb-od-chat-send');
+    if (!input || !sendBtn) return;
+    const text = input.value.trim();
+    if (!text) return;
+    if (odChatHistory.length >= 40) {
+      odToast('Chat limit reached (20 exchanges per opening session). Start a new opening.');
+      return;
+    }
+    odChatHistory.push({ role: 'user', content: text });
+    input.value = '';
+    sendBtn.disabled = true;
+    odRenderChat();
+
+    // Add a loading bot bubble
+    const list = document.getElementById('pb-od-chat-msgs');
+    const loading = document.createElement('div');
+    loading.className = 'pb-od-chat-msg pb-od-chat-bot';
+    loading.innerHTML = '<div class="pb-coach-loading"><span></span><span></span><span></span></div>';
+    list.appendChild(loading);
+    list.scrollTop = list.scrollHeight;
+
+    const elo  = odLsGet('csa_elo_current') || 'unknown';
+    const tone = odLsGet('pf_coach_tone') || 'Direct';
+    const system = `You are a chess coach having a conversation with a student about the ${odCurrentOpening.name}. The student is rated ${elo} and uses ${tone} style. Answer specifically about THIS opening, not generic chess advice. Keep responses concise — 2-4 sentences typically. Use concrete moves and squares.`;
+
+    const history = odChatHistory.slice(-10).map(m =>
+      (m.role === 'user' ? 'Student: ' : 'You: ') + m.content
+    ).join('\n');
+    const user = `Conversation so far:\n${history}\n\nReply as the coach.`;
+
+    const reply = await odClaudeCall(system, user, 300);
+    loading.remove();
+
+    const replyText = reply || "I couldn't reach the coach service — try again in a moment.";
+    odChatHistory.push({ role: 'assistant', content: replyText });
+    sendBtn.disabled = false;
+    odRenderChat();
+  }
+
+  // ════════════════════════════════════════════════════════════════════════
+  // DRILL MODE
+  // ════════════════════════════════════════════════════════════════════════
+  function odEnterDrill() {
+    if (!odCurrentOpening) { odShowSub('selection'); return; }
+
+    document.getElementById('pb-od-drill-title').textContent = 'Drilling: ' + odCurrentOpening.name;
+    document.getElementById('pb-od-drill-side').textContent = odUserSide === 'white' ? 'White' : 'Black';
+
+    odLoadDrillStats();
+    odResetDrill();
+    odLoadImg().then(() => odDrawDrill());
+  }
+
+  function odLoadDrillStats() {
+    const scores = odLsJSON('pb_opening_drill_scores') || {};
+    const o      = scores[odCurrentOpening.name];
+    const side   = o ? o[odUserSide] : null;
+    document.getElementById('pb-od-drill-best').textContent     = (side && side.bestStreak) || 0;
+    document.getElementById('pb-od-drill-attempts').textContent = (side && side.totalAttempts) || 0;
+  }
+
+  function odResetDrill() {
+    odDrillChess  = odStartingChess(odCurrentOpening);
+    odDrillStreak = 0;
+    odDrillFailed = false;
+    odDrillFinishedThisAttempt = false;
+    odDrillSelSq = null;
+    odDrillLegDests = [];
+    odDrillLastFrom = null;
+    odDrillLastTo = null;
+    odDrillHintFromTo = null;
+    odDrillBusy = false;
+
+    document.getElementById('pb-od-drill-streak').textContent = '0';
+    odHideDrillPopup();
+
+    odSetDrillStatus(odIsUserTurn() ? 'Your turn' : 'Coach to move…');
+
+    // If the opening's last book move was the user's color, coach plays first
+    if (!odIsUserTurn()) {
+      setTimeout(odCoachPlay, 600);
+    }
+  }
+
+  function odDrawDrill() {
+    odRenderBoard(odCtxDrill, odDrillChess, {
+      lastFrom: odDrillLastFrom,
+      lastTo:   odDrillLastTo,
+      selSq:    odDrillSelSq,
+      legDests: odDrillLegDests,
+      hintFrom: odDrillHintFromTo ? odDrillHintFromTo.from : null,
+      hintTo:   odDrillHintFromTo ? odDrillHintFromTo.to   : null
+    });
+  }
+
+  function odSetDrillStatus(msg, cls) {
+    const el = document.getElementById('pb-od-drill-status');
+    if (!el) return;
+    el.textContent = msg;
+    el.className = 'pb-od-drill-status' + (cls ? ' ' + cls : '');
+  }
+
+  function odIsUserTurn() {
+    return odDrillChess && odDrillChess.turn() === (odUserSide === 'white' ? 'w' : 'b');
+  }
+
+  function odOnDrillCanvasClick(e) {
+    if (odDrillBusy || odDrillFailed || odDrillFinishedThisAttempt) return;
+    if (!odIsUserTurn()) return;
+
+    const rect = odCanvasDrill.getBoundingClientRect();
+    const x = (e.clientX - rect.left) * (odCanvasDrill.width  / rect.width);
+    const y = (e.clientY - rect.top)  * (odCanvasDrill.height / rect.height);
+    const sq = odRcToSq(Math.floor(x / OD_SQ), Math.floor(y / OD_SQ));
+    if (!sq) return;
+
+    if (odDrillSelSq) {
+      if (odDrillLegDests.includes(sq)) {
+        // Auto-promote to queen for simplicity (drills rarely reach promotion in book)
+        odUserPlayMove(odDrillSelSq, sq);
+        return;
+      }
+      const p = odDrillChess.get(sq);
+      if (p && p.color === odDrillChess.turn()) {
+        odDrillSelSq = sq;
+        odDrillLegDests = odDrillChess.moves({ square: sq, verbose: true }).map(m => m.to);
+        odDrawDrill();
+      } else {
+        odDrillSelSq = null; odDrillLegDests = [];
+        odDrawDrill();
+      }
+    } else {
+      const p = odDrillChess.get(sq);
+      if (p && p.color === odDrillChess.turn()) {
+        odDrillSelSq = sq;
+        odDrillLegDests = odDrillChess.moves({ square: sq, verbose: true }).map(m => m.to);
+        odDrawDrill();
+      }
+    }
+  }
+
+  async function odUserPlayMove(from, to) {
+    odDrillBusy = true;
+    odDrillHintFromTo = null;
+
+    // Look up theory BEFORE making the move
+    const fenBefore = odDrillChess.fen();
+    const data = await odFetchMasters(fenBefore);
+
+    if (!data) {
+      odSetDrillStatus('Lichess unreachable. Check your connection.', 'err');
+      odToast("Couldn't reach Lichess. Check your connection and try again.");
+      odDrillBusy = false;
+      return;
+    }
+
+    const totalGames = odTotalGames(data);
+    if (totalGames < 5) {
+      // Out of book before user's move — should not generally happen but guard anyway
+      odDrillFinishedThisAttempt = true;
+      odRecordAttempt(odDrillStreak);
+      odShowDrillPopup('outofbook', 'Out of book',
+        'Theory has thinned out here. Good drill!', null);
+      odDrillBusy = false;
+      return;
+    }
+
+    const acceptable = odAcceptableMoves(data);
+    const topMove    = acceptable[0];
+
+    // Convert user move to UCI string (with potential promotion = q)
+    const userPiece = odDrillChess.get(from);
+    let promo;
+    if (userPiece && userPiece.type === 'p' && (to[1] === '8' || to[1] === '1')) promo = 'q';
+
+    const m = odDrillChess.move({ from, to, promotion: promo });
+    if (!m) { odDrillBusy = false; return; }
+
+    odDrillSelSq = null; odDrillLegDests = [];
+    odDrillLastFrom = from; odDrillLastTo = to;
+    odDrawDrill();
+
+    // Check acceptance — compare SAN (handles promotion + ambiguity reliably)
+    const accepted = acceptable.some(a => a.san === m.san);
+
+    if (!accepted) {
+      // Wrong move — undo it on the visible board and surface failure
+      const userSan = m.san;
+      odDrillChess.undo();
+      odDrillLastFrom = null; odDrillLastTo = null;
+      odDrawDrill();
+
+      odDrillFailed = true;
+      odDrillFinishedThisAttempt = true;
+      odRecordAttempt(odDrillStreak);
+
+      const finalStreak = odDrillStreak;
+      const topSan = topMove ? topMove.san : '?';
+
+      // Build the popup immediately with loading state for the explanation
+      odShowDrillPopup('failure',
+        `Theory says ${topSan}`,
+        `You played ${userSan}. Streak ended at ${finalStreak} move${finalStreak === 1 ? '' : 's'}.`,
+        true);
+
+      // Fetch explanation asynchronously
+      const tone = odLsGet('pf_coach_tone') || 'Direct';
+      const system = `You are a chess coach. The student is drilling the ${odCurrentOpening.name} as ${odUserSide}. In exactly one sentence, explain why ${topSan} is better than ${userSan} at this position. Be specific and educational, not just "because it's more popular". Use ${tone} tone.`;
+      const user = `FEN before move: ${fenBefore}. Student played ${userSan}. Theoretical move: ${topSan}.`;
+      const explain = await odClaudeCall(system, user, 120);
+      odUpdateDrillPopupExplain(explain || `${topSan} keeps better book coverage and tactical resources.`);
+
+      odDrillBusy = false;
+      return;
+    }
+
+    // Accepted: now coach replies
+    odSetDrillStatus('Coach to move…');
+    setTimeout(odCoachPlay, 350);
+  }
+
+  async function odCoachPlay() {
+    if (odDrillFailed || odDrillFinishedThisAttempt) { odDrillBusy = false; return; }
+
+    const fen = odDrillChess.fen();
+    const data = await odFetchMasters(fen);
+
+    if (!data) {
+      odSetDrillStatus('Lichess unreachable. Pausing.', 'err');
+      odToast("Couldn't reach Lichess. Check your connection and try again.");
+      odDrillBusy = false;
+      return;
+    }
+
+    const totalGames = odTotalGames(data);
+    if (totalGames < 5) {
+      odDrillFinishedThisAttempt = true;
+      odRecordAttempt(odDrillStreak);
+      odShowDrillPopup('outofbook', 'Out of book',
+        `Theory has thinned out here. Good drill — you reached a ${odDrillStreak}-move streak.`,
+        null);
+      odDrillBusy = false;
+      return;
+    }
+
+    const sorted = odSortedMoves(data);
+    if (!sorted.length) {
+      odDrillFinishedThisAttempt = true;
+      odRecordAttempt(odDrillStreak);
+      odShowDrillPopup('outofbook', 'Out of book',
+        'No master moves available here. Good drill!', null);
+      odDrillBusy = false;
+      return;
+    }
+
+    const top = sorted[0];
+    const m = odDrillChess.move({ from: top.uci.slice(0,2), to: top.uci.slice(2,4), promotion: top.uci[4] || undefined });
+    if (!m) { odDrillBusy = false; return; }
+
+    odDrillLastFrom = m.from; odDrillLastTo = m.to;
+
+    // A streak move = user move + coach reply both correctly handled
+    odDrillStreak++;
+    document.getElementById('pb-od-drill-streak').textContent = String(odDrillStreak);
+
+    odDrawDrill();
+    odSetDrillStatus('Your turn');
+    odDrillBusy = false;
+  }
+
+  // ── Drill popup ─────────────────────────────────────────────────────────
+  function odShowDrillPopup(kind, badge, msg, withLoadingExplain) {
+    const popup = document.getElementById('pb-od-drill-popup');
+    const badgeEl = document.getElementById('pb-od-drill-popup-badge');
+    const msgEl   = document.getElementById('pb-od-drill-popup-msg');
+    if (!popup) return;
+
+    badgeEl.textContent = badge;
+    badgeEl.className   = 'pb-od-drill-popup-badge' + (kind === 'outofbook' ? ' outofbook' : '');
+
+    if (withLoadingExplain) {
+      msgEl.innerHTML = odEscape(msg) +
+        '<div style="margin-top:6px"><div class="pb-coach-loading"><span></span><span></span><span></span></div></div>';
+    } else {
+      msgEl.textContent = msg;
+    }
+
+    // Only show retry-here when it's a failure (user can keep the streak partial replay)
+    const retryBtn = document.getElementById('pb-od-drill-btn-retry');
+    if (retryBtn) retryBtn.classList.toggle('hidden', kind !== 'failure');
+
+    popup.classList.remove('hidden');
+  }
+
+  function odUpdateDrillPopupExplain(text) {
+    const msgEl = document.getElementById('pb-od-drill-popup-msg');
+    if (!msgEl) return;
+    // Strip the loading-state HTML and append the explanation
+    const existing = msgEl.firstChild && msgEl.firstChild.nodeType === 3 ? msgEl.firstChild.textContent : msgEl.textContent;
+    msgEl.innerHTML = odEscape(existing) + ' ' + odEscape(text);
+  }
+
+  function odHideDrillPopup() {
+    const popup = document.getElementById('pb-od-drill-popup');
+    if (popup) popup.classList.add('hidden');
+  }
+
+  // ── Drill stats ─────────────────────────────────────────────────────────
+  function odRecordAttempt(streakLen) {
+    const scores = odLsJSON('pb_opening_drill_scores') || {};
+    const name = odCurrentOpening.name;
+    if (!scores[name]) scores[name] = {};
+    if (!scores[name][odUserSide]) {
+      scores[name][odUserSide] = { bestStreak: 0, totalAttempts: 0, lastDate: null };
+    }
+    const entry = scores[name][odUserSide];
+    entry.totalAttempts++;
+    if (streakLen > entry.bestStreak) entry.bestStreak = streakLen;
+    entry.lastDate = new Date().toISOString().slice(0, 10);
+    odLsSetJSON('pb_opening_drill_scores', scores);
+
+    document.getElementById('pb-od-drill-best').textContent     = entry.bestStreak;
+    document.getElementById('pb-od-drill-attempts').textContent = entry.totalAttempts;
+  }
+
+  // ── Hint ────────────────────────────────────────────────────────────────
+  async function odShowHint() {
+    if (odDrillBusy || !odIsUserTurn() || odDrillFailed || odDrillFinishedThisAttempt) return;
+
+    const fen = odDrillChess.fen();
+    const data = await odFetchMasters(fen);
+    if (!data || !data.moves || !data.moves.length) {
+      odToast('No theory available at this position.');
+      return;
+    }
+    const top = odSortedMoves(data)[0];
+    odDrillHintFromTo = { from: top.uci.slice(0,2), to: top.uci.slice(2,4) };
+    odDrawDrill();
+    setTimeout(() => {
+      odDrillHintFromTo = null;
+      odDrawDrill();
+    }, 3000);
+  }
+
+  // ════════════════════════════════════════════════════════════════════════
+  // INIT
+  // ════════════════════════════════════════════════════════════════════════
+  let odInited = false;
+  function odInit() {
+    if (odInited) return;
+    odInited = true;
+
+    // Canvases
+    odCanvasCoach = document.getElementById('pb-od-coaching-canvas');
+    odCanvasDrill = document.getElementById('pb-od-drill-canvas');
+    if (odCanvasCoach) {
+      odCanvasCoach.width = OD_PX; odCanvasCoach.height = OD_PX;
+      odCtxCoach = odCanvasCoach.getContext('2d');
+    }
+    if (odCanvasDrill) {
+      odCanvasDrill.width = OD_PX; odCanvasDrill.height = OD_PX;
+      odCtxDrill = odCanvasDrill.getContext('2d');
+      odCanvasDrill.addEventListener('click', odOnDrillCanvasClick);
+    }
+
+    // Side buttons
+    const sw = document.getElementById('pb-od-side-white');
+    const sb = document.getElementById('pb-od-side-black');
+    if (sw) sw.addEventListener('click', () => odSetSide('white'));
+    if (sb) sb.addEventListener('click', () => odSetSide('black'));
+
+    // Coach action buttons
+    const ideasBtn = document.getElementById('pb-od-btn-ideas');
+    const linesBtn = document.getElementById('pb-od-btn-lines');
+    const chatBtn  = document.getElementById('pb-od-btn-chat');
+    if (ideasBtn) ideasBtn.addEventListener('click', odActionIdeas);
+    if (linesBtn) linesBtn.addEventListener('click', odActionLines);
+    if (chatBtn)  chatBtn.addEventListener('click',  odActionChat);
+
+    // Chat input
+    const chatSend  = document.getElementById('pb-od-chat-send');
+    const chatInput = document.getElementById('pb-od-chat-input');
+    if (chatSend)  chatSend.addEventListener('click', odSendChat);
+    if (chatInput) chatInput.addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); odSendChat(); }
+    });
+
+    // Watch controls
+    const pauseBtn = document.getElementById('pb-od-watch-pause');
+    const stopBtn  = document.getElementById('pb-od-watch-stop');
+    if (pauseBtn) pauseBtn.addEventListener('click', () => {
+      odWatchPaused = !odWatchPaused;
+      odSetWatchPauseLabel();
+      if (!odWatchPaused) odPlayNextWatchMove();
+      else if (odWatchTimer) { clearTimeout(odWatchTimer); odWatchTimer = null; }
+    });
+    if (stopBtn) stopBtn.addEventListener('click', () => {
+      odTeardownWatch();
+      // Reset board to opening start
+      if (odCurrentOpening) {
+        odCoachingChess = odStartingChess(odCurrentOpening);
+        odRenderBoard(odCtxCoach, odCoachingChess, {});
+      }
+    });
+
+    // Drill controls
+    const drillStartBtn = document.getElementById('pb-od-start-drill');
+    if (drillStartBtn) drillStartBtn.addEventListener('click', () => odShowSub('drilling'));
+
+    const drillHintBtn  = document.getElementById('pb-od-drill-btn-hint');
+    if (drillHintBtn)  drillHintBtn.addEventListener('click', odShowHint);
+    const drillResetBtn = document.getElementById('pb-od-drill-btn-reset');
+    if (drillResetBtn) drillResetBtn.addEventListener('click', odResetDrill);
+    const popupX = document.getElementById('pb-od-drill-popup-x');
+    if (popupX) popupX.addEventListener('click', odHideDrillPopup);
+    const retryBtn = document.getElementById('pb-od-drill-btn-retry');
+    if (retryBtn) retryBtn.addEventListener('click', () => {
+      // Retry from current FEN — undo the visual nothing, just clear the failure flag
+      // and let user pick again at the same position. Streak does NOT carry over.
+      odDrillFailed = false;
+      odDrillFinishedThisAttempt = false;
+      odDrillStreak = 0;
+      document.getElementById('pb-od-drill-streak').textContent = '0';
+      odHideDrillPopup();
+      odSetDrillStatus('Your turn');
+    });
+    const restartBtn = document.getElementById('pb-od-drill-btn-restart');
+    if (restartBtn) restartBtn.addEventListener('click', odResetDrill);
+
+    // Sub-view back links
+    const backToSel = document.getElementById('pb-od-back-to-selection');
+    if (backToSel) backToSel.addEventListener('click', e => {
+      e.preventDefault();
+      e.stopPropagation();
+      odShowSub('selection');
+    });
+    const backToCoach = document.getElementById('pb-od-back-to-coaching');
+    if (backToCoach) backToCoach.addEventListener('click', e => {
+      e.preventDefault();
+      e.stopPropagation();
+      odShowSub('coaching');
+    });
+
+    odRenderSelection();
+    odShowSub('selection');
+  }
+
+  // Watch for the Opening Drill view becoming visible (deferred init)
+  document.addEventListener('DOMContentLoaded', () => {
+    const viewEl = document.getElementById('pb-view-opening');
+    if (!viewEl) return;
+
+    const trigger = () => {
+      if (!viewEl.classList.contains('hidden') && !odInited) {
+        odInit();
+      } else if (!viewEl.classList.contains('hidden') && odInited) {
+        // Re-entering — refresh recommended list (in case localStorage changed)
+        odRenderRecommended();
+        // If we're somehow in coaching/drilling but the opening is gone, reset
+        if (!odCurrentOpening) odShowSub('selection');
+      }
+    };
+
+    const obs = new MutationObserver(trigger);
+    obs.observe(viewEl, { attributes: true, attributeFilter: ['class'] });
+    trigger();
+  });
+
+})();
