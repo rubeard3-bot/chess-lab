@@ -375,6 +375,47 @@
     return earliest;
   }
 
+  // Repairs fabricated firstSeen dates BEFORE validation runs.
+  // If Claude returns a firstSeen that (a) is not a valid ISO date, or (b) does not
+  // exactly match any game.savedAt value in this bucket, we override it with the
+  // earliest real game.savedAt that contains the weakness's classification.
+  // This converts a Claude fabrication into a safe outcome instead of a rejection.
+  function repairFirstSeenDates(proposedBucket, bucketName, gameIndex, expectedNewGameRouting) {
+    var p = proposedBucket;
+    if (!p || !p.weaknesses) return;
+
+    var allGameIds = (p.activeGames || []).map(function (g) { return g.id; });
+
+    // Collect the exact savedAt strings present in this bucket's games
+    var savedAtSet = {};
+    var seen = {};
+    function collect(g) { if (g && g.savedAt) savedAtSet[g.savedAt] = true; }
+    Object.keys(expectedNewGameRouting || {}).forEach(function (fk) {
+      if (expectedNewGameRouting[fk] === bucketName && gameIndex[fk] && !seen[fk]) {
+        seen[fk] = true; collect(gameIndex[fk]);
+      }
+    });
+    allGameIds.forEach(function (fk) {
+      if (!seen[fk] && gameIndex[fk]) { seen[fk] = true; collect(gameIndex[fk]); }
+    });
+
+    var wKeys = Object.keys(p.weaknesses);
+    for (var i = 0; i < wKeys.length; i++) {
+      var wk = wKeys[i];
+      var w = p.weaknesses[wk];
+      if (!w || typeof w !== 'object') continue;
+      var needsRepair = !isISODateLike(w.firstSeen) || !savedAtSet[w.firstSeen];
+      if (!needsRepair) continue;
+      var earliest = earliestGameDateWithClassification(
+        w.stockfishClassification, bucketName, gameIndex, expectedNewGameRouting, allGameIds
+      );
+      if (earliest) {
+        console.warn('[MemoryRepair] firstSeen override for "' + wk + '": "' + w.firstSeen + '" → "' + earliest + '"');
+        w.firstSeen = earliest;
+      }
+    }
+  }
+
   function validateProposedBucket(prevMemory, bucketName, prevBucket, proposedBucket, expectedNewGameRouting, gameIndex, otherBucketActiveIds) {
     function fail(check, reason) { return { ok: false, failedCheck: check, reason: reason }; }
 
@@ -438,7 +479,7 @@
       if (!inSet(w.stockfishClassification, ALLOWED_CLASSIFICATIONS)) {
         return fail('Check6', 'Weakness "' + wk + '" has invalid stockfishClassification "' + w.stockfishClassification + '"');
       }
-      if (!isISODateLike(w.firstSeen))       return fail('Check6', 'Weakness "' + wk + '" has invalid firstSeen');
+      if (!isISODateLike(w.firstSeen))       return fail('Check19', 'Weakness "' + wk + '" has invalid firstSeen (not a valid ISO date)');
       if (!isISODateLike(w.lastSeen))        return fail('Check6', 'Weakness "' + wk + '" has invalid lastSeen');
       if (!isNonNegInt(w.activeOccurrences)) return fail('Check6', 'Weakness "' + wk + '" activeOccurrences not non-negative int');
       if (!isNonNegInt(w.historicalOccurrences)) return fail('Check6', 'Weakness "' + wk + '" historicalOccurrences not non-negative int');
@@ -1075,6 +1116,17 @@
   async function update(trigger) {
     var locked = await acquireLock();
     if (!locked) {
+      appendAudit({
+        timestamp: nowISO(), trigger: trigger,
+        bucketsUpdated: [], gamesAdded: [], gamesAgedOut: [],
+        weaknessesAdded: [], weaknessesRemoved: [], weaknessesUpdated: [],
+        validationResult: 'rejected',
+        rejectionReason: 'Update already in progress (lock not acquired)',
+        diffSummary: 'rejected — lock busy',
+        claudeTokensUsed: 0,
+        autoBackupCreated: false,
+        skippedGames: []
+      });
       return { success: false, reason: 'Update already in progress' };
     }
 
@@ -1178,6 +1230,7 @@
             newGamesByBucket[bn2],
             agingOutSummaries
           );
+          repairFirstSeenDates(proposedBucket, bn2, gameIndex, expectedRouting);
           working.buckets[bn2] = proposedBucket;
           bucketsTouched.push(bn2);
         } catch (err) {
