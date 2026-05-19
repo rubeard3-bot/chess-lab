@@ -676,6 +676,16 @@
       '{ "missedConversions": { "title": "", ... } }   <-- empty title is rejected',
       '{ "blunderUnderPressure": { "title": "", ... } } <-- empty title is rejected',
       '',
+      'DATE REQUIREMENTS for firstSeen and lastSeen:',
+      '- firstSeen MUST equal or be after the earliest game.savedAt date among the games containing this weakness\'s classification',
+      '- For a NEW weakness (not in previous memory), firstSeen should be the earliest game.savedAt date of the games where this pattern first appears',
+      '- For an EXISTING weakness, firstSeen must remain UNCHANGED from previous memory — never modify firstSeen on an existing weakness',
+      '- lastSeen must be the most recent game.savedAt date where this pattern occurred',
+      '- Both dates must be in ISO 8601 format',
+      '- Never use a date that doesn\'t appear in the provided games data',
+      '',
+      'The game data I provide includes game.savedAt for every game. Use those exact values. Do not estimate, round, or generate new dates.',
+      '',
       '1. You can only use data that is actually present in the game analysis I provide. Do not invent game IDs, dates, counts, or eval numbers.',
       '2. All numeric data (eval drops, accuracy, classifications) comes from Stockfish analysis. Use only the values I provide.',
       '3. Stockfish classifications (blunder/mistake/inaccuracy/miss) are immutable. If a move is classified as "blunder" in the data, you must store it as "blunder".',
@@ -815,7 +825,10 @@
         'background:#450a0a;color:#fca5a5;border:1px solid #7f1d1d;' +
         'padding:10px 14px;border-radius:8px;font:13px/1.4 system-ui,sans-serif;' +
         'max-width:340px;box-shadow:0 4px 18px rgba(0,0,0,0.45);';
-      el.textContent = 'Memory update rejected: ' + reason + '. See profile audit log.';
+      var checkMatch = reason && reason.match(/^(Check\d+):\s*([\s\S]*)$/);
+      var checkLabel = checkMatch ? checkMatch[1] : null;
+      var checkBody  = checkMatch ? checkMatch[2] : reason;
+      el.textContent = 'Memory update rejected' + (checkLabel ? ' (' + checkLabel + ')' : '') + ': ' + checkBody + '. See profile audit log.';
       document.body.appendChild(el);
       setTimeout(function () {
         if (el && el.parentNode) el.parentNode.removeChild(el);
