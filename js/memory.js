@@ -427,9 +427,8 @@
   //
   // TODO (fabrication audit): openings.gamesPlayed/wins/draws/losses/avgAccuracy
   // are also numeric facts Claude generates from game data — candidates for the
-  // same treatment. activeOccurrences / historicalOccurrences on weaknesses are
-  // likewise counts Claude estimates rather than we calculate. gamesAnalyzedEver
-  // is set in code before Claude runs but Claude can overwrite it in its response.
+  // same treatment. gamesAnalyzedEver is set in code before Claude runs but Claude
+  // can overwrite it in its response.
   function repairTrendValues(proposedBucket, bucketName, gameIndex, expectedNewGameRouting) {
     var p = proposedBucket;
     if (!p) return;
@@ -492,6 +491,69 @@
 
     console.log('[MemoryRepair] repairTrendValues: recalculated trends from',
       bucketGames.length, 'games in bucket', bucketName);
+  }
+
+  // Calculates activeOccurrences and historicalOccurrences from real Stockfish data,
+  // overriding whatever Claude returned. These are chess facts — Claude should not
+  // produce them. Runs after repairTrendValues.
+  //
+  // NOTE: if multiple weaknesses (or strengths) share the same stockfishClassification,
+  // each receives the full classification total, which will cause Check18 to fire
+  // (sum × N > ceiling). The schema assumes one pattern-key per classification.
+  function repairOccurrenceCounts(proposedBucket, bucketName, gameIndex, expectedNewGameRouting) {
+    var p = proposedBucket;
+    if (!p) return;
+
+    var activeGameIds = (p.activeGames || []).map(function (g) { return g.id; });
+
+    // Collect all game IDs in this bucket — active window plus full history
+    var allBucketIds = [];
+    var seen = {};
+    function collectBucketId(fk) {
+      if (seen[fk] || !gameIndex[fk]) return;
+      seen[fk] = true;
+      allBucketIds.push(fk);
+    }
+    Object.keys(expectedNewGameRouting || {}).forEach(function (fk) {
+      if (expectedNewGameRouting[fk] === bucketName) collectBucketId(fk);
+    });
+    activeGameIds.forEach(function (fk) { collectBucketId(fk); });
+
+    function countClassInGames(gameIds, classification) {
+      var total = 0;
+      gameIds.forEach(function (fk) {
+        var g = gameIndex[fk];
+        if (!g || !g.analysis || !Array.isArray(g.analysis.moves)) return;
+        var pc = g.playerColor || 'white';
+        g.analysis.moves.forEach(function (m) {
+          if (m && m.color === pc && m.classification === classification) total++;
+        });
+      });
+      return total;
+    }
+
+    function repairItems(items) {
+      var keys = Object.keys(items || {});
+      for (var i = 0; i < keys.length; i++) {
+        var key = keys[i];
+        var item = items[key];
+        if (!item || typeof item !== 'object' || !item.stockfishClassification) continue;
+        var cls = item.stockfishClassification;
+        var oldActive = item.activeOccurrences;
+        var oldHistorical = item.historicalOccurrences;
+        var newActive = countClassInGames(activeGameIds, cls);
+        var newHistorical = countClassInGames(allBucketIds, cls);
+        item.activeOccurrences = newActive;
+        item.historicalOccurrences = newHistorical;
+        if (oldActive !== newActive || oldHistorical !== newHistorical) {
+          console.log('[MemoryRepair] Repaired occurrenceCounts for "' + key + '": active ' +
+            oldActive + '→' + newActive + ', historical ' + oldHistorical + '→' + newHistorical);
+        }
+      }
+    }
+
+    repairItems(p.weaknesses);
+    repairItems(p.strengths);
   }
 
   // Repairs Claude-narrative enum fields before validation.
@@ -1333,6 +1395,7 @@
           repairFirstSeenDates(proposedBucket, bn2, gameIndex, expectedRouting);
           repairNarrativeFields(proposedBucket);
           repairTrendValues(proposedBucket, bn2, gameIndex, expectedRouting);
+          repairOccurrenceCounts(proposedBucket, bn2, gameIndex, expectedRouting);
           working.buckets[bn2] = proposedBucket;
           bucketsTouched.push(bn2);
         } catch (err) {
