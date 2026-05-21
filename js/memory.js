@@ -77,7 +77,7 @@
   var ACTIVE_GAMES_CAP       = 25;
   var AUTO_BACKUP_THRESHOLD  = 5;
   var LOCK_WAIT_MS           = 10000;
-  var CLAUDE_TIMEOUT_MS      = 30000;
+  var CLAUDE_TIMEOUT_MS      = 60000;
   var NEW_WEAKNESS_MIN_OCC   = 3;
   var WEAKNESS_DROP_MAX_PCT  = 0.30;  // catastrophic-forgetting guard
   var CLASSIFICATION_TOL_PCT = 0.05;
@@ -1688,6 +1688,8 @@
     try {
       lsRemove(KEY.memory);
       lsRemove(KEY.history);
+      lsRemove(KEY.audit);
+      lsRemove(KEY.autoBackupMem);
       writeHealth(emptyHealth());
       appendAudit({
         timestamp: nowISO(), trigger: 'reset',
