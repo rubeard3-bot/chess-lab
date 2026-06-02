@@ -55,7 +55,7 @@ const Recommendations = (() => {
       console.log('[Recommendations] Starting generation, games found:', totalGameCount);
       if (totalGameCount === 0) return null;
 
-      games = games.sort((a, b) => (b.savedAt || 0) - (a.savedAt || 0)).slice(0, 10);
+      games = games.sort((a, b) => (b.savedAt || '').localeCompare(a.savedAt || '')).slice(0, 10);
 
       _setProgress('Analyzing your games...');
 
@@ -70,11 +70,6 @@ const Recommendations = (() => {
       if (!response.ok) {
         const errText = await response.text();
         console.error('[Recommendations] Server error:', errText.substring(0, 500));
-        if (response._partialFailure) {
-          window.dispatchEvent(new CustomEvent('rec-parse-error', {
-            detail: { message: `Partial results — ${response._partialFailure}` }
-          }));
-        }
         return null;
       }
 

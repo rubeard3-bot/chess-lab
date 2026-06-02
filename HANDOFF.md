@@ -1,7 +1,72 @@
-# Chess Lab — Project Handoff
+# Chess Lab — Handoff
 
-> Master living document. Single source of truth for all future Claude sessions (CLI and chat).
-> Last updated: 2026-05-19. Overwrite this file at the end of every significant session.
+> Master living document. Single source of truth for all future Claude sessions.
+> **Updated at the end of every session.** See memory.md for architecture decisions and "why" context.
+
+---
+
+## Last updated
+2026-05-27
+
+## Current state
+- **Memory System Step 1** — COMPLETE and live, health status "healthy" in production
+- **Phase 4 Weakness Drill** — shipped
+- **Frontend:** GitHub Pages at chesslab.live (auto-deploys on push to main)
+- **Backend:** Railway at chess-lab-production.up.railway.app (auto-deploys on push to main)
+- **Memory system:** js/memory.js (~1100+ lines, 8 sections, fully documented)
+- No build step — vanilla HTML/CSS/JS pushed directly to Pages
+
+## What was done last session
+- Batch 1 audit fixes applied — H1, H2, H3, H4, M6 (memory.js untouched)
+  - H1 (app.js init): added `csa_review_game_id` sessionStorage fallback after the `?gameId=` URL-param check; strips the `csa_game_` prefix and removes the key after use
+  - H2 (practice-board.js Free Play "Done"): added `setPosDirty` flag — FEN rebuild + move-history wipe now only run when the user actually placed/removed pieces in Set Position mode (Option A from audit)
+  - H3 (recommendations.js): removed the unreachable `response._partialFailure` branch on the raw Response object; the success-path body check already covers the real case
+  - H4 (recommendations.js): swapped numeric subtraction sort for `localeCompare` on ISO `savedAt` strings
+  - M6 (practice-board.js Free Play): now reads `practice_fen` from sessionStorage at init via `chess.load()` (Option B). Existing `csa_opening_line` flow is move-array-based and not a good shape for the analyzer's FEN handoff, so adding a small reader in Free Play was the cleaner fit. `_goToPractice()` in ui.js needed no change.
+- Pending from audit: H5 (memory update on rec failure), M1–M5, M7–M18, all L-series. Documentation drift (M1 Weakness Drill "coming soon" wording, M3 `pf_coach_*` key names) still unfixed.
+
+### Previous session
+- Performed a full read-only codebase audit — see `AUDIT_REPORT.md`
+- 5 HIGH findings, 18 MEDIUM, 15 LOW; zero CRITICAL
+
+### Previous session (Memory System Step 1)
+- Built Memory System Step 1 with all 6 design principles and 5 safeguard layers
+- Memory segmented into bullet/blitz/rapid buckets, 25-game active cap, 30/60/90-day decay
+- Iterated through ~6 rounds of fixes catching Claude fabrications:
+  - Empty titles, invalid firstSeen dates, invalid trend/severity enums, trend value fabrication, occurrence count undercounting
+  - API timeout (bumped to 60s)
+  - reset() not clearing audit/history/health/autobackup
+- Built self-heal functions: repairFirstSeenDates, repairNarrativeFields, repairTrendValues, repairOccurrenceCounts
+- Verified end to end: memory processes real games, self-heals fabrications, health shows "healthy"
+
+## Next steps (priority order)
+1. **Review AUDIT_REPORT.md** and decide which findings to act on (start with the 5 HIGH)
+2. **Step 2 (no-code):** Live with memory 1–2 weeks, monitor audit log — let real games accumulate, no code changes
+3. **Step 3:** Surface trends in UI — total games analyzed per bucket, accuracy trend chart, time control selector
+4. **Step 4:** Switch recommendations source from 3-call flow to memory (memory becomes the authoritative source)
+5. **Step 5:** Deprecate old 3-call generation logic in recommendations.js
+6. **Practice Board:** Phase 5 Danger Zone settings, Opening Explorer "Send to Practice" button
+7. **Auth/Monetization backlog:** Supabase auth + Stripe (deferred until Memory Step 5 or first paying user)
+
+## Known issues / bugs
+| Bug | Severity | Notes |
+|-----|----------|-------|
+| favicon.ico 404 | Low | Cosmetic |
+| "Review last game" broken | Medium | sessionStorage key set in analyzer but never read |
+| Study streak label misleading | Low | Says "days in a row" but counts unique days, not consecutive |
+| pf_accent_color not applied | Low | Saved to localStorage but never wired to CSS variables |
+
+## How to test current functionality
+1. Open chesslab.live → analyze a game
+2. Navigate to Profile → scroll to Coaching Memory section
+3. Check health indicator in footer (should say "healthy")
+4. Profile danger zone → "View Audit Log" → confirm memory update history is present
+5. Browser console: `CoachingMemory.getHealth()` → inspect status/checks array for self-heal evidence
+6. Profile → Reset Memory → confirm audit/history/health all clear afterward
+
+---
+
+## Technical Reference (sections below are stable — update only when architecture changes)
 
 ---
 
@@ -238,13 +303,19 @@ Caro-Kann, Queen's Gambit, Sicilian, French, KID, Ruy Lopez, Italian, English, L
 
 **renderRecommendations(data)**: master render function, reads from `csa_recommendations` in localStorage, populates all 7 sections via innerHTML
 
-### archive.html — Game Archive
-- Body class: `archive-page`
-- Table columns: Players, Opening, ECO, Result, Accuracy, Blunders, Mistakes, Date, Actions
-- Filter input: case-insensitive match against player names or opening name
-- "Review" button: sets `sessionStorage.csa_review_game_id = gameId`, navigates to analyzer.html
-- "Delete" button: calls `Storage.deleteGame(id)`, removes row from table
-- Scripts: `storage.js`, `nav.js`
+### archive.html — Game Archive  *(overhauled — adopts analyzer design system)*
+- Body class: `archive-page` (now uses the `--az-*` token palette: base `#0d1321`, surface `#111827`)
+- **Nav:** replaced the old `.archive-header` + `.hamburger-btn` (☰ glyph) with the analyzer's `.az-topbar` + `.az-hamburger` (3-span icon). The shared `#nav-drawer` markup and `initNav('archive')` are unchanged; "Game Archive" shows active.
+- **Summary header:** two minimal stat tiles (`.ga-stat-tile`) — Total Games + Win Rate (wins ÷ total games, draws counted in denominator).
+- **View toggle:** Table ⇆ Cards segmented control (`.ga-view-toggle`). Default Table. Persisted in `localStorage['pf_archive_view']` (`'table'` | `'cards'`).
+  - Table view: columns Players, Opening, ECO, Result, Accuracy, Blunders, Mistakes, Date, Actions.
+  - Card view: responsive grid (`.ga-card-grid`) — opponent + your color dot, opening, result badge, accuracy/blunders/mistakes tiles, date, Review + Delete.
+- **Sorting:** clickable table headers (Date, Accuracy, Result, Blunders, Mistakes) — 1st click asc, 2nd toggles desc, active column shows ▲/▼. Default Date desc. Card view has an equivalent `#ga-sort` dropdown (kept in sync with header state).
+- **Filters (AND logic, client-side on loaded data):** text search (player/opening), Result (win/loss/draw via `outcome()` from `metadata.result` + `playerColor`), Time control (bullet `<180s` / blitz `180–599s` / rapid `600s+`, parsed from PGN `[TimeControl]` — same logic as memory.js; unparseable → "All" only), Color (`playerColor`), Date range (on `savedAt`), Opening/ECO text, Min Accuracy. Shows "Showing X of Y games" + "Clear filters" button.
+- "Review" button: navigates to `analyzer.html?gameId=<id>` (app.js reads `?gameId=` — unchanged, still works).
+- "Delete" button: calls `Storage.deleteGame(id)`, removes from in-memory list, re-renders summary + list.
+- All CSS lives in a `ga-`-prefixed block appended to styles.css. `js/storage.js` and `js/memory.js` were NOT modified.
+- Scripts: `storage.js`, `memory.js`, `nav.js`
 
 ### profile.html — Profile & Preferences
 - Body class: `pf-page`
@@ -619,8 +690,9 @@ Storage constants (`js/storage.js`):
 | `pending_color` | `'white'`/`'black'` for single-game import |
 | `csa_import_queue` | JSON array of `{pgn, color}` objects for mass import |
 | `csa_import_index` | Current position in import queue (number as string) |
-| `csa_review_game_id` | Game ID to load in analyzer (from archive) |
-| `csa_opening_line` | JSON `{fen, sans, name}` for "practice this line" from openings.html |
+| `csa_review_game_id` | Game ID to load in analyzer (from archive / dashboard "Review last game" / recent-games rows). Stored as the full `csa_game_<id>` key; app.js strips the prefix and removes the key on read. |
+| `csa_opening_line` | JSON `{openingName, moves: [...SAN]}` for "practice this line" from openings.html. Replayed against `new Chess()` in practice.html's preload script. |
+| `practice_fen` | FEN string handed off from analyzer's "Set up critical position" → Practice Board Free Play. Loaded via `chess.load()` in practice-board.js Free Play IIFE init; removed on read. |
 
 ---
 

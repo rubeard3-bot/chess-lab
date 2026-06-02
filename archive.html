@@ -13,7 +13,7 @@
   <!-- Nav Drawer Overlay -->
   <div id="nav-overlay" class="nav-overlay hidden"></div>
 
-  <!-- Hamburger Nav Drawer -->
+  <!-- Hamburger Nav Drawer (shared with analyzer) -->
   <div id="nav-drawer" class="nav-drawer">
     <div class="nav-drawer-header">
       <span class="nav-drawer-brand">♟ Chess Lab</span>
@@ -24,6 +24,7 @@
       <a href="analyzer.html" class="nav-item"><span class="nav-item-icon">♟</span><span>Game Analyzer</span></a>
       <a href="archive.html" class="nav-item"><span class="nav-item-icon">📂</span><span>Game Archive</span></a>
       <a href="practice.html" class="nav-item"><span class="nav-item-icon">♜</span><span>Practice Board</span></a>
+      <a href="recommendations.html" class="nav-item"><span class="nav-item-icon">🎯</span><span>My Recommendations</span></a>
       <button class="nav-item nav-item-btn" id="nav-progress-btn">
         <span class="nav-item-icon">📈</span><span>My Progress</span>
         <span class="nav-coming-soon">Soon</span>
@@ -40,22 +41,98 @@
     </div>
   </div>
 
-  <div class="archive-container">
+  <!-- Topbar (analyzer pattern) -->
+  <header id="az-topbar" class="az-topbar">
+    <div class="az-topbar-left">
+      <button id="hamburger-btn" class="az-hamburger" aria-label="Open menu">
+        <span></span><span></span><span></span>
+      </button>
+      <div class="az-logo">Chess Lab<span class="az-logo-dot"></span></div>
+      <div class="az-breadcrumb">Dashboard <span class="az-breadcrumb-sep">›</span> Archive</div>
+    </div>
+  </header>
 
-    <!-- Header -->
-    <header class="archive-header">
-      <button id="hamburger-btn" class="hamburger-btn" aria-label="Open menu">☰</button>
-      <div class="archive-header-center">
-        <span class="hub-logo archive-header-logo">♞</span>
-        <h1 class="archive-header-title">Game Archive</h1>
+  <div class="archive-container ga-container">
+
+    <!-- Summary header: two minimal stat tiles -->
+    <div class="ga-summary">
+      <div class="ga-stat-tile">
+        <span class="ga-stat-val" id="ga-total">0</span>
+        <span class="ga-stat-lbl">Total Games</span>
       </div>
-      <div class="archive-header-spacer"></div>
-    </header>
+      <div class="ga-stat-tile">
+        <span class="ga-stat-val ga-stat-val-win" id="ga-winrate">—</span>
+        <span class="ga-stat-lbl">Win Rate</span>
+      </div>
+    </div>
 
-    <!-- Search -->
-    <div class="archive-search-wrap">
-      <input id="archive-search" class="archive-search" type="text"
-        placeholder="Filter by player name or opening…" autocomplete="off">
+    <!-- Filter bar -->
+    <div class="ga-filters">
+      <input id="ga-search" class="ga-pill ga-pill-input ga-search" type="text"
+        placeholder="🔍 Player or opening…" autocomplete="off">
+
+      <select id="ga-f-result" class="ga-pill ga-pill-select">
+        <option value="all">Result: All</option>
+        <option value="win">Win</option>
+        <option value="loss">Loss</option>
+        <option value="draw">Draw</option>
+      </select>
+
+      <select id="ga-f-time" class="ga-pill ga-pill-select">
+        <option value="all">Time: All</option>
+        <option value="bullet">Bullet</option>
+        <option value="blitz">Blitz</option>
+        <option value="rapid">Rapid</option>
+      </select>
+
+      <select id="ga-f-color" class="ga-pill ga-pill-select">
+        <option value="all">Color: All</option>
+        <option value="white">White</option>
+        <option value="black">Black</option>
+      </select>
+
+      <input id="ga-f-opening" class="ga-pill ga-pill-input" type="text"
+        placeholder="Opening / ECO" autocomplete="off">
+
+      <label class="ga-pill ga-pill-date">
+        <span class="ga-pill-lbl">From</span>
+        <input id="ga-f-from" type="date">
+      </label>
+      <label class="ga-pill ga-pill-date">
+        <span class="ga-pill-lbl">To</span>
+        <input id="ga-f-to" type="date">
+      </label>
+
+      <label class="ga-pill ga-pill-acc">
+        <span class="ga-pill-lbl">Min Acc</span>
+        <input id="ga-f-acc" type="number" min="0" max="100" step="1" placeholder="0">
+        <span class="ga-pill-lbl">%</span>
+      </label>
+
+      <button id="ga-clear" class="ga-pill ga-clear-btn">Clear filters</button>
+    </div>
+
+    <!-- Toolbar: showing count + card-sort + view toggle -->
+    <div class="ga-toolbar">
+      <span id="ga-showing" class="ga-showing"></span>
+      <div class="ga-toolbar-right">
+        <select id="ga-sort" class="ga-pill ga-pill-select ga-sort hidden">
+          <option value="date-desc">Date (newest)</option>
+          <option value="date-asc">Date (oldest)</option>
+          <option value="accuracy-desc">Accuracy (high → low)</option>
+          <option value="accuracy-asc">Accuracy (low → high)</option>
+          <option value="result-desc">Result (win → loss)</option>
+          <option value="result-asc">Result (loss → win)</option>
+          <option value="blunders-desc">Blunders (most)</option>
+          <option value="blunders-asc">Blunders (fewest)</option>
+          <option value="mistakes-desc">Mistakes (most)</option>
+          <option value="mistakes-asc">Mistakes (fewest)</option>
+        </select>
+        <div class="ga-view-toggle" id="ga-view-toggle">
+          <button class="ga-view-btn" data-view="table">Table</button>
+          <button class="ga-view-btn" data-view="cards">Cards</button>
+        </div>
+      </div>
     </div>
 
     <!-- Content -->
@@ -69,8 +146,12 @@
   <script>document.addEventListener('DOMContentLoaded', function () { initNav('archive'); });</script>
   <script>
     (function () {
+      const VIEW_KEY = 'pf_archive_view';
       let allGames = [];
+      let view = 'table';
+      let sort = { key: 'date', dir: 'desc' }; // default: newest first
 
+      /* ── helpers ── */
       function esc(str) {
         if (typeof str !== 'string') return '';
         return str
@@ -87,109 +168,373 @@
         } catch (e) { return '—'; }
       }
 
-      function renderTable(games) {
-        const content = document.getElementById('archive-content');
+      // PGN [TimeControl "180+2"] → base seconds → bullet/blitz/rapid (mirrors memory.js)
+      function timeClass(pgn) {
+        if (!pgn || typeof pgn !== 'string') return null;
+        const m = pgn.match(/\[TimeControl\s+"([^"]+)"\]/);
+        if (!m) return null;
+        let raw = m[1].trim();
+        if (raw === '' || raw === '-') return null;
+        const base = raw.indexOf('+') >= 0 ? raw.split('+')[0] : raw;
+        const secs = parseInt(base, 10);
+        if (isNaN(secs) || secs <= 0) return null;
+        if (secs < 180) return 'bullet';
+        if (secs < 600) return 'blitz';
+        return 'rapid';
+      }
 
-        if (!games.length) {
-          content.innerHTML = `
-            <div class="archive-empty">
-              <div class="archive-empty-icon">♟</div>
-              <p class="archive-empty-text">No games analyzed yet</p>
-              <a href="analyzer.html" class="btn-primary archive-empty-btn">Analyze Your First Game →</a>
-            </div>`;
-          return;
+      // Outcome relative to the player: 'win' | 'loss' | 'draw' | 'unknown'
+      function outcome(g) {
+        const res = (g.metadata && g.metadata.result) || '*';
+        if (res === '1/2-1/2') return 'draw';
+        const color = g.playerColor === 'black' ? 'black' : 'white';
+        if (res === '1-0') return color === 'white' ? 'win' : 'loss';
+        if (res === '0-1') return color === 'black' ? 'win' : 'loss';
+        return 'unknown';
+      }
+
+      function accOf(g) {
+        const a = g.analysis && g.analysis.summary && g.analysis.summary.accuracy;
+        return typeof a === 'number' ? a : null;
+      }
+      function blundersOf(g) {
+        const b = g.analysis && g.analysis.summary && g.analysis.summary.blunders;
+        return typeof b === 'number' ? b : null;
+      }
+      function mistakesOf(g) {
+        const m = g.analysis && g.analysis.summary && g.analysis.summary.mistakes;
+        return typeof m === 'number' ? m : null;
+      }
+
+      /* ── filtering ── */
+      function getFilters() {
+        return {
+          q:       (document.getElementById('ga-search').value || '').toLowerCase().trim(),
+          result:  document.getElementById('ga-f-result').value,
+          time:    document.getElementById('ga-f-time').value,
+          color:   document.getElementById('ga-f-color').value,
+          opening: (document.getElementById('ga-f-opening').value || '').toLowerCase().trim(),
+          from:    document.getElementById('ga-f-from').value,
+          to:      document.getElementById('ga-f-to').value,
+          acc:     parseFloat(document.getElementById('ga-f-acc').value)
+        };
+      }
+
+      function passesFilters(g, f) {
+        const m = g.metadata || {};
+        const op = (g.analysis && g.analysis.opening) || {};
+        const openName = (op.name || '').toLowerCase();
+        const eco = (op.eco || '').toLowerCase();
+
+        if (f.q) {
+          const hit = (m.white || '').toLowerCase().includes(f.q) ||
+                      (m.black || '').toLowerCase().includes(f.q) ||
+                      openName.includes(f.q);
+          if (!hit) return false;
         }
+        if (f.result !== 'all' && outcome(g) !== f.result) return false;
+        if (f.time !== 'all' && timeClass(g.pgn) !== f.time) return false;
+        if (f.color !== 'all') {
+          const c = g.playerColor === 'black' ? 'black' : 'white';
+          if (c !== f.color) return false;
+        }
+        if (f.opening) {
+          if (!openName.includes(f.opening) && !eco.includes(f.opening)) return false;
+        }
+        if (f.from) {
+          if (!g.savedAt || g.savedAt.slice(0, 10) < f.from) return false;
+        }
+        if (f.to) {
+          if (!g.savedAt || g.savedAt.slice(0, 10) > f.to) return false;
+        }
+        if (!isNaN(f.acc)) {
+          const a = accOf(g);
+          if (a == null || a < f.acc) return false;
+        }
+        return true;
+      }
+
+      /* ── sorting ── */
+      function sortGames(games) {
+        const dir = sort.dir === 'asc' ? 1 : -1;
+        const resRank = { loss: 1, unknown: 1, draw: 2, win: 3 };
+        const arr = games.slice();
+        arr.sort((a, b) => {
+          let av, bv;
+          switch (sort.key) {
+            case 'accuracy':
+              av = accOf(a); bv = accOf(b);
+              av = av == null ? -1 : av; bv = bv == null ? -1 : bv; break;
+            case 'blunders':
+              av = blundersOf(a); bv = blundersOf(b);
+              av = av == null ? -1 : av; bv = bv == null ? -1 : bv; break;
+            case 'mistakes':
+              av = mistakesOf(a); bv = mistakesOf(b);
+              av = av == null ? -1 : av; bv = bv == null ? -1 : bv; break;
+            case 'result':
+              av = resRank[outcome(a)] || 0; bv = resRank[outcome(b)] || 0; break;
+            case 'date':
+            default:
+              av = a.savedAt || ''; bv = b.savedAt || '';
+              return dir * (av < bv ? -1 : av > bv ? 1 : 0);
+          }
+          return dir * (av - bv);
+        });
+        return arr;
+      }
+
+      /* ── summary header ── */
+      function renderSummary() {
+        document.getElementById('ga-total').textContent = allGames.length;
+        const wrEl = document.getElementById('ga-winrate');
+        if (!allGames.length) { wrEl.textContent = '—'; return; }
+        const wins = allGames.filter(g => outcome(g) === 'win').length;
+        wrEl.textContent = Math.round((wins / allGames.length) * 100) + '%';
+      }
+
+      /* ── result badge ── */
+      function resultBadge(g) {
+        const res = (g.metadata && g.metadata.result) || '*';
+        const oc = outcome(g);
+        const cls = oc === 'win' ? 'ga-res-win' : oc === 'loss' ? 'ga-res-loss' : 'ga-res-draw';
+        return '<span class="ga-result ' + cls + '">' + esc(res) + '</span>';
+      }
+
+      function accCell(g) {
+        const a = accOf(g);
+        if (a == null) return { txt: '—', cls: '' };
+        const cls = a >= 75 ? 'ga-acc-hi' : a >= 55 ? 'ga-acc-mid' : 'ga-acc-lo';
+        return { txt: a + '%', cls: cls };
+      }
+
+      /* ── TABLE view ── */
+      function renderTable(games) {
+        const arrow = k => sort.key === k
+          ? '<span class="ga-sort-arrow">' + (sort.dir === 'asc' ? '▲' : '▼') + '</span>' : '';
 
         const rows = games.map(g => {
-          const m  = g.metadata || {};
-          const s  = g.analysis?.summary || {};
-          const o  = g.analysis?.opening || {};
-          const result = m.result || '*';
-          const resCls = result === '1-0' ? 'arch-res-w'
-                       : result === '0-1' ? 'arch-res-b'
-                       :                    'arch-res-d';
-          const acc = typeof s.accuracy === 'number' ? s.accuracy + '%' : '—';
-          const accCls = s.accuracy >= 75 ? 'arch-acc-hi'
-                       : s.accuracy >= 55 ? 'arch-acc-mid'
-                       :                    'arch-acc-lo';
-
+          const m = g.metadata || {};
+          const o = (g.analysis && g.analysis.opening) || {};
+          const ac = accCell(g);
+          const yourColor = g.playerColor === 'black' ? 'black' : 'white';
           return `
             <tr>
               <td>
-                <span class="arch-player-white">○ ${esc(m.white || 'White')}</span><br>
-                <span class="arch-player-black">● ${esc(m.black || 'Black')}</span>
+                <span class="ga-player ${yourColor === 'white' ? 'ga-player-you' : ''}">○ ${esc(m.white || 'White')}</span><br>
+                <span class="ga-player ${yourColor === 'black' ? 'ga-player-you' : ''}">● ${esc(m.black || 'Black')}</span>
               </td>
-              <td class="arch-td-opening">${esc(o.name || '—')}</td>
-              <td class="arch-td-center arch-mono">${esc(o.eco || '—')}</td>
-              <td class="arch-td-center"><span class="arch-result ${resCls}">${esc(result)}</span></td>
-              <td class="arch-td-center arch-mono ${accCls}">${acc}</td>
-              <td class="arch-td-center arch-blunder">${s.blunders ?? '—'}</td>
-              <td class="arch-td-center arch-mistake">${s.mistakes ?? '—'}</td>
-              <td class="arch-td-date">${formatDate(g.savedAt)}</td>
-              <td class="arch-td-actions">
-                <button class="arch-btn arch-btn-review" data-id="${g.id}">Review →</button>
-                <button class="arch-btn arch-btn-delete" data-id="${esc(g.id)}">Delete</button>
+              <td class="ga-td-opening">${esc(o.name || '—')}</td>
+              <td class="ga-c ga-mono">${esc(o.eco || '—')}</td>
+              <td class="ga-c">${resultBadge(g)}</td>
+              <td class="ga-c ga-mono ${ac.cls}">${ac.txt}</td>
+              <td class="ga-c ga-blunder">${blundersOf(g) ?? '—'}</td>
+              <td class="ga-c ga-mistake">${mistakesOf(g) ?? '—'}</td>
+              <td class="ga-td-date">${formatDate(g.savedAt)}</td>
+              <td class="ga-td-actions">
+                <button class="ga-btn ga-btn-review" data-id="${esc(g.id)}">Review →</button>
+                <button class="ga-btn ga-btn-delete" data-id="${esc(g.id)}">Delete</button>
               </td>
             </tr>`;
         }).join('');
 
-        content.innerHTML = `
-          <div class="archive-table-wrap">
-            <table class="archive-table">
+        return `
+          <div class="ga-table-wrap">
+            <table class="ga-table">
               <thead>
                 <tr>
                   <th>Players</th>
                   <th>Opening</th>
-                  <th class="arch-td-center">ECO</th>
-                  <th class="arch-td-center">Result</th>
-                  <th class="arch-td-center">Accuracy</th>
-                  <th class="arch-td-center">Blunders</th>
-                  <th class="arch-td-center">Mistakes</th>
-                  <th>Date</th>
+                  <th class="ga-c">ECO</th>
+                  <th class="ga-c ga-th-sort" data-sort="result">Result${arrow('result')}</th>
+                  <th class="ga-c ga-th-sort" data-sort="accuracy">Accuracy${arrow('accuracy')}</th>
+                  <th class="ga-c ga-th-sort" data-sort="blunders">Blunders${arrow('blunders')}</th>
+                  <th class="ga-c ga-th-sort" data-sort="mistakes">Mistakes${arrow('mistakes')}</th>
+                  <th class="ga-th-sort" data-sort="date">Date${arrow('date')}</th>
                   <th>Actions</th>
                 </tr>
               </thead>
               <tbody>${rows}</tbody>
             </table>
           </div>`;
+      }
 
-        // Wire review buttons
-        content.querySelectorAll('.arch-btn-review').forEach(btn => {
+      /* ── CARD view ── */
+      function renderCards(games) {
+        const cards = games.map(g => {
+          const m = g.metadata || {};
+          const o = (g.analysis && g.analysis.opening) || {};
+          const ac = accCell(g);
+          const yourColor = g.playerColor === 'black' ? 'black' : 'white';
+          const opponent = yourColor === 'white' ? (m.black || 'Black') : (m.white || 'White');
+          return `
+            <div class="ga-card">
+              <div class="ga-card-top">
+                <div class="ga-card-opp">
+                  <span class="ga-card-dot ga-card-dot-${yourColor}"></span>
+                  <span class="ga-card-opp-name">vs ${esc(opponent)}</span>
+                </div>
+                ${resultBadge(g)}
+              </div>
+              <div class="ga-card-opening">${esc(o.name || 'Unknown opening')}${o.eco ? ' <span class="ga-card-eco">' + esc(o.eco) + '</span>' : ''}</div>
+              <div class="ga-card-stats">
+                <div class="ga-card-stat">
+                  <span class="ga-card-stat-val ${ac.cls}">${ac.txt}</span>
+                  <span class="ga-card-stat-lbl">Accuracy</span>
+                </div>
+                <div class="ga-card-stat">
+                  <span class="ga-card-stat-val ga-blunder">${blundersOf(g) ?? '—'}</span>
+                  <span class="ga-card-stat-lbl">Blunders</span>
+                </div>
+                <div class="ga-card-stat">
+                  <span class="ga-card-stat-val ga-mistake">${mistakesOf(g) ?? '—'}</span>
+                  <span class="ga-card-stat-lbl">Mistakes</span>
+                </div>
+              </div>
+              <div class="ga-card-foot">
+                <span class="ga-card-date">${formatDate(g.savedAt)}</span>
+                <div class="ga-card-actions">
+                  <button class="ga-btn ga-btn-review" data-id="${esc(g.id)}">Review →</button>
+                  <button class="ga-btn ga-btn-delete" data-id="${esc(g.id)}">Delete</button>
+                </div>
+              </div>
+            </div>`;
+        }).join('');
+        return '<div class="ga-card-grid">' + cards + '</div>';
+      }
+
+      /* ── master render ── */
+      function render() {
+        const content = document.getElementById('archive-content');
+        const f = getFilters();
+        const filtered = sortGames(allGames.filter(g => passesFilters(g, f)));
+
+        // "Showing X of Y"
+        document.getElementById('ga-showing').textContent =
+          'Showing ' + filtered.length + ' of ' + allGames.length + ' games';
+
+        if (!allGames.length) {
+          content.innerHTML = `
+            <div class="ga-empty">
+              <div class="ga-empty-icon">♟</div>
+              <p class="ga-empty-text">No games analyzed yet</p>
+              <a href="analyzer.html" class="btn-primary ga-empty-btn">Analyze Your First Game →</a>
+            </div>`;
+          return;
+        }
+        if (!filtered.length) {
+          content.innerHTML = `
+            <div class="ga-empty">
+              <div class="ga-empty-icon">🔍</div>
+              <p class="ga-empty-text">No games match your filters</p>
+              <button class="btn-primary ga-empty-btn" id="ga-empty-clear">Clear filters</button>
+            </div>`;
+          const ec = document.getElementById('ga-empty-clear');
+          if (ec) ec.addEventListener('click', clearFilters);
+          return;
+        }
+
+        content.innerHTML = view === 'cards' ? renderCards(filtered) : renderTable(filtered);
+        wireRowActions(content);
+        if (view === 'table') wireHeaderSort(content);
+      }
+
+      /* ── wiring ── */
+      function wireRowActions(content) {
+        content.querySelectorAll('.ga-btn-review').forEach(btn => {
           btn.addEventListener('click', () => {
-            const id = btn.dataset.id;
-            window.location.href = 'analyzer.html?gameId=' + id;
+            // Preserve existing working behavior (app.js reads ?gameId=)
+            window.location.href = 'analyzer.html?gameId=' + btn.dataset.id;
           });
         });
-
-        // Wire delete buttons (event delegation wasn't reliable with dynamic innerHTML)
-        content.querySelectorAll('.arch-btn-delete').forEach(btn => {
+        content.querySelectorAll('.ga-btn-delete').forEach(btn => {
           btn.addEventListener('click', () => {
             if (!confirm('Delete this game from the archive?')) return;
             const id = btn.dataset.id;
             Storage.deleteGame(id);
             allGames = allGames.filter(g => g.id !== id);
-            applyFilter();
+            renderSummary();
+            render();
           });
         });
       }
 
-      function applyFilter() {
-        const q = (document.getElementById('archive-search').value || '').toLowerCase().trim();
-        if (!q) { renderTable(allGames); return; }
-        const filtered = allGames.filter(g => {
-          const m = g.metadata || {};
-          const opening = (g.analysis?.opening?.name || '').toLowerCase();
-          return (m.white  || '').toLowerCase().includes(q) ||
-                 (m.black  || '').toLowerCase().includes(q) ||
-                 opening.includes(q);
+      function wireHeaderSort(content) {
+        content.querySelectorAll('.ga-th-sort').forEach(th => {
+          th.addEventListener('click', () => {
+            const key = th.dataset.sort;
+            if (sort.key === key) {
+              sort.dir = sort.dir === 'asc' ? 'desc' : 'asc';
+            } else {
+              sort.key = key;
+              sort.dir = 'asc';
+            }
+            syncSortDropdown();
+            render();
+          });
         });
-        renderTable(filtered);
       }
 
-      // Boot
+      function syncSortDropdown() {
+        const sel = document.getElementById('ga-sort');
+        if (sel) sel.value = sort.key + '-' + sort.dir;
+      }
+
+      /* ── view toggle ── */
+      function setView(v) {
+        view = (v === 'cards') ? 'cards' : 'table';
+        try { localStorage.setItem(VIEW_KEY, view); } catch (e) {}
+        document.querySelectorAll('.ga-view-btn').forEach(b => {
+          b.classList.toggle('ga-view-btn-active', b.dataset.view === view);
+        });
+        document.getElementById('ga-sort').classList.toggle('hidden', view !== 'cards');
+        render();
+      }
+
+      /* ── clear filters ── */
+      function clearFilters() {
+        document.getElementById('ga-search').value = '';
+        document.getElementById('ga-f-result').value = 'all';
+        document.getElementById('ga-f-time').value = 'all';
+        document.getElementById('ga-f-color').value = 'all';
+        document.getElementById('ga-f-opening').value = '';
+        document.getElementById('ga-f-from').value = '';
+        document.getElementById('ga-f-to').value = '';
+        document.getElementById('ga-f-acc').value = '';
+        render();
+      }
+
+      /* ── boot ── */
       allGames = Storage.loadAllGames();
-      renderTable(allGames);
-      document.getElementById('archive-search').addEventListener('input', applyFilter);
+      renderSummary();
+
+      // restore persisted view
+      let savedView = 'table';
+      try { savedView = localStorage.getItem(VIEW_KEY) || 'table'; } catch (e) {}
+
+      // filter listeners
+      ['ga-search', 'ga-f-result', 'ga-f-time', 'ga-f-color',
+       'ga-f-opening', 'ga-f-from', 'ga-f-to', 'ga-f-acc'].forEach(id => {
+        const el = document.getElementById(id);
+        const ev = (el.tagName === 'SELECT') ? 'change' : 'input';
+        el.addEventListener(ev, render);
+      });
+
+      document.getElementById('ga-clear').addEventListener('click', clearFilters);
+
+      document.getElementById('ga-view-toggle').addEventListener('click', e => {
+        const btn = e.target.closest('.ga-view-btn');
+        if (btn) setView(btn.dataset.view);
+      });
+
+      document.getElementById('ga-sort').addEventListener('change', e => {
+        const parts = e.target.value.split('-');
+        sort.key = parts[0];
+        sort.dir = parts[1];
+        render();
+      });
+
+      syncSortDropdown();
+      setView(savedView); // also triggers initial render
     })();
   </script>
 </body>

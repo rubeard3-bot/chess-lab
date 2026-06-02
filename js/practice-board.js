@@ -33,6 +33,15 @@
 
   // ── State ──────────────────────────────────────────────────────────────
   let chess      = new Chess();
+  // Seed from a critical-position FEN handed off from the analyzer, if present.
+  try {
+    const _seedFen = sessionStorage.getItem('practice_fen');
+    if (_seedFen) {
+      sessionStorage.removeItem('practice_fen');
+      const _seeded = new Chess();
+      if (_seeded.load(_seedFen)) chess = _seeded;
+    }
+  } catch (_) {}
   let selSq      = null;
   let legDests   = [];
   let lastFrom   = null;
@@ -42,6 +51,7 @@
   let showBM     = true;
   let showEB     = true;
   let setPosMode = false;
+  let setPosDirty = false; // true once user has placed/removed a piece in setpos mode
   let palSel     = null;   // null | 'erase' | {color, type}
   let moveHist   = [];     // [{san}]
   let pendingPromo = null; // {from, to} while promotion modal is open
@@ -489,6 +499,7 @@
       }
       chess.put({ type, color }, sq);
     }
+    setPosDirty = true;
     render();
   }
 
@@ -524,7 +535,8 @@
     document.getElementById('btn-setpos').classList.toggle('setpos-on', setPosMode);
     document.getElementById('palette-wrap').classList.toggle('hidden', !setPosMode);
     selSq = null; legDests = [];
-    if (!setPosMode) { palSel = null; clearPal(); analyze(); }
+    if (setPosMode) { setPosDirty = false; }
+    else            { palSel = null; clearPal(); analyze(); }
     render();
   });
 
@@ -533,33 +545,37 @@
     document.getElementById('btn-setpos').classList.remove('setpos-on');
     document.getElementById('palette-wrap').classList.add('hidden');
     palSel = null; clearPal();
-    // Rebuild FEN from current board state, resetting castling/en-passant
-    try {
-      const b = chess.board();
-      let newFen = '';
-      for (let ri = 0; ri < 8; ri++) {
-        let empty = 0;
-        for (let ci = 0; ci < 8; ci++) {
-          const p = b[ri][ci];
-          if (!p) { empty++; }
-          else {
-            if (empty) { newFen += empty; empty = 0; }
-            const ch = p.type === 'p' ? (p.color === 'w' ? 'P' : 'p')
-                     : p.type === 'n' ? (p.color === 'w' ? 'N' : 'n')
-                     : p.type === 'b' ? (p.color === 'w' ? 'B' : 'b')
-                     : p.type === 'r' ? (p.color === 'w' ? 'R' : 'r')
-                     : p.type === 'q' ? (p.color === 'w' ? 'Q' : 'q')
-                     : p.color === 'w' ? 'K' : 'k';
-            newFen += ch;
+    // Only rebuild FEN + wipe history if the user actually changed pieces.
+    // Opening setpos mid-game just to look should leave the game untouched.
+    if (setPosDirty) {
+      try {
+        const b = chess.board();
+        let newFen = '';
+        for (let ri = 0; ri < 8; ri++) {
+          let empty = 0;
+          for (let ci = 0; ci < 8; ci++) {
+            const p = b[ri][ci];
+            if (!p) { empty++; }
+            else {
+              if (empty) { newFen += empty; empty = 0; }
+              const ch = p.type === 'p' ? (p.color === 'w' ? 'P' : 'p')
+                       : p.type === 'n' ? (p.color === 'w' ? 'N' : 'n')
+                       : p.type === 'b' ? (p.color === 'w' ? 'B' : 'b')
+                       : p.type === 'r' ? (p.color === 'w' ? 'R' : 'r')
+                       : p.type === 'q' ? (p.color === 'w' ? 'Q' : 'q')
+                       : p.color === 'w' ? 'K' : 'k';
+              newFen += ch;
+            }
           }
+          if (empty) newFen += empty;
+          if (ri < 7) newFen += '/';
         }
-        if (empty) newFen += empty;
-        if (ri < 7) newFen += '/';
-      }
-      newFen += ' w - - 0 1';
-      const test = new Chess(newFen);
-      if (test) { chess = test; moveHist = []; renderHistory(); }
-    } catch (_) {}
+        newFen += ' w - - 0 1';
+        const test = new Chess(newFen);
+        if (test) { chess = test; moveHist = []; renderHistory(); }
+      } catch (_) {}
+    }
+    setPosDirty = false;
     render();
     analyze();
   });
@@ -625,6 +641,7 @@
   document.getElementById('btn-new-pos').addEventListener('click', () => {
     document.getElementById('gameover-banner').classList.add('hidden');
     setPosMode = true;
+    setPosDirty = false;
     document.getElementById('btn-setpos').classList.add('setpos-on');
     document.getElementById('palette-wrap').classList.remove('hidden');
     selSq = null; legDests = [];

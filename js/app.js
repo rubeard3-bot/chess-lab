@@ -55,7 +55,14 @@ const App = (() => {
       fens:         state.fens
     }));
 
-    const gameId = getGameIdFromUrl();
+    let gameId = getGameIdFromUrl();
+    if (!gameId) {
+      const reviewKey = sessionStorage.getItem('csa_review_game_id');
+      if (reviewKey) {
+        sessionStorage.removeItem('csa_review_game_id');
+        gameId = reviewKey.startsWith('csa_game_') ? reviewKey.slice('csa_game_'.length) : reviewKey;
+      }
+    }
     if (gameId) {
       const savedGame = Storage.loadGame(gameId);
       if (savedGame && (savedGame.analysis || savedGame.pgn)) {
