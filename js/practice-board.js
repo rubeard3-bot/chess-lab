@@ -3499,22 +3499,38 @@ No other text, no header, no numbering.`;
     const pos = wdPositions[wdCurrentIdx];
     if (!pos) return;
 
-    // Normalize SAN by stripping annotations
-    function normSan(s) { return (s || '').replace(/[+#!?]/g, ''); }
-    const userNorm = normSan(userSan);
-    const bestNorm = normSan(pos.bestMove || '');
+    // Ensure Stockfish ground truth (best move + eval) is ready before judging.
+    try { await (pos._groundPromise || wdGroundPosition(pos)); } catch (_) {}
 
-    let result;
-    if (pos.bestMove && userNorm === bestNorm) {
-      result = 'correct';
-    } else if (pos.alternativeAcceptable && pos.alternativeAcceptable.some(a => normSan(a) === userNorm)) {
-      result = 'correct';
-    } else if (!pos.bestMove) {
-      // No best move recorded; can't determine correctness
-      result = 'wrong_close';
-    } else {
-      result = await wdEvaluateWrongMove(pos, userSan);
+    // Stockfish is the ONLY thing the judge may compare against. If grounding
+    // failed (engine error/timeout), NEVER fall back to a Claude-supplied
+    // move/eval — that would reintroduce the hallucination bug. Skip instead.
+    if (!pos._grounded || !pos.bestMove) {
+      wdShowUngradable();
+      return;
     }
+
+    function normSan(s) { return (s || '').replace(/[+#!?]/g, ''); }
+    const isExactBest = normSan(userSan) === normSan(pos.bestMove);
+
+    // Grade purely on Stockfish evals (mover's perspective). evalAfterBest is
+    // the eval after the engine's move; evalAfterUser after what was played.
+    const evalAfterBest = await wdEvalAfterMove(pos.fen, pos.bestMove);
+    const evalAfterUser = isExactBest ? evalAfterBest : await wdEvalAfterMove(pos.fen, userSan);
+
+    // If Stockfish could not evaluate either move, do not guess — skip.
+    if (evalAfterBest === null || evalAfterUser === null) {
+      wdShowUngradable();
+      return;
+    }
+
+    // gap = pawns lost versus the engine's best move. A move within 0.3 pawns
+    // of best counts as correct (Stockfish-grounded leniency — no Claude list).
+    const gap = evalAfterBest - evalAfterUser;
+    let result;
+    if (gap <= 0.3)      result = 'correct';           // within 0.3 of best
+    else if (gap < 1.0)  result = 'wrong_close';       // 0.3–1.0 pawns off
+    else                 result = 'wrong_significant'; // ≥ 1.0 pawn (full pawn+)
 
     const isFirstTry = !wdAttempted;
     wdAttempted = true;
@@ -3547,26 +3563,31 @@ No other text, no header, no numbering.`;
 
     wdUpdateDots();
     wdUpdateSessionStats();
-    await wdShowCoachFeedback(pos, userSan, result);
+    await wdShowCoachFeedback(pos, userSan, result, evalAfterBest, evalAfterUser);
     wdShowResultButtons(result);
   }
 
-  // ── Stockfish eval for wrong move ──────────────────────────────────────
-  async function wdEvaluateWrongMove(pos, userSan) {
-    try {
-      const tmp = new Chess(pos.fen);
-      tmp.move(userSan);
-      const fenAfter = tmp.fen();
-      const scoreCp = await wdEvalPosition(fenAfter);
-      if (scoreCp === null) return 'wrong_close';
-      // evalDrop from mover's perspective (positive = dropped)
-      const evalBeforeMover = typeof pos.evalBeforeMove === 'number' ? pos.evalBeforeMove : 0;
-      const evalAfterMover  = -(scoreCp / 100);
-      const evalDrop = Math.max(0, evalBeforeMover - evalAfterMover);
-      return evalDrop >= 0.5 ? 'wrong_significant' : 'wrong_close';
-    } catch (_) {
-      return 'wrong_close';
+  // ── Position can't be Stockfish-graded → skip, never judge vs Claude ────
+  function wdShowUngradable() {
+    const resultEl = document.getElementById('pb-wd-coach-result');
+    const msgEl    = document.getElementById('pb-wd-coach-msg');
+    const waitEl   = document.getElementById('pb-wd-coach-waiting');
+    const btnsEl   = document.getElementById('pb-wd-coach-btns');
+    const retryEl  = document.getElementById('pb-wd-btn-retry');
+    const nextEl   = document.getElementById('pb-wd-btn-next');
+    if (waitEl)   waitEl.classList.add('hidden');
+    if (resultEl) {
+      resultEl.textContent = '— Skipped';
+      resultEl.className    = 'pb-wd-coach-result pb-wd-result-wrong';
+      resultEl.classList.remove('hidden');
     }
+    if (msgEl) {
+      msgEl.textContent = "Couldn't analyze this position with the engine, so it can't be graded. Moving on.";
+      msgEl.classList.remove('hidden');
+    }
+    if (btnsEl)  btnsEl.classList.remove('hidden');
+    if (retryEl) retryEl.classList.add('hidden'); // can't grade a retry either
+    if (nextEl)  nextEl.textContent = (wdCurrentIdx >= wdPositions.length - 1) ? 'Finish →' : 'Next →';
   }
 
   // ── Stockfish eval worker ──────────────────────────────────────────────
@@ -3591,9 +3612,11 @@ No other text, no header, no numbering.`;
         if (line.startsWith('bestmove') && wdEvalPending) {
           const { resolve } = wdEvalPending;
           wdEvalPending  = null;
-          const val      = wdEvalAccumCp;
+          const cp       = wdEvalAccumCp;
           wdEvalAccumCp  = null;
-          resolve(val);
+          const bm       = line.match(/^bestmove\s+(\S+)/);
+          const bestUci  = (bm && bm[1] && bm[1] !== '(none)') ? bm[1] : null;
+          resolve({ cp, bestUci });
         }
       }
     };
@@ -3627,6 +3650,48 @@ No other text, no header, no numbering.`;
     });
   }
 
+  // ── Stockfish ground truth ─────────────────────────────────────────────
+  // Stockfish is the source of truth for ALL chess facts. For every drill
+  // position we compute the REAL best move + eval from the FEN and overwrite
+  // whatever bestMove/evalBeforeMove the position arrived with (Claude-claimed
+  // or analyzer-derived). The judge and coach then narrate only these facts.
+  async function wdGroundPosition(pos) {
+    if (!pos || pos._grounded) return pos;
+    try {
+      const res = await wdEvalPosition(pos.fen);
+      if (res && res.bestUci) {
+        const chk = new Chess(pos.fen);
+        const mv  = chk.move({
+          from: res.bestUci.slice(0, 2),
+          to:   res.bestUci.slice(2, 4),
+          promotion: res.bestUci.slice(4, 5) || undefined
+        });
+        if (mv) {
+          pos.bestMove = mv.san;            // Stockfish's best move (SAN)
+          pos.bestFrom = mv.from;
+          pos.bestTo   = mv.to;
+          pos.bestCapture = mv.captured || null; // piece type captured, if any
+          pos.bestGivesCheck = /[+#]/.test(mv.san);
+          // cp is from the side-to-move (= mover) perspective, in centipawns.
+          if (typeof res.cp === 'number') pos.evalBeforeMove = res.cp / 100;
+          pos._grounded = true;
+        }
+      }
+    } catch (_) { /* fall back to whatever bestMove/eval the position had */ }
+    return pos;
+  }
+
+  // Eval after a given SAN move, returned from the MOVER's perspective.
+  async function wdEvalAfterMove(fen, san) {
+    try {
+      const tmp = new Chess(fen);
+      if (!tmp.move(san)) return null;
+      const res = await wdEvalPosition(tmp.fen());
+      if (!res || res.cp === null) return null;
+      return -(res.cp / 100); // opponent to move after the played move → negate
+    } catch (_) { return null; }
+  }
+
   // ── Claude call helper ─────────────────────────────────────────────────
   async function wdClaudeCall(system, userMsg, maxTokens) {
     const controller = new AbortController();
@@ -3654,7 +3719,9 @@ No other text, no header, no numbering.`;
   }
 
   // ── Coach feedback ─────────────────────────────────────────────────────
-  async function wdShowCoachFeedback(pos, userSan, result) {
+  // evalAfterBest / evalAfterUser are the Stockfish evals already computed by
+  // the judge (mover's perspective) — passed in so we don't re-query the engine.
+  async function wdShowCoachFeedback(pos, userSan, result, evalAfterBest, evalAfterUser) {
     const resultEl = document.getElementById('pb-wd-coach-result');
     const msgEl    = document.getElementById('pb-wd-coach-msg');
     const waitEl   = document.getElementById('pb-wd-coach-waiting');
@@ -3678,27 +3745,53 @@ No other text, no header, no numbering.`;
     const firstName  = rawName.split(' ')[0];
     const elo        = lsGet('csa_elo_current') || '1000';
     const tone       = lsGet('pf_coach_tone') || 'Encouraging';
-    const evalBefore = typeof pos.evalBeforeMove === 'number' ? pos.evalBeforeMove.toFixed(1) : '?';
     const resultLabel = result === 'correct' ? 'CORRECT'
       : result === 'wrong_close' ? 'WRONG_CLOSE' : 'WRONG_SIGNIFICANT';
 
-    const system = `You are a chess coach giving feedback on a drill position. The student is named ${firstName}, rated ${elo}, and uses ${tone} tone (Encouraging / Direct / Tough love).
+    // ── Verified facts from Stockfish ground truth ──
+    // pos.bestMove / bestFrom / bestTo / bestCapture / evalBeforeMove were all
+    // set by wdGroundPosition (Stockfish). evalAfterBest / evalAfterUser come
+    // from the judge — so the coach can speak about the swing without reading
+    // the board itself.
+    const fmt = (n) => (typeof n === 'number'
+      ? (n >= 0 ? '+' : '') + n.toFixed(1)
+      : '?');
+    const evalBefore = typeof pos.evalBeforeMove === 'number' ? pos.evalBeforeMove : null;
+
+    // Verified geometry of the best move only (from Stockfish's chosen move).
+    const captureFact = pos.bestCapture
+      ? `It captures a ${({p:'pawn',n:'knight',b:'bishop',r:'rook',q:'queen'})[pos.bestCapture] || 'piece'} on ${pos.bestTo}.`
+      : '';
+    const checkFact = pos.bestGivesCheck ? 'It gives check.' : '';
+    const moveGeometry = (pos.bestFrom && pos.bestTo)
+      ? `Best move ${pos.bestMove} moves from ${pos.bestFrom} to ${pos.bestTo}. ${captureFact} ${checkFact}`.trim()
+      : `Best move: ${pos.bestMove || 'unknown'}.`;
+
+    const system = `You are a chess coach giving feedback on a one-move drill. The student is named ${firstName}, rated ${elo}, and uses ${tone} tone (Encouraging / Direct / Tough love).
 
 This drill targets their weakness: ${pos.weaknessType || 'General pattern'}
-Position FEN: ${pos.fen}
-Side to move: ${pos.sideToMove}
-Best move: ${pos.bestMove || 'unknown'}
-What the student played: ${userSan}
-Result: ${resultLabel}
-Eval before: ${evalBefore} pawns (from mover's perspective)
 
-Generate a 1-2 sentence feedback message that:
-- Uses the student's first name
-- Matches the tone setting
-- If correct: acknowledge specifically what was good
-- If WRONG_CLOSE: mention the best move, note theirs wasn't terrible
-- If WRONG_SIGNIFICANT: name the best move and briefly explain why it was stronger
-- Reference the weakness pattern when relevant
+VERIFIED FACTS (computed by the Stockfish chess engine — the ONLY facts you may use):
+- ${moveGeometry}
+- The student played: ${userSan}
+- Result: ${resultLabel}
+- Eval before the move: ${fmt(evalBefore)} pawns (from the mover's perspective)
+- Eval after the best move: ${fmt(evalAfterBest)} pawns (mover's perspective)
+- Eval after the student's move: ${fmt(evalAfterUser)} pawns (mover's perspective)
+(A higher number is better for the mover. The eval swing = best minus student's move.)
+
+STRICT RULES — you are NOT allowed to read the board:
+- Use ONLY the verified facts above. Do not state where any OTHER piece sits, and do not name squares beyond the from/to squares given for the best move.
+- Do NOT claim the best move "attacks", "targets", "pins", "forks", "defends", or threatens any specific piece or square unless that fact is explicitly listed above (you may only cite the capture/check facts if present).
+- Do NOT invent tactical reasons. If no tactical fact is given, explain the difference using the eval numbers and the named best move only (e.g. "it keeps more of your advantage", "it avoids losing material", "the engine rates it about X pawns better").
+- Never assert anything about the position you cannot derive from the facts above.
+
+Write a 1-2 sentence feedback message that:
+- Uses the student's first name and matches the tone setting
+- If CORRECT: affirm they found the engine's top move
+- If WRONG_CLOSE: name the best move and note theirs was only slightly worse (small eval gap)
+- If WRONG_SIGNIFICANT: name the best move and convey it was clearly stronger using the eval swing
+- May reference the weakness pattern in general terms
 
 Respond with ONLY the feedback text. No JSON, no markdown.`;
 
@@ -3774,6 +3867,20 @@ Respond with ONLY the feedback text. No JSON, no markdown.`;
     }
 
     wdFlipped = (pos.sideToMove === 'black');
+
+    // Compute Stockfish ground truth (best move + eval) for this position now,
+    // so it's ready by the time the user submits. Stored on the pos itself.
+    pos._groundPromise = wdGroundPosition(pos).then(() => {
+      // Refresh the displayed engine eval with the Stockfish value, if the
+      // user hasn't moved on to another position in the meantime.
+      if (wdCurrentIdx !== idx) return pos;
+      const el = document.getElementById('pb-wd-eval-line');
+      if (el && typeof pos.evalBeforeMove === 'number') {
+        const side = pos.sideToMove === 'white' ? 'White' : 'Black';
+        el.textContent = `${side} to move · Engine eval: ${pos.evalBeforeMove >= 0 ? '+' : ''}${pos.evalBeforeMove.toFixed(1)}`;
+      }
+      return pos;
+    });
 
     // Real moment banner
     const banner     = document.getElementById('pb-wd-real-banner');
@@ -3898,9 +4005,12 @@ Respond with ONLY the feedback text. No JSON, no markdown.`;
     const elo  = lsGet('csa_elo_current') || '1000';
     const tone = lsGet('pf_coach_tone')   || 'Encouraging';
 
+    // Note: bestMove/eval supplied here are only used to seed the position;
+    // they are overwritten by Stockfish ground truth (wdGroundPosition) before
+    // the move is judged, so do not ask Claude for an eval number.
     const system = simple
       ? `Generate a chess position for a "${weakness.title}" drill. Return ONLY valid JSON (no markdown fences):
-{"fen":"...","sideToMove":"white","bestMove":"...","alternativeAcceptable":[],"taskDescription":"Find the best move.","hint":"Look for the key idea.","evalBeforeMove":0.5}`
+{"fen":"...","sideToMove":"white","bestMove":"...","alternativeAcceptable":[],"taskDescription":"Find the best move.","hint":"Look for the key idea."}`
       : `Generate a chess position that drills the following weakness pattern: ${weakness.title}. Description: ${weakness.description}.
 
 The user is rated ${elo}. Their preferred tone is ${tone}.
@@ -3912,11 +4022,10 @@ Return ONLY valid JSON (no markdown, no code fences) with this exact shape:
   "bestMove": "..." (SAN notation),
   "alternativeAcceptable": ["..."],
   "taskDescription": "You're White/Black and..." (1-sentence),
-  "hint": "Look at..." (1-sentence),
-  "evalBeforeMove": 1.5
+  "hint": "Look at..." (1-sentence)
 }
 
-Requirements: legal FEN, bestMove is legal in that position, realistic eval.`;
+Requirements: legal FEN, bestMove is legal in that position.`;
 
     const raw = await wdClaudeCall(system, 'Generate the position now.', 350);
     if (!raw) return null;

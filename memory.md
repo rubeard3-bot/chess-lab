@@ -97,6 +97,14 @@ All Claude calls go through Railway. Client never touches the Anthropic key.
 5. **Cross-reference validation** on every update.
 6. **No silent degradation.** Every failure is logged AND visible (toast + health indicator).
 
+### Weakness Drill grounding (same principle, applied to the drill)
+The same "Stockfish is source of truth" rule governs the Weakness Drill (`js/practice-board.js`, WD IIFE), fixed 2026-06-03 (AUDIT_REPORT.md M12 + a coach hallucination bug):
+- **Stockfish owns the best move and the eval.** `wdGroundPosition(pos)` runs the WD eval worker on every drill FEN (generated AND real) and overwrites `pos.bestMove` + `pos.evalBeforeMove` with engine values. Claude-supplied best move / eval are never trusted (the generation prompt no longer even asks for an eval).
+- **Judging is 100% Stockfish-graded.** `wdProcessMove` grades on `gap = evalAfterBest − evalAfterUser` (mover's perspective, both from Stockfish via `wdEvalAfterMove`): `≤ 0.3` correct, `0.3–1.0` wrong_close, `≥ 1.0` wrong_significant (significant = a full pawn or more). Near-best leniency (the old "acceptable" idea) is the **0.3-pawn band**, an engine fact — the judge does **not** read `pos.alternativeAcceptable`. The old `wdEvaluateWrongMove` helper was removed.
+- **Never judge against Claude (no fallback).** If grounding fails (`!pos._grounded`) or an eval can't be computed, the position is **skipped** via `wdShowUngradable()` — never graded against a Claude number. `pos._grounded` becomes true only after Stockfish's `bestUci`→SAN overwrites `pos.bestMove`, so a Claude move can never reach the judge.
+- **Claude narrates only handed facts.** The coach prompt receives a fixed fact list (best move SAN + from/to, capture, check, eval before / after-best / after-user) and is forbidden from stating other pieces' squares or claiming attacks/targets/pins/forks not in that list. With no tactical fact it must explain via the eval swing and the named move only. This prevents board-geometry hallucinations.
+- **Rule for future work:** never let Claude determine the best move, the eval, piece locations, or tactical claims in the drill. These are one-move puzzles — hand Claude the Stockfish facts; never let it read the board.
+
 ### 5 Safeguard Layers
 1. 30+ inline sanity checks with granular check numbers (logged to audit)
 2. Rolling history of 10 memory versions (rollback via Undo button)

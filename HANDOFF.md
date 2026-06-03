@@ -6,7 +6,16 @@
 ---
 
 ## Last updated
-2026-06-02
+2026-06-03
+
+## Weakness Drill — Stockfish-grounding fix (2026-06-03)
+Fixed M12 (AUDIT_REPORT.md) plus a coach narrative-hallucination bug (coach stated false board facts, e.g. "Bb3 targets the queen on d5" when no such geometry existed). **Only `js/practice-board.js` (Weakness Drill IIFE, ~3194–4360) was touched.** Principle enforced: *Stockfish owns every chess fact; Claude only narrates facts it is handed.*
+- **Stockfish now owns best move + eval.** New `wdGroundPosition(pos)` runs the existing WD eval worker (`wdEvalPosition`, now returns `{cp, bestUci}`) on the FEN, converts the engine's `bestUci`→SAN via chess.js, and **overwrites `pos.bestMove` + `pos.evalBeforeMove`** for BOTH generated and real positions. Kicked off in `wdLoadPosition` (`pos._groundPromise`) and awaited at the top of `wdProcessMove` before judging. Engine-failure fallback keeps the seeded values so the drill still runs offline.
+- **M12 fixed + judging fully Stockfish-graded.** `wdEvaluateWrongMove` was **removed**. `wdProcessMove` now grades purely on Stockfish evals: `gap = evalAfterBest − evalAfterUser` (both mover's perspective, via `wdEvalAfterMove`). Thresholds: `gap ≤ 0.3` → correct, `0.3 < gap < 1.0` → wrong_close, `gap ≥ 1.0` → wrong_significant (significant = a full pawn or more). `evalBeforeMove` was removed from the `wdGeneratePosition` prompt (discarded anyway).
+- **Stockfish-grounded leniency (replaces Claude's "acceptable" list).** Near-best moves count correct when within **0.3 pawns** of the engine's best (`gap ≤ 0.3`). The judge no longer reads `pos.alternativeAcceptable` at all — leniency is now an engine fact, not a Claude claim.
+- **No Claude fallback in the judge (Q2).** If grounding fails (`!pos._grounded`) or either eval can't be computed, `wdProcessMove` calls **`wdShowUngradable()`** — shows "Couldn't analyze this position… Moving on", hides Retry, offers Next, and records nothing. There is **no path** where a user move is judged against a Claude-supplied move or eval: `pos._grounded` is set true only after Stockfish's `bestUci`→SAN overwrites `pos.bestMove`.
+- **Coach prompt rewritten (`wdShowCoachFeedback`):** no longer handed the raw FEN with "explain why." It now receives only verified facts — best move SAN + from/to, what it captures, whether it checks, and eval-before / eval-after-best / eval-after-user (the after-evals are now passed in from the judge, no re-query). Strict rules forbid stating other pieces' squares or claiming attacks/targets/pins/forks not in the facts; with no tactical fact it must speak only via the eval swing and named move. Tone still respects `pf_coach_tone`.
+- **Untouched:** other practice modes (Free Play / Coach / Opening Drill are separate IIFEs with their own helpers), `js/storage.js`, `js/memory.js`, the analyzer.
 
 ## Current state
 - **Memory System Step 1** — COMPLETE and live, health status "healthy" in production
