@@ -14,24 +14,8 @@
   <!-- Toast -->
   <div id="pf-toast" class="pf-toast" role="status" aria-live="polite"></div>
 
-  <!-- Nav drawer overlay (nav.js requires these elements) -->
-  <div id="nav-overlay" class="nav-overlay hidden"></div>
-  <div id="nav-drawer" class="nav-drawer">
-    <div class="nav-drawer-header">
-      <span class="nav-drawer-brand">♟ Chess Lab</span>
-      <button id="nav-drawer-close" class="nav-drawer-close" aria-label="Close menu">✕</button>
-    </div>
-    <nav class="nav-drawer-nav">
-      <a href="index.html"           class="nav-item"><span class="nav-item-icon">🏠</span><span>Home</span></a>
-      <a href="analyzer.html"        class="nav-item"><span class="nav-item-icon">♟</span><span>Game Analyzer</span></a>
-      <a href="archive.html"         class="nav-item"><span class="nav-item-icon">📂</span><span>Game Archive</span></a>
-      <a href="practice.html"        class="nav-item"><span class="nav-item-icon">♜</span><span>Practice Board</span></a>
-      <a href="recommendations.html" class="nav-item"><span class="nav-item-icon">🎯</span><span>My Recommendations</span></a>
-      <a href="profile.html"         class="nav-item nav-item-active"><span class="nav-item-icon">👤</span><span>Profile</span></a>
-      <a href="import.html" class="nav-item"><span class="nav-item-icon">⬇</span><span>Import Games</span></a>
-    </nav>
-  </div>
-  <button id="hamburger-btn" class="hamburger-btn" aria-label="Open menu" style="display:none">☰</button>
+  <!-- Nav: this page uses the persistent db-sidebar rail below (the vestigial
+       hidden hamburger drawer was removed; the rail is the sole working nav). -->
 
   <!-- ═══ MAIN LAYOUT ═══ -->
   <div class="pf-layout">
@@ -484,10 +468,8 @@
   </style>
 
   <script src="js/memory.js"></script>
-  <script src="js/nav.js"></script>
   <script>
   document.addEventListener('DOMContentLoaded', function () {
-    initNav('profile');
 
     /* ── localStorage helpers ── */
     function lsGet(key, fallback) {

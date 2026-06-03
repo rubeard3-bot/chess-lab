@@ -5,11 +5,12 @@
 (function () {
 
   const PAGE_HREFS = {
-    index:    'index.html',
-    analyzer: 'analyzer.html',
-    archive:  'archive.html',
-    practice: 'practice.html',
-    import:   'import.html'
+    index:           'index.html',
+    analyzer:        'analyzer.html',
+    archive:         'archive.html',
+    practice:        'practice.html',
+    import:          'import.html',
+    recommendations: 'recommendations.html'
   };
 
   let _toastTimer;

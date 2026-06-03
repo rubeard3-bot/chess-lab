@@ -16,6 +16,21 @@
 - **Memory system:** js/memory.js (~1100+ lines, 8 sections, fully documented)
 - No build step — vanilla HTML/CSS/JS pushed directly to Pages
 
+## Nav audit (2026-06-02)
+- A **read-only** navigation audit was performed across all pages. Report: **`NAV_AUDIT.md`** (repo root). No nav code was changed.
+- Key findings: 3 patterns exist. Full shared drawer (`az-topbar`+`az-hamburger`+`#nav-drawer`+`initNav`) on **analyzer/archive/import** only. **index/profile/recommendations/openings** carry the drawer + `initNav` but are PARTIAL (hidden or legacy `.hamburger-btn` opener; profile/recommendations drawers are currently unreachable). **practice.html** has no drawer/nav.js/initNav at all (uses the `db-sidebar` dashboard nav, same family as index). `PAGE_HREFS` is missing openings/profile/recommendations. `.hamburger-btn` CSS is still needed only by openings.html. Recommended migration order + risks (esp. practice.html's four IIFEs) are in the report. No decisions acted on yet.
+
+## Nav migration — part 1 (2026-06-02)
+Acted on the audit. **Two-tier nav model is now the intended design:**
+- **Rail pages** (dashboard + profile): `index.html` and `profile.html` keep the persistent 220px `db-sidebar` rail as their nav.
+- **Task pages** (everything else): use the shared hamburger drawer (`az-topbar` + `az-hamburger` + `#nav-drawer` + `initNav`) — analyzer, archive, import, and now **recommendations**.
+
+Changes this part (only `recommendations.html`, `profile.html`, `js/nav.js` touched):
+- **recommendations.html → CONVERTED to the drawer.** Discovery: it actually had a working `db-sidebar` rail (the audit missed this), with the drawer hidden/vestigial. Removed the `db-sidebar` rail + `.rec-layout` grid; added the canonical `az-topbar` (3-span `az-hamburger` + logo + breadcrumb "Dashboard › My Recommendations"); moved the existing Regenerate/Reset/"Last 10 games" controls into `az-topbar-right` (IDs unchanged → JS handlers intact). Folded the old `.rec-topbar` away. Added page-scoped CSS in its own `<style>` (`body.rec-page` flex column; `.rec-main` → `flex:1;min-height:0`) so the main column scrolls under the 44px topbar — **no `styles.css` change**. Removed the now-dead `loadSidebarProfile()` call + definition (only fed the removed rail; was fully null-guarded). Drawer entries already matched canonical exactly.
+- **profile.html → STAYS on its rail.** Removed only the vestigial hidden drawer (`#nav-overlay` + `#nav-drawer` + hidden `#hamburger-btn`), its `initNav('profile')` call, and the `js/nav.js` include — all zero-risk (nothing else referenced them; the `db-sidebar` rail is untouched and is the sole working nav).
+- **js/nav.js** — added `recommendations: 'recommendations.html'` to `PAGE_HREFS` so `initNav` resolves the active highlight. (Did NOT add `profile` — profile no longer loads nav.js.) analyzer/archive/import unaffected (their keys unchanged).
+- **Still pending** (later tasks): openings.html (still uses the visible legacy `.hamburger-btn` — blocks deleting that CSS), index.html (hybrid: rail + vestigial hidden drawer), practice.html (large, no drawer). `.hamburger-btn` CSS kept — openings still needs it.
+
 ## What was done last session
 - **Import screen overhaul (import.html — presentation only):**
   - Replaced the old centered `.import-header` (single `☰` + logo + title) with the analyzer's `az-topbar` pattern (3-span `az-hamburger` + `az-logo` + breadcrumb "Dashboard › Import"). The connected username moved to `az-topbar-right` as a green `import-username-chip` (green = success/connected state).

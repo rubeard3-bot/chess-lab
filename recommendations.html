@@ -6,9 +6,11 @@
   <title>My Recommendations — Chess Lab</title>
   <link rel="stylesheet" href="css/styles.css">
   <style>
-    /* Viewport lock — new sidebar layout requires full viewport */
+    /* Viewport lock — az-topbar + internally-scrolling main column */
     html, body { height: 100%; overflow: hidden; }
-    body.rec-page { min-height: unset; overflow: hidden; }
+    body.rec-page { min-height: unset; overflow: hidden; display: flex; flex-direction: column; }
+    /* Main column fills the space under the 44px az-topbar (db-sidebar rail removed; now a task page) */
+    .rec-main { height: auto; flex: 1 1 auto; min-height: 0; }
 
     /* ── Existing game-ref card styles (preserved) ── */
     .rec-game-refs { margin-top: 10px; }
@@ -86,69 +88,24 @@
     </div>
   </div>
 
-  <!-- Hamburger button (hidden on desktop; nav.js requires its presence) -->
-  <button id="hamburger-btn" aria-label="Open menu" style="display:none">☰</button>
+  <!-- Topbar (analyzer pattern) -->
+  <header id="az-topbar" class="az-topbar">
+    <div class="az-topbar-left">
+      <button id="hamburger-btn" class="az-hamburger" aria-label="Open menu">
+        <span></span><span></span><span></span>
+      </button>
+      <div class="az-logo">Chess Lab<span class="az-logo-dot"></span></div>
+      <div class="az-breadcrumb">Dashboard <span class="az-breadcrumb-sep">›</span> My Recommendations</div>
+    </div>
+    <div class="az-topbar-right">
+      <span class="rec-topbar-meta" id="rec-last-updated">Last 10 games</span>
+      <button id="rec-regenerate-btn" class="rec-btn-topbar">↺ Regenerate</button>
+      <button id="rec-reset-btn"      class="rec-btn-topbar">🗑 Reset</button>
+    </div>
+  </header>
 
-  <!-- ═══════════════════════════════════════════════════════
-       ROOT LAYOUT  220px sidebar | main area
-       ═══════════════════════════════════════════════════════ -->
-  <div class="rec-layout">
-
-    <!-- ── LEFT SIDEBAR ── -->
-    <aside class="db-sidebar">
-
-      <!-- Logo -->
-      <div class="db-sidebar-logo">
-        <span class="db-logo-dot"></span>
-        <span class="db-logo-text">Chess Lab</span>
-      </div>
-
-      <!-- Profile (click → profile.html) -->
-      <div class="db-sidebar-profile" id="rec-sidebar-profile">
-        <div class="db-profile-top">
-          <div class="db-avatar" id="rec-avatar">?</div>
-          <div class="db-username" id="rec-username">Connect chess.com</div>
-          <span class="db-profile-gear" aria-hidden="true">⚙</span>
-        </div>
-        <div class="db-rating-row">
-          <span class="db-rating-value" id="rec-rating-value"></span>
-          <span class="db-rating-label" id="rec-rating-label"></span>
-        </div>
-        <div class="db-goal-bar-track">
-          <div class="db-goal-bar-fill" id="rec-goal-bar-fill" style="width:0%"></div>
-        </div>
-        <div class="db-goal-labels">
-          <span id="rec-goal-now-label"></span>
-          <span id="rec-goal-target-label"></span>
-        </div>
-      </div>
-
-      <!-- Nav -->
-      <nav class="db-sidebar-nav">
-        <div class="db-nav-group-label">Features</div>
-
-        <a href="index.html"           class="db-nav-item"><span class="db-nav-icon">🏠</span>Dashboard</a>
-        <a href="analyzer.html"        class="db-nav-item"><span class="db-nav-icon">♟</span>Analyzer</a>
-        <a href="openings.html"        class="db-nav-item"><span class="db-nav-icon">📖</span>Openings</a>
-        <a href="practice.html"        class="db-nav-item"><span class="db-nav-icon">⚡</span>Practice</a>
-        <a href="archive.html"         class="db-nav-item"><span class="db-nav-icon">📂</span>Archive</a>
-        <a href="recommendations.html" class="db-nav-item db-nav-active"><span class="db-nav-icon">🎯</span>Recommendations</a>
-        <a href="import.html"          class="db-nav-item"><span class="db-nav-icon">📥</span>Import Games</a>
-      </nav>
-
-      <!-- Footer -->
-      <div class="db-sidebar-footer">
-        <button class="db-footer-settings" id="rec-settings-btn">⚙ Settings</button>
-        <div class="db-footer-status">
-          <span class="db-status-dot db-status-gray" id="rec-status-dot"></span>
-          <span id="rec-status-text">not connected</span>
-        </div>
-      </div>
-
-    </aside><!-- /db-sidebar -->
-
-    <!-- ── MAIN AREA ── -->
-    <div class="rec-main">
+  <!-- Main area (db-sidebar rail removed — now a task page like analyzer/archive/import) -->
+  <div class="rec-main">
 
       <!-- Memory broken banner (only when 3+ consecutive rejections) -->
       <div id="mem-broken-banner" class="mem-broken-banner hidden">
@@ -158,18 +115,7 @@
         <button id="mem-broken-force-btn" type="button">Force full regenerate</button>
       </div>
 
-      <!-- TOPBAR (44px) -->
-      <header class="rec-topbar">
-        <div class="rec-topbar-left">
-          <span class="rec-topbar-title">My Recommendations</span>
-          <span class="rec-topbar-divider">|</span>
-          <span class="rec-topbar-meta" id="rec-last-updated">Last 10 games</span>
-        </div>
-        <div class="rec-topbar-right">
-          <button id="rec-regenerate-btn" class="rec-btn-topbar">↺ Regenerate</button>
-          <button id="rec-reset-btn"      class="rec-btn-topbar">🗑 Reset</button>
-        </div>
-      </header>
+      <!-- (page title + Regenerate/Reset live in the shared az-topbar above) -->
 
       <!-- Stale data banner -->
       <div id="rec-stale-banner" class="rec-stale-banner hidden">
@@ -302,8 +248,6 @@
 
     </div><!-- /rec-main -->
 
-  </div><!-- /rec-layout -->
-
   <script src="js/storage.js"></script>
   <script src="js/memory.js"></script>
   <script src="js/recommendations.js"></script>
@@ -312,7 +256,6 @@
 
     document.addEventListener('DOMContentLoaded', function () {
       initNav('recommendations');
-      loadSidebarProfile();
       init();
       renderMemoryHealth();
 
@@ -370,73 +313,6 @@
         btn.textContent = '↺ Regenerate';
       });
     });
-
-    /* ---- sidebar profile ---- */
-    function loadSidebarProfile() {
-      var displayName  = localStorage.getItem('pf_display_name')       || '';
-      var avatarColor  = localStorage.getItem('pf_avatar_color')        || '';
-      var username     = localStorage.getItem('csa_chesscom_username')   || '';
-      var currentElo   = parseInt(localStorage.getItem('csa_elo_current'), 10);
-      var goalElo      = parseInt(localStorage.getItem('csa_elo_goal'),    10);
-      var startElo     = parseInt(localStorage.getItem('csa_elo_start'),   10);
-
-      var displayedName = displayName || username;
-      var avatarEl      = document.getElementById('rec-avatar');
-      var usernameEl    = document.getElementById('rec-username');
-
-      if (displayedName) {
-        if (avatarEl) {
-          avatarEl.textContent = displayedName.charAt(0).toUpperCase();
-          if (avatarColor) avatarEl.style.background = avatarColor;
-        }
-        if (usernameEl) usernameEl.textContent = displayedName;
-      } else {
-        if (usernameEl) {
-          usernameEl.textContent = 'Connect chess.com';
-          usernameEl.style.color = '#4b5568';
-          usernameEl.style.fontSize = '10px';
-        }
-      }
-
-      if (!isNaN(currentElo)) {
-        var rEl = document.getElementById('rec-rating-value');
-        if (rEl) rEl.textContent = currentElo;
-        var lEl = document.getElementById('rec-rating-label');
-        if (lEl) lEl.textContent = 'Rapid';
-      }
-
-      if (!isNaN(currentElo) && !isNaN(goalElo)) {
-        var start  = !isNaN(startElo) ? startElo : currentElo;
-        var total  = goalElo - start;
-        var gained = currentElo - start;
-        var pct    = total > 0
-          ? Math.min(100, Math.max(0, Math.round(gained / total * 100)))
-          : (currentElo >= goalElo ? 100 : 0);
-        var fEl = document.getElementById('rec-goal-bar-fill');
-        if (fEl) fEl.style.width = pct + '%';
-        var nEl = document.getElementById('rec-goal-now-label');
-        if (nEl) nEl.textContent = currentElo + ' now';
-        var tEl = document.getElementById('rec-goal-target-label');
-        if (tEl) tEl.textContent = 'Goal: ' + goalElo;
-      }
-
-      var profileEl = document.getElementById('rec-sidebar-profile');
-      if (profileEl) profileEl.addEventListener('click', function () {
-        window.location.href = 'profile.html';
-      });
-
-      if (username) {
-        var dot = document.getElementById('rec-status-dot');
-        if (dot) { dot.classList.remove('db-status-gray'); dot.classList.add('db-status-green'); }
-        var stEl = document.getElementById('rec-status-text');
-        if (stEl) stEl.textContent = 'chess.com connected';
-      }
-
-      var settingsEl = document.getElementById('rec-settings-btn');
-      if (settingsEl) settingsEl.addEventListener('click', function () {
-        window.location.href = 'index.html';
-      });
-    }
 
     /* ---- helpers ---- */
     function esc(str) {
