@@ -24,6 +24,8 @@
       <a href="analyzer.html" class="nav-item"><span class="nav-item-icon">♟</span><span>Game Analyzer</span></a>
       <a href="archive.html" class="nav-item"><span class="nav-item-icon">📂</span><span>Game Archive</span></a>
       <a href="practice.html" class="nav-item"><span class="nav-item-icon">♜</span><span>Practice Board</span></a>
+      <a href="recommendations.html" class="nav-item"><span class="nav-item-icon">🎯</span><span>My Recommendations</span></a>
+      <a href="import.html" class="nav-item nav-item-active"><span class="nav-item-icon">⬇</span><span>Import Games</span></a>
       <button class="nav-item nav-item-btn" id="nav-progress-btn">
         <span class="nav-item-icon">📈</span><span>My Progress</span>
         <span class="nav-coming-soon">Soon</span>
@@ -40,18 +42,21 @@
     </div>
   </div>
 
-  <div class="import-container">
+  <!-- Topbar (analyzer pattern) -->
+  <header id="az-topbar" class="az-topbar">
+    <div class="az-topbar-left">
+      <button id="hamburger-btn" class="az-hamburger" aria-label="Open menu">
+        <span></span><span></span><span></span>
+      </button>
+      <div class="az-logo">Chess Lab<span class="az-logo-dot"></span></div>
+      <div class="az-breadcrumb">Dashboard <span class="az-breadcrumb-sep">›</span> Import</div>
+    </div>
+    <div class="az-topbar-right">
+      <span id="import-username-display" class="import-username-chip" style="display:none"></span>
+    </div>
+  </header>
 
-    <!-- Header -->
-    <header class="import-header">
-      <button id="hamburger-btn" class="hamburger-btn" aria-label="Open menu">☰</button>
-      <div class="import-header-center">
-        <span class="import-header-logo">♟</span>
-        <h1 class="import-header-title">Import from Chess.com</h1>
-        <span id="import-username-display" class="import-connected-username" style="display:none"></span>
-      </div>
-      <div class="import-header-spacer"></div>
-    </header>
+  <div class="import-container">
 
     <!-- Not connected state -->
     <div id="import-no-connection" class="import-empty hidden">

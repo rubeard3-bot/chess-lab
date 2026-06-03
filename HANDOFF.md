@@ -6,7 +6,7 @@
 ---
 
 ## Last updated
-2026-05-27
+2026-06-02
 
 ## Current state
 - **Memory System Step 1** — COMPLETE and live, health status "healthy" in production
@@ -17,6 +17,13 @@
 - No build step — vanilla HTML/CSS/JS pushed directly to Pages
 
 ## What was done last session
+- **Import screen overhaul (import.html — presentation only):**
+  - Replaced the old centered `.import-header` (single `☰` + logo + title) with the analyzer's `az-topbar` pattern (3-span `az-hamburger` + `az-logo` + breadcrumb "Dashboard › Import"). The connected username moved to `az-topbar-right` as a green `import-username-chip` (green = success/connected state).
+  - Nav drawer markup was already present + `initNav('import')` already wired; added a shared **"Import Games"** drawer entry (icon ⬇) to all standard drawers (import [active], analyzer, archive, openings, index, profile, recommendations) so the shared nav lists Import everywhere and shows active on its page. Also added the missing "My Recommendations" link to import's drawer for parity. practice.html uses a different nav structure and was left alone.
+  - **Button hierarchy fixed (Option B):** blue (`--az-blue` #3b82f6) = primary actions (per-card Analyze, Import & Analyze Selected, Import All This Month); dark (`--az-base`/`--az-border`) = secondary (Import Last 5/10); green (`--az-green` #4ade80) reserved for success states only (WIN badge, "Already Analyzed" badge, connected-username chip). LOSS badge red, DRAW neutral.
+  - Disabled "Import & Analyze Selected" now has an explicit muted style (dark bg, `--az-text3`) instead of just opacity.
+  - Converted the entire `.import-*` / `.mass-import-*` CSS block from old tokens (`--accent` green, `--panel`, `--card`) to the `--az-*` palette; filter pills are now rounded with blue-accent active state; container padding/gap aligned to archive (`20px 24px 56px`, gap 16px).
+  - Hard constraints honored: chess.com logic, storage.js, memory.js untouched; CSS scoped to `import-`/`mass-` prefixes; no leakage to other pages (verified old tokens only remain outside the import block).
 - Batch 1 audit fixes applied — H1, H2, H3, H4, M6 (memory.js untouched)
   - H1 (app.js init): added `csa_review_game_id` sessionStorage fallback after the `?gameId=` URL-param check; strips the `csa_game_` prefix and removes the key after use
   - H2 (practice-board.js Free Play "Done"): added `setPosDirty` flag — FEN rebuild + move-history wipe now only run when the user actually placed/removed pieces in Set Position mode (Option A from audit)

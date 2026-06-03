@@ -2092,57 +2092,31 @@ body.import-page {
 .import-container {
   max-width: 900px;
   margin: 0 auto;
-  padding: 24px 24px 64px;
+  padding: 20px 24px 56px;
   display: flex;
   flex-direction: column;
-  gap: 20px;
-}
-
-/* Header */
-.import-header {
-  display: flex;
-  align-items: center;
   gap: 16px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid var(--border);
 }
 
-.import-header-center {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.import-header-logo { font-size: 24px; color: var(--accent); }
-
-.import-header-title {
-  font-size: 20px;
-  font-weight: 800;
-  color: var(--text);
-}
-
-.import-connected-username {
-  font-size: 13px;
-  color: #81b64c;
+/* Connected-username chip (topbar-right) — green = success/connected state */
+.import-username-chip {
+  font-size: 12px;
+  color: var(--az-green);
   font-weight: 700;
-  background: rgba(129,182,76,0.1);
-  border: 1px solid rgba(129,182,76,0.25);
-  border-radius: 10px;
-  padding: 2px 10px;
+  background: rgba(74,222,128,0.1);
+  border: 1px solid rgba(74,222,128,0.3);
+  border-radius: 999px;
+  padding: 3px 12px;
+  white-space: nowrap;
 }
-
-.import-header-spacer { width: 80px; flex-shrink: 0; }
 
 /* Controls bar */
 .import-controls.hidden { display: none; }
 
 .import-controls {
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
+  background: var(--az-surface);
+  border: 1px solid var(--az-border);
+  border-radius: 8px;
   padding: 16px 20px;
   display: flex;
   align-items: flex-end;
@@ -2159,17 +2133,17 @@ body.import-page {
 .import-label {
   font-size: 10px;
   font-weight: 700;
-  color: var(--text2);
+  color: var(--az-text2);
   text-transform: uppercase;
   letter-spacing: 0.07em;
 }
 
 .import-select {
   padding: 7px 10px;
-  background: var(--card);
-  border: 1px solid var(--border);
+  background: var(--az-base);
+  border: 1px solid var(--az-border);
   border-radius: 6px;
-  color: var(--text);
+  color: var(--az-text1);
   font-size: 13px;
   outline: none;
   cursor: pointer;
@@ -2177,19 +2151,21 @@ body.import-page {
   min-width: 160px;
   font-family: inherit;
 }
-.import-select:focus { border-color: var(--accent); }
+.import-select:focus { border-color: var(--az-blue); }
+.import-select option { background: var(--az-surface); color: var(--az-text1); }
 
 .filter-toggle-group {
   display: flex;
   gap: 4px;
 }
 
+/* Filter pills: unselected = dark, selected = blue accent */
 .filter-btn {
   padding: 6px 12px;
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 5px;
-  color: var(--text2);
+  background: var(--az-base);
+  border: 1px solid var(--az-border);
+  border-radius: 999px;
+  color: var(--az-text2);
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
@@ -2197,20 +2173,21 @@ body.import-page {
   font-family: inherit;
   white-space: nowrap;
 }
-.filter-btn:hover { color: var(--text); border-color: rgba(255,255,255,0.2); }
+.filter-btn:hover { color: var(--az-text1); border-color: #2a3f5a; }
 .filter-btn.active {
-  background: rgba(127,166,80,0.15);
-  border-color: rgba(127,166,80,0.4);
-  color: var(--accent);
+  background: rgba(59,130,246,0.15);
+  border-color: rgba(59,130,246,0.5);
+  color: #93c5fd;
 }
 
+/* Primary action — blue */
 .import-all-btn {
   margin-left: auto;
-  padding: 7px 16px;
-  background: rgba(77,168,218,0.12);
-  border: 1px solid rgba(77,168,218,0.3);
+  padding: 8px 16px;
+  background: var(--az-blue);
+  border: 1px solid var(--az-blue);
   border-radius: 6px;
-  color: var(--accent2);
+  color: #fff;
   font-size: 12px;
   font-weight: 700;
   cursor: pointer;
@@ -2218,7 +2195,7 @@ body.import-page {
   transition: background var(--trans);
   font-family: inherit;
 }
-.import-all-btn:hover { background: rgba(77,168,218,0.2); }
+.import-all-btn:hover { background: #2563eb; }
 
 /* Loading */
 .import-loading {
@@ -2227,7 +2204,7 @@ body.import-page {
   justify-content: center;
   gap: 12px;
   padding: 48px 0;
-  color: var(--text2);
+  color: var(--az-text2);
   font-size: 14px;
 }
 .import-loading.hidden { display: none; }
@@ -2241,10 +2218,10 @@ body.import-page {
 
 /* Game card */
 .import-card {
-  background: var(--panel);
-  border: 1px solid var(--border);
+  background: var(--az-surface);
+  border: 1px solid var(--az-border);
   border-left-width: 3px;
-  border-radius: var(--radius);
+  border-radius: 8px;
   padding: 14px 16px;
   display: flex;
   align-items: center;
@@ -2253,13 +2230,13 @@ body.import-page {
   flex-wrap: wrap;
 }
 .import-card:hover {
-  background: #1c2a4a;
+  background: #16213a;
   box-shadow: 0 2px 12px rgba(0,0,0,0.3);
 }
 
-.import-card-win  { border-left-color: #7fa650; }
-.import-card-loss { border-left-color: #e05252; }
-.import-card-draw { border-left-color: rgba(160,160,176,0.4); }
+.import-card-win  { border-left-color: #4ade80; }
+.import-card-loss { border-left-color: #f87171; }
+.import-card-draw { border-left-color: rgba(148,163,184,0.4); }
 
 .import-result-badge {
   font-size: 10px;
@@ -2272,16 +2249,16 @@ body.import-page {
   width: 46px;
   text-align: center;
 }
-.badge-win  { background: rgba(127,166,80,0.2);  color: #a0d070; }
-.badge-loss { background: rgba(224,82,82,0.2);   color: #f08080; }
-.badge-draw { background: rgba(160,160,176,0.15); color: var(--text2); }
+.badge-win  { background: rgba(74,222,128,0.16);  color: var(--az-green); }
+.badge-loss { background: rgba(248,113,113,0.16); color: #f87171; }
+.badge-draw { background: rgba(148,163,184,0.14); color: var(--az-text2); }
 
 .import-card-main { flex: 1; min-width: 0; }
 
 .import-card-opponent {
   font-size: 14px;
   font-weight: 600;
-  color: var(--text);
+  color: var(--az-text1);
   margin-bottom: 4px;
   white-space: nowrap;
   overflow: hidden;
@@ -2289,7 +2266,7 @@ body.import-page {
 }
 .import-opp-rating {
   font-size: 12px;
-  color: var(--text2);
+  color: var(--az-text2);
   font-weight: 400;
   margin-left: 4px;
 }
@@ -2308,19 +2285,19 @@ body.import-page {
   letter-spacing: 0.05em;
   padding: 1px 6px;
   border-radius: 4px;
-  background: var(--card);
-  border: 1px solid var(--border);
-  color: var(--text2);
+  background: var(--az-base);
+  border: 1px solid var(--az-border);
+  color: var(--az-text2);
 }
 
 .import-card-date {
   font-size: 11px;
-  color: var(--text2);
+  color: var(--az-text2);
 }
 
 .import-card-opening {
   font-size: 11px;
-  color: var(--text2);
+  color: var(--az-text2);
   font-style: italic;
   white-space: nowrap;
   overflow: hidden;
@@ -2335,20 +2312,22 @@ body.import-page {
   flex-shrink: 0;
 }
 
+/* "Already Analyzed" — green = success/positive state */
 .import-analyzed-badge {
   font-size: 10px;
   font-weight: 700;
-  color: var(--accent);
-  background: rgba(127,166,80,0.12);
-  border: 1px solid rgba(127,166,80,0.3);
+  color: var(--az-green);
+  background: rgba(74,222,128,0.12);
+  border: 1px solid rgba(74,222,128,0.3);
   border-radius: 10px;
   padding: 3px 9px;
   white-space: nowrap;
 }
 
+/* Primary action — blue */
 .import-analyze-btn {
   padding: 6px 14px;
-  background: var(--accent);
+  background: var(--az-blue);
   border: none;
   border-radius: 6px;
   color: #fff;
@@ -2361,7 +2340,7 @@ body.import-page {
   cursor: pointer;
   display: inline-block;
 }
-.import-analyze-btn:hover { background: #8fb85e; text-decoration: none; }
+.import-analyze-btn:hover { background: #2563eb; text-decoration: none; }
 
 /* Load more */
 .import-load-more-wrap {
@@ -2373,10 +2352,10 @@ body.import-page {
 
 .import-load-more-btn {
   padding: 9px 28px;
-  background: var(--panel);
-  border: 1px solid var(--border);
+  background: var(--az-surface);
+  border: 1px solid var(--az-border);
   border-radius: 6px;
-  color: var(--text2);
+  color: var(--az-text2);
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
@@ -2384,9 +2363,9 @@ body.import-page {
   font-family: inherit;
 }
 .import-load-more-btn:hover {
-  background: var(--card);
-  color: var(--text);
-  border-color: rgba(255,255,255,0.18);
+  background: var(--az-base);
+  color: var(--az-text1);
+  border-color: #2a3f5a;
 }
 
 /* Empty / no-connect state */
@@ -2398,21 +2377,21 @@ body.import-page {
   padding: 64px 20px;
   text-align: center;
   gap: 14px;
-  color: var(--text2);
+  color: var(--az-text2);
   font-size: 14px;
 }
 .import-empty.hidden { display: none; }
 .import-empty-icon { font-size: 48px; opacity: 0.25; }
-.import-empty a { color: var(--accent2); }
+.import-empty a { color: var(--az-blue); }
 
 /* Toast (import page) */
 .import-toast {
   position: fixed;
   bottom: 24px;
   right: 24px;
-  background: var(--panel);
-  border: 1px solid var(--accent);
-  color: var(--text);
+  background: var(--az-surface);
+  border: 1px solid var(--az-blue);
+  color: var(--az-text1);
   font-size: 13px;
   font-weight: 600;
   padding: 12px 20px;
@@ -2430,9 +2409,9 @@ body.import-page {
    MASS IMPORT — import.html bar
    ============================================================ */
 .mass-import-bar {
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
+  background: var(--az-surface);
+  border: 1px solid var(--az-border);
+  border-radius: 8px;
   padding: 10px 16px;
   display: flex;
   align-items: center;
@@ -2448,21 +2427,21 @@ body.import-page {
   gap: 7px;
   cursor: pointer;
   font-size: 13px;
-  color: var(--text2);
+  color: var(--az-text2);
   white-space: nowrap;
   user-select: none;
 }
 .mass-select-all-label input[type="checkbox"] {
   width: 15px;
   height: 15px;
-  accent-color: var(--accent);
+  accent-color: var(--az-blue);
   cursor: pointer;
   flex-shrink: 0;
 }
 
 .mass-selected-count {
   font-size: 13px;
-  color: var(--text2);
+  color: var(--az-text2);
   flex: 1;
   white-space: nowrap;
 }
@@ -2474,29 +2453,31 @@ body.import-page {
   flex-wrap: wrap;
 }
 
+/* Secondary action — dark */
 .import-quick-btn {
-  padding: 5px 11px;
-  background: transparent;
-  border: 1px solid var(--border);
-  border-radius: 5px;
-  color: var(--text2);
+  padding: 6px 12px;
+  background: var(--az-base);
+  border: 1px solid var(--az-border);
+  border-radius: 6px;
+  color: var(--az-text2);
   font-size: 11px;
   font-weight: 700;
   cursor: pointer;
   font-family: inherit;
-  transition: border-color var(--trans), color var(--trans);
+  transition: border-color var(--trans), color var(--trans), background var(--trans);
   white-space: nowrap;
   letter-spacing: 0.02em;
 }
 .import-quick-btn:hover {
-  border-color: rgba(127,166,80,0.45);
-  color: var(--accent);
+  border-color: #2a3f5a;
+  color: var(--az-text1);
 }
 
+/* Primary action — blue (with clear disabled state) */
 .import-selected-btn {
-  padding: 6px 14px;
-  background: var(--accent);
-  border: none;
+  padding: 7px 14px;
+  background: var(--az-blue);
+  border: 1px solid var(--az-blue);
   border-radius: 6px;
   color: #fff;
   font-size: 12px;
@@ -2506,23 +2487,29 @@ body.import-page {
   transition: background var(--trans), opacity var(--trans);
   white-space: nowrap;
 }
-.import-selected-btn:hover:not(:disabled) { background: #8fb85e; }
-.import-selected-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.import-selected-btn:hover:not(:disabled) { background: #2563eb; }
+.import-selected-btn:disabled {
+  background: var(--az-base);
+  border-color: var(--az-border);
+  color: var(--az-text3);
+  opacity: 1;
+  cursor: not-allowed;
+}
 
-/* Selected card highlight */
+/* Selected card highlight — blue */
 .import-card-selected {
-  border-left-color: var(--accent) !important;
-  background: rgba(127,166,80,0.07) !important;
+  border-left-color: var(--az-blue) !important;
+  background: rgba(59,130,246,0.08) !important;
 }
 .import-card-selected:hover {
-  background: rgba(127,166,80,0.12) !important;
+  background: rgba(59,130,246,0.13) !important;
 }
 
 /* Per-card checkbox */
 .import-card-cb {
   width: 15px;
   height: 15px;
-  accent-color: var(--accent);
+  accent-color: var(--az-blue);
   cursor: pointer;
   flex-shrink: 0;
   align-self: center;

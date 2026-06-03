@@ -175,9 +175,30 @@ Built feature-by-feature with self-contained CSS. Avoids naming collisions with 
 | `pf-`  | profile.html |
 | `rec-` | recommendations.html |
 | `open-`| openings.html |
+| `ga-`  | archive.html (v2 overhaul) |
+| `import-` / `mass-` | import.html |
 | `db-`  | shared: sidebar, nav, dashboard |
 
-Page-specific CSS is **always inline `<style>`** in the HTML file. Only truly shared components go in `css/styles.css`.
+Page-specific CSS is **always inline `<style>`** in the HTML file. Only truly shared components go in `css/styles.css`. (Note: import.html's `.import-*`/`.mass-*` rules live in `css/styles.css` rather than inline, but stay strictly scoped by prefix.)
+
+---
+
+## Design system — token palette & button color hierarchy
+
+The current design standard is the **`--az-*` token palette** (defined in `css/styles.css`), NOT the older `--accent`/`--panel`/`--card` tokens. Pages are being migrated to it one at a time (analyzer → archive → import, …):
+
+- Base bg `--az-base` #0d1321 · surface/cards `--az-surface` #111827 · border `--az-border` #1e2d40
+- Text `--az-text1` #e2e8f0 / `--az-text2` #94a3b8 / `--az-text3` muted
+- Accent `--az-blue` #3b82f6 · success `--az-green` #4ade80 · loss/danger #f87171
+
+**Button color hierarchy (global rule — "Option B"):**
+- **Blue (`--az-blue`) = PRIMARY actions** (Analyze, Import & Analyze, Import All, dashboard's "Analyze a game", etc.). Hover #2563eb.
+- **Dark (`--az-base` bg + `--az-border`) = SECONDARY actions** (Import Last 5/10, Load More, etc.).
+- **Green (`--az-green`) is RESERVED for success/positive states ONLY** — WIN badges, "Already Analyzed" tags, accuracy %, connected-username chip, success confirmations. **Never use green for an action button.**
+- LOSS/danger = red #f87171 · DRAW/neutral = `--az-text2`.
+- Disabled primary buttons get an explicit muted style (dark bg + `--az-text3`), not just reduced opacity.
+
+**Shared nav drawer:** every page hand-includes the same `#nav-drawer` markup + calls `initNav('<page>')` (js/nav.js wires open/close + active highlighting via `PAGE_HREFS`). The drawer list (Home, Game Analyzer, Game Archive, Practice Board, My Recommendations, Import Games, + coming-soon) must be kept identical across pages. The topbar uses the `az-topbar` pattern (3-span `az-hamburger` + `az-logo` + `az-breadcrumb`).
 
 ---
 
