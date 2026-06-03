@@ -77,7 +77,8 @@ Migrated **openings.html** to the shared hamburger drawer (nav/shell only — ze
   - H3 (recommendations.js): removed the unreachable `response._partialFailure` branch on the raw Response object; the success-path body check already covers the real case
   - H4 (recommendations.js): swapped numeric subtraction sort for `localeCompare` on ISO `savedAt` strings
   - M6 (practice-board.js Free Play): now reads `practice_fen` from sessionStorage at init via `chess.load()` (Option B). Existing `csa_opening_line` flow is move-array-based and not a good shape for the analyzer's FEN handoff, so adding a small reader in Free Play was the cleaner fit. `_goToPractice()` in ui.js needed no change.
-- Pending from audit: H5 (memory update on rec failure), M1–M5, M7–M18, all L-series. Documentation drift (M1 Weakness Drill "coming soon" wording, M3 `pf_coach_*` key names) still unfixed.
+- Batch 2 cleanup done (this session): M1 (Weakness Drill docs now say shipped), M2 (removed dead `pf_show_engine_lines`/`pf_explanation_depth`/`pf_practice_side` toggle UI from profile.html), M3+M18 (`pf_coach_*` docs fixed to `pf_coach_tone`; kebab→Title-Case normalized at all 8 practice-board.js prompt read sites, single `'Direct'` default), M4 (removed vestigial client-side API-key code + Settings/API Key nav button), L1 (removed empty `setupApiKeyModal`/`setupNewGameBtn`/`_renderPhaseAccuracy`/`renderGameNotes` stubs), L2 (gated verbose logs behind `window.CHESS_LAB_DEBUG`), L14 (SETUP.md rewritten for GitHub Pages flow), L15 (v1 Flask files moved to `legacy/`).
+- Pending from audit: H5 (memory update on rec failure), M5, M7–M17 (excl. M18). Remaining L-series: L3–L13.
 
 ### Previous session
 - Performed a full read-only codebase audit — see `AUDIT_REPORT.md`
@@ -313,7 +314,7 @@ Caro-Kann, Queen's Gambit, Sicilian, French, KID, Ruy Lopez, Italian, English, L
 **5 views (show/hide by toggling `display` CSS):**
 - `pb-view-landing` — mode selection cards
 - `pb-view-free` — Free Play board
-- `pb-view-weakness` — Weakness Drill (coming soon shell)
+- `pb-view-weakness` — Weakness Drill (shipped; Stockfish-grounded, see Section 5)
 - `pb-view-coach` — Play the Coach board
 - `pb-view-opening` — Opening Drill (3 sub-views inside)
 
@@ -381,10 +382,10 @@ Caro-Kann, Queen's Gambit, Sicilian, French, KID, Ruy Lopez, Italian, English, L
 **Settings sections:**
 1. **Identity** — display name (`pf_display_name`)
 2. **Chess Profile** — username (`csa_chesscom_username`), current ELO (`csa_elo_current`), goal ELO (`csa_elo_goal`)
-3. **Coach Preferences** — coach name (`pf_coach_name`), coaching style (`pf_coach_style`: supportive/analytical/tough)
+3. **Coach Preferences** — coach tone (`pf_coach_tone`: `encouraging`/`direct`/`tough-love`, stored kebab-case; normalized to Title-Case at the prompt read sites in practice-board.js)
 4. **Board Customization** — light square color (`pf_board_light`), dark square color (`pf_board_dark`) via swatch pickers
 5. **App Accent Color** — (`pf_accent_color`) — updates CSS variable `--accent` on selection
-6. **Behavior** — `pf_auto_recommendations` toggle (true/false string), `pf_show_hints` toggle
+6. **Behavior** — `pf_auto_recommendations` toggle (true/false string)
 7. **Danger Zone** — "Delete All Games" and "Reset All Settings" — two-click confirmation pattern (button changes text to "Are you sure?" on first click)
 
 **Avatar colors** (6 swatches):
@@ -532,7 +533,7 @@ IIFE, runs when `?mode=coach`.
 **Coach popup (`cShowPopup`):**
 - Shows in overlay panel on right side
 - Contains: trigger label, eval delta display, coach message text, hint button
-- `cFetchMsg()`: POST to `/api/analyze` (Railway) with system prompt including player profile (`pf_display_name`, `pf_coach_style`, current position FEN, move history, trigger type); max_tokens=150, 8s timeout
+- `cFetchMsg()`: POST to `/api/analyze` (Railway) with system prompt including player profile (`pf_display_name`, `pf_coach_tone`, current position FEN, move history, trigger type); max_tokens=150, 8s timeout
 - `cFetchHintReason(bestSan)`: POST to `/api/analyze`; asks why bestSan is best; max_tokens=80; cached in `cHintCache` Map (FEN→reason)
 
 **Auto-recovery (`cHandleEngineCrash`):**
@@ -657,13 +658,11 @@ All keys are strings; all values are JSON-stringified unless noted.
 |-----|------|----------|
 | `pf_display_name` | string | Player's display name |
 | `pf_avatar_color` | string | Hex color for avatar chip |
-| `pf_coach_name` | string | Coach persona name |
-| `pf_coach_style` | string | `'supportive'`/`'analytical'`/`'tough'` |
+| `pf_coach_tone` | string | `'encouraging'`/`'direct'`/`'tough-love'` (kebab-case; normalized to Title-Case at prompt read sites) |
 | `pf_board_light` | string | Hex color for light squares |
 | `pf_board_dark` | string | Hex color for dark squares |
 | `pf_accent_color` | string | Hex color for UI accent |
 | `pf_auto_recommendations` | string | `'true'`/`'false'` |
-| `pf_show_hints` | string | `'true'`/`'false'` |
 
 ### Chess Profile / ELO
 | Key | Type | Contents |
@@ -851,8 +850,10 @@ These are patterns that work well in this codebase. Apply them on new work.
 - **Stockfish crash in Play the Coach**: Fixed by serial Promise queue (`cSFTaskQueue`). If engine stops responding, `cHandleEngineCrash()` auto-recovers. Still possible in edge cases if crash happens mid-queue.
 - **chess.js CDN vs local**: Some pages use CDN `chess.min.js`, analyzer.html uses local `js/chess.js`. If chess.js behavior diverges between pages, this is why. The API is identical but version mismatches are possible.
 
+### Shipped
+- **Weakness Drill mode** (`pb-view-weakness`, `?mode=weakness`): Fully implemented — real-moments sourcing, AI-generated practice positions, Stockfish-grounded "close vs significant" classification, session history, streak tracking, per-weakness breakdown. Hardened 2026-06-03 so Stockfish owns every chess fact (eval + best move) and the coach narrates only handed facts (AUDIT_REPORT.md M12 + coach-hallucination fix). See Section 5.
+
 ### Pending / Coming Soon
-- **Weakness Drill mode** (`pb-view-weakness`): Shell exists at `?mode=weakness`. Not yet implemented — shows "coming soon" message.
 - **Opening Drill improvements**: Current implementation is functional but streak display and session summary could be more polished.
 - **ELO History chart**: Index page draws a simple SVG polyline. Proper charting library not used.
 - **Offline Stockfish depth**: Free Play uses depth 18 which can be slow on low-end devices. No configurable depth option yet.

@@ -41,7 +41,6 @@ const App = (() => {
     const initialChess = new Chess();
     Board.setPosition(initialChess, null, null, null, null);
 
-    setupApiKeyModal();
     setupDropzone();
     setupColorToggle();
     setupNavigation();
@@ -49,7 +48,6 @@ const App = (() => {
     setupKeyboard();
     setupSidebar();
     setupErrorDismiss();
-    setupNewGameBtn();
 
     UI.initCoachChat(() => ({
       currentPly:   state.currentPly,
@@ -254,21 +252,6 @@ const App = (() => {
     applyPlayerColor(color === 'black' ? 'black' : 'white');
     setTimeout(handleAnalyze, 500);
     return true;
-  }
-
-  /* ------------------------------------------------------------------ */
-  /*  API KEY MODAL (no-op — Railway handles the key)                    */
-  /* ------------------------------------------------------------------ */
-  function setupApiKeyModal() { /* no-op */ }
-
-  /* ------------------------------------------------------------------ */
-  /*  NEW GAME BUTTON                                                     */
-  /* ------------------------------------------------------------------ */
-
-  function setupNewGameBtn() {
-    // In new layout there is no separate new-game-btn; but analyze is available
-    // from the drop zone which is always accessible by closing the analysis view.
-    // We keep this as a no-op for now.
   }
 
   /* ------------------------------------------------------------------ */

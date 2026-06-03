@@ -1,15 +1,6 @@
 const Storage = (() => {
   const GAME_PREFIX = 'csa_game_';
-  const API_KEY_KEY = 'csa_api_key';
   const MAX_GAMES = 50;
-
-  function getApiKey() {
-    return localStorage.getItem(API_KEY_KEY) || '';
-  }
-
-  function setApiKey(key) {
-    localStorage.setItem(API_KEY_KEY, key.trim());
-  }
 
   function saveGame(pgn, metadata, analysis, fens, playerColor) {
     const id = Date.now().toString();
@@ -61,5 +52,5 @@ const Storage = (() => {
     }
   }
 
-  return { getApiKey, setApiKey, saveGame, loadAllGames, loadGame, deleteGame };
+  return { saveGame, loadAllGames, loadGame, deleteGame };
 })();

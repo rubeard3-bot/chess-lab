@@ -623,7 +623,7 @@
     const x    = (e.clientX - rect.left) * (PX / rect.width);
     const y    = (e.clientY - rect.top)  * (PX / rect.height);
     const sq   = canvasToSq(x, y);
-    console.log('[Openings] Canvas clicked at square:', sq, '(canvas px:', Math.round(x), Math.round(y), ')');
+    if (window.CHESS_LAB_DEBUG) console.log('[Openings] Canvas clicked at square:', sq, '(canvas px:', Math.round(x), Math.round(y), ')');
     if (sq) handleBoardClick(sq);
   });
 
@@ -632,12 +632,12 @@
     if (trainerMode) { handleTrainerClick(sq); return; }
 
     const chess = currentChess();
-    if (chess.game_over()) { console.log('[Openings] Ignoring click — game over'); return; }
+    if (chess.game_over()) { if (window.CHESS_LAB_DEBUG) console.log('[Openings] Ignoring click — game over'); return; }
     const turn = chess.turn();
 
     /* In practice mode, block interaction when it's the computer's turn */
     if (practiceMode && turn !== practiceColor) {
-      console.log('[Openings] Ignoring click — not your turn (practice mode)');
+      if (window.CHESS_LAB_DEBUG) console.log('[Openings] Ignoring click — not your turn (practice mode)');
       return;
     }
 
@@ -652,9 +652,9 @@
           const posData   = lichessData;
           const tempChess = currentChess();
           const m         = tempChess.move({ from: fromSq, to: sq, promotion: 'q' });
-          if (!m) { console.log('[Openings] Move rejected by chess.js:', fromSq, '->', sq); render(); return; }
+          if (!m) { if (window.CHESS_LAB_DEBUG) console.log('[Openings] Move rejected by chess.js:', fromSq, '->', sq); render(); return; }
 
-          console.log('[Openings] Move executed:', m.san, '(', fromSq + sq + (m.promotion || ''), ')');
+          if (window.CHESS_LAB_DEBUG) console.log('[Openings] Move executed:', m.san, '(', fromSq + sq + (m.promotion || ''), ')');
 
           practiceMoveCount++;
           if (posData?.moves?.length) {
@@ -698,7 +698,7 @@
           /* Free exploration — just play */
           const uci    = buildUCI(fromSq, sq);
           const result = playMove(uci, null);
-          console.log('[Openings] Move executed:', uci, '| success:', result);
+          if (window.CHESS_LAB_DEBUG) console.log('[Openings] Move executed:', uci, '| success:', result);
         }
         return;
       }
@@ -709,7 +709,7 @@
       if (p && canSel) {
         selSq    = sq;
         legDests = chess.moves({ square: sq, verbose: true }).map(mv => mv.to);
-        console.log('[Openings] Selected piece:', sq, p, '| Legal moves:', legDests);
+        if (window.CHESS_LAB_DEBUG) console.log('[Openings] Selected piece:', sq, p, '| Legal moves:', legDests);
         render();
         return;
       }
@@ -718,11 +718,11 @@
       /* ── First click — select a piece ── */
       const p      = chess.get(sq);
       const canSel = practiceMode ? p?.color === practiceColor : p?.color === turn;
-      console.log('[Openings] Selected piece:', sq, p, '| turn:', turn, '| canSel:', canSel);
+      if (window.CHESS_LAB_DEBUG) console.log('[Openings] Selected piece:', sq, p, '| turn:', turn, '| canSel:', canSel);
       if (p && canSel) {
         selSq    = sq;
         legDests = chess.moves({ square: sq, verbose: true }).map(mv => mv.to);
-        console.log('[Openings] Legal moves:', legDests);
+        if (window.CHESS_LAB_DEBUG) console.log('[Openings] Legal moves:', legDests);
         render();
       }
     }

@@ -764,8 +764,6 @@ const UI = (() => {
         </div>`
       ).join('');
     }
-
-    _renderPhaseAccuracy(summary);
   }
 
   function _getResultLabel(result, playerColor) {
@@ -793,11 +791,6 @@ const UI = (() => {
       const valEl = c.querySelector('.az-stat-val');
       if (valEl) valEl.textContent = bestExcCount;
     });
-  }
-
-  function _renderPhaseAccuracy(summary) {
-    // Phase accuracy is computed in renderReport(), called after full analysis
-    // Here we just ensure the bars exist
   }
 
   function renderPhaseAccuracy(movesData, playerColor) {

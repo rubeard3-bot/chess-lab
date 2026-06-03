@@ -184,15 +184,6 @@
                 <button class="pf-pill" data-val="tough-love"  type="button">Tough love</button>
               </div>
             </div>
-
-            <div class="pf-field">
-              <label class="pf-label">Explanation depth</label>
-              <div class="pf-pill-group" id="pf-explanation-depth">
-                <button class="pf-pill" data-val="brief"    type="button">Brief</button>
-                <button class="pf-pill" data-val="detailed" type="button">Detailed</button>
-                <button class="pf-pill" data-val="technical" type="button">Technical</button>
-              </div>
-            </div>
           </div>
 
           <!-- ── SECTION 4: BOARD CUSTOMIZATION ── -->
@@ -258,27 +249,6 @@
               </button>
             </div>
 
-            <div class="pf-toggle-row">
-              <div class="pf-toggle-label-group">
-                <div class="pf-toggle-label">Show engine lines by default</div>
-                <div class="pf-toggle-sub">Expand engine continuation on every move</div>
-              </div>
-              <button class="pf-toggle" id="pf-toggle-engine" type="button" role="switch" aria-checked="false">
-                <span class="pf-toggle-knob"></span>
-              </button>
-            </div>
-
-            <div class="pf-toggle-row">
-              <div class="pf-toggle-label-group">
-                <div class="pf-toggle-label">Default practice side</div>
-                <div class="pf-toggle-sub">Which color you play on the practice board</div>
-              </div>
-              <div class="pf-pill-group" id="pf-practice-side" style="flex-shrink:0">
-                <button class="pf-pill" data-val="white"  type="button">White</button>
-                <button class="pf-pill" data-val="black"  type="button">Black</button>
-                <button class="pf-pill" data-val="random" type="button">Random</button>
-              </div>
-            </div>
           </div>
 
           <!-- ── SECTION 7: DANGER ZONE ── -->
@@ -570,8 +540,6 @@
 
       setActivePill('pf-time-control',      lsGet('pf_time_control', ''));
       setActivePill('pf-coach-tone',        lsGet('pf_coach_tone', ''));
-      setActivePill('pf-explanation-depth', lsGet('pf_explanation_depth', ''));
-      setActivePill('pf-practice-side',     lsGet('pf_practice_side', 'white'));
 
       setActiveColorCircle('pf-avatar-colors',  lsGet('pf_avatar_color', '#1e3a5f'));
       setActiveColorCircle('pf-accent-colors',  lsGet('pf_accent_color', '#3b82f6'));
@@ -587,9 +555,7 @@
       updateBoardPreview(lightColor, darkColor);
 
       var autoRec = document.getElementById('pf-toggle-autorec');
-      var engine  = document.getElementById('pf-toggle-engine');
       setToggleState(autoRec, lsGetBool('pf_auto_recommendations', true));
-      setToggleState(engine,  lsGetBool('pf_show_engine_lines', false));
     }
 
     /* ── Pill group helpers ── */
@@ -612,7 +578,7 @@
       });
     }
 
-    ['pf-time-control', 'pf-coach-tone', 'pf-explanation-depth', 'pf-practice-side'].forEach(wireupPillGroup);
+    ['pf-time-control', 'pf-coach-tone'].forEach(wireupPillGroup);
 
     /* ── Color circle helpers ── */
     function setActiveColorCircle(groupId, val) {
@@ -726,7 +692,6 @@
     }
 
     wireupToggle('pf-toggle-autorec');
-    wireupToggle('pf-toggle-engine');
 
     /* ── chess.com username change note ── */
     var chesscomEl = document.getElementById('pf-chesscom-username');
@@ -822,8 +787,6 @@
         }
         lsSet('pf_time_control',      getActivePillVal('pf-time-control'));
         lsSet('pf_coach_tone',        getActivePillVal('pf-coach-tone'));
-        lsSet('pf_explanation_depth', getActivePillVal('pf-explanation-depth'));
-        lsSet('pf_practice_side',     getActivePillVal('pf-practice-side') || 'white');
 
         /* Color circles */
         function getActiveCircleColor(groupId) {
@@ -844,9 +807,7 @@
 
         /* Toggles */
         var autoRec = document.getElementById('pf-toggle-autorec');
-        var engine  = document.getElementById('pf-toggle-engine');
         lsSet('pf_auto_recommendations', autoRec ? autoRec.classList.contains('on') : true);
-        lsSet('pf_show_engine_lines',    engine  ? engine.classList.contains('on')  : false);
 
         /* Update sidebar to reflect new name/color */
         var sbAvatar   = document.getElementById('pf-sb-avatar');

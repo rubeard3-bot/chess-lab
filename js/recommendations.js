@@ -45,14 +45,14 @@ const Recommendations = (() => {
 
   async function generateRecommendations() {
     if (window._recsInFlight) {
-      console.log('[Recommendations] Call already in flight, skipping.');
+      if (window.CHESS_LAB_DEBUG) console.log('[Recommendations] Call already in flight, skipping.');
       return null;
     }
     window._recsInFlight = true;
     try {
       let games = Storage.loadAllGames();
       const totalGameCount = games.length;
-      console.log('[Recommendations] Starting generation, games found:', totalGameCount);
+      if (window.CHESS_LAB_DEBUG) console.log('[Recommendations] Starting generation, games found:', totalGameCount);
       if (totalGameCount === 0) return null;
 
       games = games.sort((a, b) => (b.savedAt || '').localeCompare(a.savedAt || '')).slice(0, 10);
@@ -65,7 +65,7 @@ const Recommendations = (() => {
         body:    JSON.stringify({ games })
       });
 
-      console.log('[Recommendations] Server response status:', response.status);
+      if (window.CHESS_LAB_DEBUG) console.log('[Recommendations] Server response status:', response.status);
 
       if (!response.ok) {
         const errText = await response.text();
@@ -82,7 +82,7 @@ const Recommendations = (() => {
         }));
       }
 
-      console.log('[Recommendations] Merged result keys:', Object.keys(merged));
+      if (window.CHESS_LAB_DEBUG) console.log('[Recommendations] Merged result keys:', Object.keys(merged));
 
       localStorage.setItem(RECS_KEY, JSON.stringify(merged));
       localStorage.setItem(META_KEY, JSON.stringify({

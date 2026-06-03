@@ -1613,7 +1613,7 @@
     const firstName  = (lsGet('pf_display_name') || 'there').split(' ')[0];
     const elo        = lsGet('csa_elo_current') || 'unknown';
     const goals      = lsGet('pf_goals') || 'improve at chess';
-    const tone       = lsGet('pf_coach_tone') || 'Direct';
+    const tone       = ({encouraging:'Encouraging', direct:'Direct', 'tough-love':'Tough love'})[lsGet('pf_coach_tone')] || 'Direct';
     const recs       = lsJSON('csa_recommendations');
     const weaknesses = recs && recs.topWeaknesses
       ? recs.topWeaknesses.slice(0,5).map(w => '- ' + (w.type || w)).join('\n')
@@ -1713,7 +1713,7 @@ Respond with ONLY the coach message text.`;
     popup.classList.remove('hidden', 'pb-coach-popup-exit', 'pb-coach-popup-enter');
 
     const firstName = (lsGet('pf_display_name') || 'there').split(' ')[0];
-    const tone      = lsGet('pf_coach_tone') || 'Direct';
+    const tone      = ({encouraging:'Encouraging', direct:'Direct', 'tough-love':'Tough love'})[lsGet('pf_coach_tone')] || 'Direct';
     const recs      = lsJSON('csa_recommendations');
     const weak      = recs && recs.topWeaknesses
       ? recs.topWeaknesses.slice(0,3).map(w => '- ' + (w.type || w)).join('\n')
@@ -2448,7 +2448,7 @@ Respond with ONLY the coach message text.`;
     content.innerHTML = '<div class="pb-coach-loading"><span></span><span></span><span></span></div>';
 
     const elo  = odLsGet('csa_elo_current') || 'unknown';
-    const tone = odLsGet('pf_coach_tone') || 'Direct';
+    const tone = ({encouraging:'Encouraging', direct:'Direct', 'tough-love':'Tough love'})[odLsGet('pf_coach_tone')] || 'Direct';
     const system =
 `You are a chess coach teaching the ${odCurrentOpening.name} from ${odUserSide}'s perspective. The student is rated ${elo} and uses ${tone} coaching style. Explain the strategic ideas of this opening in clear, structured language. Cover: pawn structure, piece development priorities, attacking plans, key squares, common mistakes at this rating level. Be concrete and specific — give actual square names and move sequences. Keep response under 300 words.
 
@@ -2538,7 +2538,7 @@ Each section should be 1-2 sentences. No other markdown.`;
     const sorted = odSortedMoves(data).slice(0, 4);
     // For each top move, get the SAN + 1-line description from Claude
     const movesList = sorted.map(m => m.san).join(', ');
-    const tone = odLsGet('pf_coach_tone') || 'Direct';
+    const tone = ({encouraging:'Encouraging', direct:'Direct', 'tough-love':'Tough love'})[odLsGet('pf_coach_tone')] || 'Direct';
     const system = `You are a chess coach. For each main variation of the ${odCurrentOpening.name}, give a 1-sentence description of its character. Be specific and use chess terminology. Plain text only, no markdown.
 
 Output format — one variation per line, exactly:
@@ -2742,7 +2742,7 @@ No other text, no header, no numbering.`;
     list.scrollTop = list.scrollHeight;
 
     const elo  = odLsGet('csa_elo_current') || 'unknown';
-    const tone = odLsGet('pf_coach_tone') || 'Direct';
+    const tone = ({encouraging:'Encouraging', direct:'Direct', 'tough-love':'Tough love'})[odLsGet('pf_coach_tone')] || 'Direct';
     const system = `You are a chess coach having a conversation with a student about the ${odCurrentOpening.name}. The student is rated ${elo} and uses ${tone} style. Answer specifically about THIS opening, not generic chess advice. Keep responses concise — 2-4 sentences typically. Use concrete moves and squares.`;
 
     const history = odChatHistory.slice(-10).map(m =>
@@ -2926,7 +2926,7 @@ No other text, no header, no numbering.`;
         true);
 
       // Fetch explanation asynchronously
-      const tone = odLsGet('pf_coach_tone') || 'Direct';
+      const tone = ({encouraging:'Encouraging', direct:'Direct', 'tough-love':'Tough love'})[odLsGet('pf_coach_tone')] || 'Direct';
       const system = `You are a chess coach. The student is drilling the ${odCurrentOpening.name} as ${odUserSide}. In exactly one sentence, explain why ${topSan} is better than ${userSan} at this position. Be specific and educational, not just "because it's more popular". Use ${tone} tone.`;
       const user = `FEN before move: ${fenBefore}. Student played ${userSan}. Theoretical move: ${topSan}.`;
       const explain = await odClaudeCall(system, user, 120);
@@ -3744,7 +3744,7 @@ No other text, no header, no numbering.`;
     const rawName    = lsGet('pf_display_name') || lsGet('csa_chesscom_username') || 'there';
     const firstName  = rawName.split(' ')[0];
     const elo        = lsGet('csa_elo_current') || '1000';
-    const tone       = lsGet('pf_coach_tone') || 'Encouraging';
+    const tone       = ({encouraging:'Encouraging', direct:'Direct', 'tough-love':'Tough love'})[lsGet('pf_coach_tone')] || 'Direct';
     const resultLabel = result === 'correct' ? 'CORRECT'
       : result === 'wrong_close' ? 'WRONG_CLOSE' : 'WRONG_SIGNIFICANT';
 
@@ -4003,7 +4003,7 @@ Respond with ONLY the feedback text. No JSON, no markdown.`;
   // ── AI position generation ─────────────────────────────────────────────
   async function wdGeneratePosition(weakness, simple) {
     const elo  = lsGet('csa_elo_current') || '1000';
-    const tone = lsGet('pf_coach_tone')   || 'Encouraging';
+    const tone = ({encouraging:'Encouraging', direct:'Direct', 'tough-love':'Tough love'})[lsGet('pf_coach_tone')] || 'Direct';
 
     // Note: bestMove/eval supplied here are only used to seed the position;
     // they are overwritten by Stockfish ground truth (wdGroundPosition) before

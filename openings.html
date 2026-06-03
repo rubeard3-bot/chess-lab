@@ -559,11 +559,6 @@
     </button>
     <a href="openings.html" class="nav-item nav-item-active"><span class="nav-item-icon">📖</span><span>Opening Explorer</span></a>
   </nav>
-  <div class="nav-drawer-footer">
-    <button class="nav-item nav-item-btn" id="change-api-key-link">
-      <span class="nav-item-icon">⚙</span><span>Settings / API Key</span>
-    </button>
-  </div>
 </div>
 
 <div id="az-toast" class="az-toast"></div>
@@ -829,9 +824,6 @@
 <script>
   document.addEventListener('DOMContentLoaded', function () {
     initNav('openings');
-    /* Settings link on this page → go home */
-    const sl = document.getElementById('change-api-key-link');
-    if (sl) sl.addEventListener('click', function () { window.location.href = 'index.html'; });
   });
 </script>
 <script>

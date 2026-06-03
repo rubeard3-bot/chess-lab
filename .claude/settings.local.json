@@ -17,7 +17,9 @@
       "PowerShell(Get-ChildItem -Recurse \"C:\\\\Users\\\\russe\\\\my-projects\\\\chess_analyzer\" | Where-Object { !$_.PSIsContainer } | Select-Object FullName, Length | Sort-Object FullName | Format-Table -AutoSize)",
       "Bash(python3 *)",
       "Bash(powershell *)",
-      "PowerShell(git *)"
+      "PowerShell(git *)",
+      "Bash(mkdir -p legacy)",
+      "Bash(git mv *)"
     ]
   }
 }

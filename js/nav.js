@@ -72,15 +72,6 @@
     if (openingsBtn) openingsBtn.addEventListener('click', () => {
       window.location.href = 'openings.html';
     });
-
-    // Settings — non-analyzer pages go to home
-    const settingsLink = document.getElementById('change-api-key-link');
-    if (settingsLink && currentPage !== 'analyzer') {
-      settingsLink.addEventListener('click', () => {
-        closeDrawer();
-        window.location.href = 'index.html';
-      });
-    }
   }
 
   window.initNav = initNav;
