@@ -4312,6 +4312,18 @@ body.analyzer-page #app {
 }
 .az-nav-controls .nav-btn:hover { background: #1a2840; border-color: #2e4a6a; }
 .az-nav-controls .nav-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+/* Best-move arrow toggle — labeled, slightly wider than icon-only siblings */
+.az-nav-controls #btn-arrow-toggle { flex: 1.9; white-space: nowrap; }
+/* Active (on) state uses the arrow's green */
+.az-nav-controls .nav-btn.nav-btn-active {
+  background: rgba(0, 210, 90, 0.16);
+  border-color: rgba(0, 210, 90, 0.55);
+  color: #46e08a;
+}
+.az-nav-controls .nav-btn.nav-btn-active:hover {
+  background: rgba(0, 210, 90, 0.26);
+  border-color: rgba(0, 210, 90, 0.7);
+}
 
 /* Move list in left col */
 .az-move-list-wrap {

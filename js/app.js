@@ -6,6 +6,10 @@ const App = (() => {
 
   let playerColor = 'white';
 
+  /* Best-move arrow visibility (analyzer-only; default ON). Persisted across
+     sessions. The practice board has its own arrow logic and is unaffected. */
+  let showBestMoveArrow = localStorage.getItem('pf_show_best_move_arrow') !== 'false';
+
   /* ---- mass import state ---- */
   let massImportQueue             = null;
   let massImportIndex             = 0;
@@ -41,6 +45,7 @@ const App = (() => {
     setupDropzone();
     setupColorToggle();
     setupNavigation();
+    setupArrowToggle();
     setupKeyboard();
     setupSidebar();
     setupErrorDismiss();
@@ -820,6 +825,23 @@ const App = (() => {
     document.getElementById('btn-flip' ).addEventListener('click', () => { Board.flip(); navigateToPly(state.currentPly); });
   }
 
+  function setupArrowToggle() {
+    const btn = document.getElementById('btn-arrow-toggle');
+    if (!btn) return;
+    const apply = () => {
+      btn.classList.toggle('nav-btn-active', showBestMoveArrow);
+      btn.setAttribute('aria-pressed', String(showBestMoveArrow));
+      btn.title = showBestMoveArrow ? 'Best-move arrow: on' : 'Best-move arrow: off';
+    };
+    apply();
+    btn.addEventListener('click', () => {
+      showBestMoveArrow = !showBestMoveArrow;
+      localStorage.setItem('pf_show_best_move_arrow', showBestMoveArrow ? 'true' : 'false');
+      apply();
+      navigateToPly(state.currentPly); // re-render board with/without the arrow
+    });
+  }
+
   function setupKeyboard() {
     document.addEventListener('keydown', e => {
       const tag = document.activeElement?.tagName;
@@ -847,7 +869,14 @@ const App = (() => {
     }
 
     const moveData = state.analysisData?.moves?.find(m => m.ply === clamped);
-    if (moveData) { bFrom = moveData.bestMoveFrom || null; bTo = moveData.bestMoveTo || null; }
+
+    // Best-move arrow lags one ply: at ply N show the best move FOR the prior
+    // position (ply N-1), so the suggestion only appears AFTER the user has
+    // clicked past that move (no spoiler). Eval still uses the current ply.
+    if (showBestMoveArrow) {
+      const arrowData = state.analysisData?.moves?.find(m => m.ply === clamped - 1);
+      if (arrowData) { bFrom = arrowData.bestMoveFrom || null; bTo = arrowData.bestMoveTo || null; }
+    }
 
     Board.setPosition(chess, fromSq, toSq, bFrom, bTo);
     updateEvalDisplay(moveData, clamped);

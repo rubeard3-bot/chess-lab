@@ -8,6 +8,12 @@
 ## Last updated
 2026-06-03
 
+## Analyzer — best-move arrow timing fix + toggle (2026-06-03)
+Analyzer only; **practice board untouched** (`practice.html` loads its own `js/practice-board.js`, not `board.js`/`app.js`). Two problems addressed in the Game Review board:
+- **Arrow now lags one ply (no spoiler).** Previously at ply N the arrow used `moveData(ply=N).bestMoveFrom/To`, which is the best move *to play from the current position* — i.e. it showed the answer before the user advanced. Now `navigateToPly` (js/app.js ~853) looks the arrow up from `moveData(ply = clamped − 1)`, so at ply N it shows the best move for the *prior* position — appearing only after the user clicks past that move. Bonus: it now agrees with the existing `bestMoveSan` coaching text (which was already `before.bestMoveSan` = prior position). Edge case: no arrow on ply 1 (no ply-0 entry). **Eval bar/number unchanged** — still `updateEvalDisplay(moveData, clamped)` at the current ply.
+- **Toggle added.** New `#btn-arrow-toggle` button in `.az-nav-controls` (analyzer.html). State in `showBestMoveArrow` (js/app.js), persisted to `localStorage['pf_show_best_move_arrow']`, **default ON** (anything but the string `'false'` = on). OFF → no arrow at all (eval unaffected). `setupArrowToggle()` toggles `.nav-btn-active` (green, matches arrow color — CSS in styles.css after `.az-nav-controls .nav-btn:disabled`) and re-renders via `navigateToPly(state.currentPly)`.
+- **Untouched:** `board.js` (only the squares passed to `setPosition` changed), eval logic, Stockfish/analysis, nav/drawer, `storage.js`, `memory.js`, and the practice board's own arrow logic.
+
 ## Weakness Drill — Stockfish-grounding fix (2026-06-03)
 Fixed M12 (AUDIT_REPORT.md) plus a coach narrative-hallucination bug (coach stated false board facts, e.g. "Bb3 targets the queen on d5" when no such geometry existed). **Only `js/practice-board.js` (Weakness Drill IIFE, ~3194–4360) was touched.** Principle enforced: *Stockfish owns every chess fact; Claude only narrates facts it is handed.*
 - **Stockfish now owns best move + eval.** New `wdGroundPosition(pos)` runs the existing WD eval worker (`wdEvalPosition`, now returns `{cp, bestUci}`) on the FEN, converts the engine's `bestUci`→SAN via chess.js, and **overwrites `pos.bestMove` + `pos.evalBeforeMove`** for BOTH generated and real positions. Kicked off in `wdLoadPosition` (`pos._groundPromise`) and awaited at the top of `wdProcessMove` before judging. Engine-failure fallback keeps the seeded values so the drill still runs offline.

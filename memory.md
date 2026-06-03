@@ -163,6 +163,9 @@ Performance and control. Arrow drawing, highlight overlays, eval bar — trivial
 ### Why inline CSS in practice.html and openings.html
 Built feature-by-feature with self-contained CSS. Avoids naming collisions with shared styles.css. Each page is independently portable. Tradeoff: no CSS reuse, but they share little with each other.
 
+### Why the analyzer best-move arrow lags one ply (and is analyzer-only)
+In Game Review the arrow used to show the best move *for the current position* — i.e. the answer before the user had played through the move (a spoiler). The arrow now lags one ply: at ply N it shows the best move for the prior position (`navigateToPly` looks up `moveData(ply = N − 1).bestMoveFrom/To`), so it appears only after the user advances past the move. The **eval bar/number are deliberately NOT shifted** — they stay on the current ply. Toggle `#btn-arrow-toggle` persists in `localStorage['pf_show_best_move_arrow']` (default ON; only `'false'` = off). This timing is **analyzer-only**: the practice board loads its own `js/practice-board.js` (not `board.js`/`app.js`) and keeps its own best-move/arrow logic — never apply the lag there.
+
 ---
 
 ## Naming / branding
