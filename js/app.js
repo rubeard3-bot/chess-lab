@@ -60,6 +60,19 @@ const App = (() => {
       fens:         state.fens
     }));
 
+    // Interactive "what if" exploration (analyzer-only, temporary sidelines).
+    if (typeof Explore !== 'undefined') {
+      Explore.init({
+        getState:       () => state,
+        getCurrentFen:  () => state.fens[state.currentPly] || state.fens[0] || new Chess().fen(),
+        getRealMoveAt:  (ply) => state.verboseHistory[ply] || null,
+        getPlayerColor: () => playerColor,
+        getShowArrow:   () => showBestMoveArrow,
+        navigateToPly,
+        renderMaterial: (chess) => UI.renderMaterialBars(chess, playerColor)
+      });
+    }
+
     let gameId = getGameIdFromUrl();
     if (!gameId) {
       const reviewKey = sessionStorage.getItem('csa_review_game_id');
@@ -854,6 +867,13 @@ const App = (() => {
   }
 
   function navigateToPly(ply) {
+    // Any real-game navigation exits exploration and discards the sideline.
+    // While exploring, the FIRST nav snaps back to the exact branch position
+    // (handleRealNav returns it); the requested target applies on the next press.
+    if (typeof Explore !== 'undefined' && Explore.handleRealNav) {
+      const redirect = Explore.handleRealNav(ply);
+      if (typeof redirect === 'number') ply = redirect;
+    }
     if (state.totalPlies === 0) return;
     const clamped = Math.max(0, Math.min(state.totalPlies, ply));
     state.currentPly = clamped;

@@ -33,6 +33,12 @@ const Board = (() => {
   let lastFrom = null, lastTo = null;
   let bestFrom = null, bestTo = null;
 
+  /* Interactive overlay state (analyzer exploration only; all null/empty during
+     normal game review so the board renders exactly as before). */
+  let selSq = null;          // selected source square (highlight)
+  let legalDests = [];        // legal target squares (dots / capture rings)
+  let dragState = null;       // { key, fromSq, x, y } — floating dragged piece
+
   function loadPieceImages() {
     const promises = Object.entries(PIECE_URLS).map(([key, url]) =>
       new Promise(resolve => {
@@ -104,9 +110,66 @@ const Board = (() => {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     drawBoard();
     drawHighlights();
+    drawSelection();
+    drawDots();
     drawPieces();
     if (bestFrom && bestTo) drawArrow(bestFrom, bestTo);
+    drawDragPiece();
     drawCoordinates();
+  }
+
+  /* ── Interactive overlays (exploration) ───────────────────────── */
+
+  function drawSelection() {
+    if (!selSq) return;
+    const { col, row } = squareToColRow(selSq);
+    ctx.fillStyle = 'rgba(80, 160, 255, 0.42)';
+    ctx.fillRect(col * sqSize, row * sqSize, sqSize, sqSize);
+  }
+
+  function drawDots() {
+    if (!legalDests || !legalDests.length) return;
+    legalDests.forEach(sq => {
+      const { col, row } = squareToColRow(sq);
+      const cx = col * sqSize + sqSize / 2;
+      const cy = row * sqSize + sqSize / 2;
+      const occupied = positionChess && positionChess.get(sq);
+      ctx.save();
+      if (occupied) {
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.30)';
+        ctx.lineWidth   = sqSize * 0.09;
+        ctx.beginPath();
+        ctx.arc(cx, cy, sqSize * 0.46, 0, Math.PI * 2);
+        ctx.stroke();
+      } else {
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.22)';
+        ctx.beginPath();
+        ctx.arc(cx, cy, sqSize * 0.155, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+    });
+  }
+
+  function drawDragPiece() {
+    if (!dragState) return;
+    const { key, x, y } = dragState;
+    const img = pieceImages[key];
+    const half = sqSize / 2;
+    if (img) {
+      ctx.drawImage(img, x - half, y - half, sqSize, sqSize);
+    } else {
+      const sym = PIECES[key];
+      if (!sym) return;
+      const fs = Math.floor(sqSize * 0.52);
+      ctx.save();
+      ctx.font         = `${fs}px "Segoe UI Emoji","Apple Color Emoji",serif`;
+      ctx.textAlign    = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle    = key[0] === 'w' ? '#f8f1de' : '#18181f';
+      ctx.fillText(sym, x, y);
+      ctx.restore();
+    }
   }
 
   function drawBoard() {
@@ -136,6 +199,7 @@ const Board = (() => {
         const file = String.fromCharCode(97 + ci);
         const rank = (8 - ri).toString();
         const sq   = file + rank;
+        if (dragState && sq === dragState.fromSq) return; // lifted piece drawn separately
         const { col, row } = squareToColRow(sq);
         const key  = piece.color + piece.type.toUpperCase();
         const x    = col * sqSize;
@@ -237,5 +301,48 @@ const Board = (() => {
     }
   }
 
-  return { init, setPosition, flip, isFlipped, resizeAndRender };
+  /* ── Pointer → square mapping (flip-aware) ────────────────────── */
+  function pixelToSquare(clientX, clientY) {
+    if (!canvas || !sqSize) return null;
+    const rect = canvas.getBoundingClientRect();
+    if (!rect.width) return null;
+    const x = (clientX - rect.left) * (canvas.width  / rect.width);
+    const y = (clientY - rect.top)  * (canvas.height / rect.height);
+    const col = Math.floor(x / sqSize);
+    const row = Math.floor(y / sqSize);
+    if (col < 0 || col > 7 || row < 0 || row > 7) return null;
+    const file = flipped ? 7 - col : col;
+    const rank = flipped ? row     : 7 - row;
+    return String.fromCharCode(97 + file) + (rank + 1);
+  }
+
+  function setSelection(sq, dests) {
+    selSq = sq || null;
+    legalDests = dests || [];
+    render();
+  }
+
+  // d = { key, fromSq, clientX, clientY } | null
+  function setDrag(d) {
+    if (!d) { dragState = null; render(); return; }
+    const rect = canvas.getBoundingClientRect();
+    const x = (d.clientX - rect.left) * (canvas.width  / rect.width);
+    const y = (d.clientY - rect.top)  * (canvas.height / rect.height);
+    dragState = { key: d.key, fromSq: d.fromSq, x, y };
+    render();
+  }
+
+  function clearInteractive() {
+    selSq = null;
+    legalDests = [];
+    dragState = null;
+    render();
+  }
+
+  function pieceUrl(key) { return PIECE_URLS[key] || ''; }
+
+  return {
+    init, setPosition, flip, isFlipped, resizeAndRender,
+    pixelToSquare, setSelection, setDrag, clearInteractive, pieceUrl
+  };
 })();

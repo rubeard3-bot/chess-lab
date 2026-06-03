@@ -137,6 +137,23 @@
           </div>
           <div class="canvas-wrap" id="canvas-wrap">
             <canvas id="chess-board"></canvas>
+
+            <!-- Exploration badge + line readout + back button (overlay) -->
+            <div id="explore-badge" class="explore-badge hidden">
+              <span class="explore-badge-dot"></span>
+              <span class="explore-badge-text">Exploring — not the actual game</span>
+              <span id="explore-line" class="explore-line"></span>
+              <button id="btn-explore-undo" class="explore-undo-btn hidden">⤺ Undo</button>
+              <button id="btn-explore-back" class="explore-back-btn hidden">↩ Back to game</button>
+            </div>
+
+            <!-- Promotion picker (exploration only) -->
+            <div id="explore-promo-overlay" class="explore-promo-overlay hidden">
+              <div class="explore-promo-card">
+                <div class="explore-promo-label">Promote to</div>
+                <div id="explore-promo-options" class="explore-promo-options"></div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -398,5 +415,6 @@
   <script src="js/chesscom.js"></script>
   <script src="js/ui.js"></script>
   <script src="js/app.js"></script>
+  <script src="js/explore.js"></script>
 </body>
 </html>

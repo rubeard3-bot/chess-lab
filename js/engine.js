@@ -197,5 +197,104 @@ const Engine = (() => {
     return results;
   }
 
-  return { analyzeAllPositions };
+  /* ================================================================
+     LIVE SINGLE-POSITION EVALUATOR  (exploration / on-demand)
+     ----------------------------------------------------------------
+     Lazily spins up ONE persistent worker that reuses the same
+     js/stockfish.js engine as analyzeAllPositions(). The batch
+     analyzer terminates its own worker before game review begins,
+     so at most one Stockfish worker is ever live — this is the
+     analyzer's existing engine in an on-demand mode, NOT a second
+     engine. Used by js/explore.js for explored sideline positions.
+     ================================================================ */
+
+  const LIVE_DEPTH = 18;
+  let liveWorker  = null;
+  let liveReady   = null;   // Promise: resolves once uciok + readyok
+  let liveSeq     = 0;      // bumped per request; stale output is ignored
+  let liveHandler = null;
+
+  function ensureLiveWorker() {
+    if (liveWorker) return liveReady;
+    liveWorker = createWorker();
+    liveReady = (async () => {
+      liveWorker.postMessage('uci');
+      await waitFor(liveWorker, line => line === 'uciok');
+      liveWorker.postMessage('setoption name Hash value 64');
+      liveWorker.postMessage('isready');
+      await waitFor(liveWorker, line => line === 'readyok');
+    })();
+    return liveReady;
+  }
+
+  // Evaluate `fen` live, streaming results to onUpdate. Each call supersedes
+  // the previous one (stop + new search), so rapid position changes are safe.
+  async function evaluateLive(fen, onUpdate) {
+    const seq = ++liveSeq;
+    try {
+      await ensureLiveWorker();
+    } catch (_) { return; }
+    if (seq !== liveSeq) return;  // superseded while booting
+
+    if (liveHandler) { liveWorker.removeEventListener('message', liveHandler); liveHandler = null; }
+    liveWorker.postMessage('stop');
+
+    const sideToMove = (fen.split(' ')[1] === 'b') ? 'b' : 'w';
+    let evalCpWhite = 0, isMate = false, mateInWhite = 0, bestUci = null;
+
+    function emit(final) {
+      if (onUpdate) onUpdate({
+        evalPawns:   evalCpWhite / 100,
+        isMate,
+        mateIn:      mateInWhite,
+        bestMoveUci: bestUci,
+        final
+      });
+    }
+
+    liveHandler = function (e) {
+      if (seq !== liveSeq) return;  // a newer request started
+      const line = typeof e === 'string' ? e : (e.data || '');
+
+      if (line.startsWith('info') && line.includes('score')) {
+        const mateMatch = line.match(/\bscore mate (-?\d+)/);
+        const cpMatch   = line.match(/\bscore cp (-?\d+)/);
+        if (mateMatch) {
+          isMate      = true;
+          const mFromSide = parseInt(mateMatch[1], 10);
+          mateInWhite = sideToMove === 'b' ? -mFromSide : mFromSide;
+          evalCpWhite = mateInWhite > 0 ? 9900 : -9900;
+        } else if (cpMatch) {
+          isMate      = false;
+          const cp    = parseInt(cpMatch[1], 10);
+          evalCpWhite = sideToMove === 'b' ? -cp : cp;
+        }
+        const pvIdx = line.indexOf(' pv ');
+        if (pvIdx !== -1) {
+          const first = line.slice(pvIdx + 4).trim().split(/\s+/)[0];
+          if (first) bestUci = first;
+        }
+        emit(false);
+      } else if (line.startsWith('bestmove')) {
+        const bm = line.split(' ')[1];
+        if (bm && bm !== '(none)') bestUci = bm;
+        emit(true);
+      }
+    };
+
+    liveWorker.addEventListener('message', liveHandler);
+    liveWorker.postMessage('position fen ' + fen);
+    liveWorker.postMessage('go depth ' + LIVE_DEPTH);
+  }
+
+  // Stop any in-flight live search and ignore its pending output.
+  function stopLiveEval() {
+    liveSeq++;
+    if (liveWorker) {
+      if (liveHandler) { liveWorker.removeEventListener('message', liveHandler); liveHandler = null; }
+      liveWorker.postMessage('stop');
+    }
+  }
+
+  return { analyzeAllPositions, evaluateLive, stopLiveEval };
 })();

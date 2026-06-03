@@ -4292,6 +4292,119 @@ body.analyzer-page #app {
   min-width: 0;
 }
 
+/* ── Exploration mode (analyzer "what if" sideline) ───────────────── */
+/* Badge overlays the top of the board; pointer-events:none so dragging
+   pieces underneath still works — only the Back button is clickable. */
+.explore-badge {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px;
+  background: linear-gradient(180deg, rgba(13,19,33,0.94), rgba(13,19,33,0.0));
+  pointer-events: none;
+  z-index: 20;
+}
+.explore-badge-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: #fcd34d;
+  box-shadow: 0 0 6px #fcd34d;
+  flex-shrink: 0;
+}
+.explore-badge-text {
+  font-size: 11px;
+  font-weight: 700;
+  color: #fcd34d;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.explore-line {
+  flex: 1;
+  min-width: 0;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--az-text2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.explore-undo-btn {
+  pointer-events: auto;
+  flex-shrink: 0;
+  background: var(--az-base);
+  color: var(--az-text1);
+  border: 1px solid var(--az-border);
+  border-radius: 5px;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+}
+.explore-undo-btn:hover { background: #1a2840; border-color: #2e4a6a; }
+.explore-back-btn {
+  pointer-events: auto;
+  flex-shrink: 0;
+  background: var(--az-blue);
+  color: #fff;
+  border: none;
+  border-radius: 5px;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.explore-back-btn:hover { background: #2f6fe0; }
+
+/* Promotion picker (exploration only) */
+.explore-promo-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.72);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+}
+.explore-promo-card {
+  background: var(--az-surface);
+  border: 1px solid var(--az-border);
+  border-radius: 10px;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+}
+.explore-promo-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--az-text2);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+.explore-promo-options { display: flex; gap: 8px; }
+.explore-promo-piece {
+  width: 64px; height: 64px;
+  border: 2px solid var(--az-border);
+  border-radius: 6px;
+  cursor: pointer;
+  background: var(--az-base);
+  overflow: hidden;
+  transition: border-color 0.12s, background 0.12s;
+}
+.explore-promo-piece:hover {
+  border-color: var(--az-blue);
+  background: rgba(59,130,246,0.18);
+}
+.explore-promo-piece img { width: 100%; height: 100%; display: block; }
+
 /* Nav controls */
 .az-nav-controls {
   display: flex;
