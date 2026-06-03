@@ -4306,6 +4306,7 @@ body.analyzer-page #app {
   pointer-events: none;
   z-index: 20;
 }
+.explore-badge.hidden { display: none; }
 .explore-badge-dot {
   width: 7px; height: 7px;
   border-radius: 50%;
@@ -4346,6 +4347,7 @@ body.analyzer-page #app {
   transition: background 0.12s, border-color 0.12s;
 }
 .explore-undo-btn:hover { background: #1a2840; border-color: #2e4a6a; }
+.explore-undo-btn.hidden { display: none; }
 .explore-back-btn {
   pointer-events: auto;
   flex-shrink: 0;
@@ -4360,6 +4362,7 @@ body.analyzer-page #app {
   transition: background 0.12s;
 }
 .explore-back-btn:hover { background: #2f6fe0; }
+.explore-back-btn.hidden { display: none; }
 
 /* Promotion picker (exploration only) */
 .explore-promo-overlay {
@@ -4371,6 +4374,7 @@ body.analyzer-page #app {
   justify-content: center;
   z-index: 50;
 }
+.explore-promo-overlay.hidden { display: none; }
 .explore-promo-card {
   background: var(--az-surface);
   border: 1px solid var(--az-border);
@@ -4817,6 +4821,7 @@ body.analyzer-page #app {
   gap: 14px;
   min-height: 0;
 }
+#az-report-content.hidden { display: none; }
 
 .az-report-placeholder {
   flex: 1;
@@ -8819,6 +8824,7 @@ body.pf-page {
 .ga-th-sort { cursor: pointer; user-select: none; transition: color var(--trans); }
 .ga-th-sort:hover { color: var(--az-text1); }
 .ga-sort-arrow { margin-left: 4px; font-size: 9px; color: var(--az-blue); }
+.ga-sort.hidden { display: none; }
 .ga-table td {
   padding: 11px 14px;
   border-bottom: 1px solid rgba(255,255,255,0.04);
