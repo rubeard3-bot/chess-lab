@@ -10,7 +10,8 @@
     archive:         'archive.html',
     practice:        'practice.html',
     import:          'import.html',
-    recommendations: 'recommendations.html'
+    recommendations: 'recommendations.html',
+    openings:        'openings.html'
   };
 
   let _toastTimer;

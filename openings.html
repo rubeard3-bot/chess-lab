@@ -16,46 +16,14 @@
     .open-container {
       max-width: 1260px;
       margin: 0 auto;
-      padding: 0 20px 48px;
+      padding: 14px 20px 48px;
       display: flex;
       flex-direction: column;
       gap: 14px;
     }
 
-    /* ── Header ──────────────────────────────────────────────────────── */
-    .open-header {
-      display: flex;
-      align-items: center;
-      gap: 14px;
-      padding: 16px 0 10px;
-      border-bottom: 1px solid var(--border);
-    }
-    .open-back-btn {
-      display: flex;
-      align-items: center;
-      gap: 5px;
-      padding: 6px 12px;
-      border-radius: 6px;
-      border: 1px solid var(--border);
-      background: var(--card);
-      color: var(--text2);
-      font-size: 13px;
-      font-weight: 600;
-      text-decoration: none;
-      transition: border-color 0.15s, color 0.15s;
-      white-space: nowrap;
-    }
-    .open-back-btn:hover { border-color: rgba(255,255,255,0.2); color: var(--text); text-decoration: none; }
-    .open-title-group {
-      flex: 1;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 10px;
-    }
-    .open-icon { font-size: 24px; line-height: 1; }
-    .open-title { font-size: 20px; font-weight: 800; color: var(--text); }
-    .open-header-spacer { min-width: 80px; }
+    /* ── Topbar (shared az-topbar; sticky so it stays pinned while the page scrolls) ── */
+    #az-topbar { position: sticky; top: 0; z-index: 100; }
 
     /* ── Search ──────────────────────────────────────────────────────── */
     #search-wrap {
@@ -601,18 +569,19 @@
 <div id="az-toast" class="az-toast"></div>
 <div id="practice-toast" class="ob-toast" role="status" aria-live="polite"></div>
 
-<div class="open-container">
-
-  <!-- Header -->
-  <div class="open-header">
-    <button id="hamburger-btn" class="hamburger-btn" aria-label="Open menu">☰</button>
-    <a href="index.html" class="open-back-btn">← Home</a>
-    <div class="open-title-group">
-      <span class="open-icon">📖</span>
-      <span class="open-title">Opening Explorer</span>
-    </div>
-    <div class="open-header-spacer"></div>
+<!-- Topbar (analyzer pattern) -->
+<header id="az-topbar" class="az-topbar">
+  <div class="az-topbar-left">
+    <button id="hamburger-btn" class="az-hamburger" aria-label="Open menu">
+      <span></span><span></span><span></span>
+    </button>
+    <div class="az-logo">Chess Lab<span class="az-logo-dot"></span></div>
+    <div class="az-breadcrumb">Dashboard <span class="az-breadcrumb-sep">›</span> Opening Explorer</div>
   </div>
+  <div class="az-topbar-right"></div>
+</header>
+
+<div class="open-container">
 
   <!-- Search -->
   <div id="search-wrap">
