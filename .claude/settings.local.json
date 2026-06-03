@@ -19,7 +19,12 @@
       "Bash(powershell *)",
       "PowerShell(git *)",
       "Bash(mkdir -p legacy)",
-      "Bash(git mv *)"
+      "Bash(git mv *)",
+      "Bash(claude --version)",
+      "Bash(where python *)",
+      "Bash(py --version)",
+      "PowerShell(claude *)",
+      "WebFetch(domain:docs.claude.com)"
     ]
   }
 }

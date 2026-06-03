@@ -49,11 +49,17 @@ const Recommendations = (() => {
       return null;
     }
     window._recsInFlight = true;
+    // H5: once we know games exist, memory must update on EVERY exit path
+    // (success, server error, or thrown exception) — new games are already in
+    // csa_game_* and memory is the right place to record them. Fired once from
+    // the finally block below so a failed rec call never skips it.
+    let shouldUpdateMemory = false;
     try {
       let games = Storage.loadAllGames();
       const totalGameCount = games.length;
       if (window.CHESS_LAB_DEBUG) console.log('[Recommendations] Starting generation, games found:', totalGameCount);
       if (totalGameCount === 0) return null;
+      shouldUpdateMemory = true;
 
       games = games.sort((a, b) => (b.savedAt || '').localeCompare(a.savedAt || '')).slice(0, 10);
 
@@ -90,8 +96,18 @@ const Recommendations = (() => {
         generatedAt: new Date().toISOString()
       }));
 
-      // Update coaching memory — never throws; failures surface in health + toast
-      if (window.ChessLabMemory && typeof window.ChessLabMemory.update === 'function') {
+      _notify('Recommendations ready!');
+      return merged;
+
+    } catch (err) {
+      console.error('[Recommendations] Fatal error:', err.message, err.stack);
+      throw err;
+    } finally {
+      // H5: update coaching memory regardless of whether the rec call succeeded,
+      // exactly once per generation. Memory's own update logic enumerates games
+      // and no-ops when nothing is new, so this is safe on the failure path too.
+      // It never throws; failures surface via memory's health/audit + toast.
+      if (shouldUpdateMemory && window.ChessLabMemory && typeof window.ChessLabMemory.update === 'function') {
         try {
           window.ChessLabMemory.update('manual_regenerate')
             .then(function (res) {
@@ -106,14 +122,6 @@ const Recommendations = (() => {
           console.warn('[Recommendations] Memory update call failed synchronously:', e && e.message);
         }
       }
-
-      _notify('Recommendations ready!');
-      return merged;
-
-    } catch (err) {
-      console.error('[Recommendations] Fatal error:', err.message, err.stack);
-      throw err;
-    } finally {
       window._recsInFlight = false;
     }
   }

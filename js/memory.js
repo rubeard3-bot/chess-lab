@@ -1690,13 +1690,18 @@
       lsRemove(KEY.history);
       lsRemove(KEY.audit);
       lsRemove(KEY.autoBackupMem);
+      // M10: clear the recs auto-backup too, so the auto-backup pair is removed
+      // symmetrically with autoBackupMem. Otherwise restoring from auto-backup
+      // would rehydrate csa_recommendations from a snapshot that no longer
+      // matches the now-empty memory. Manual backups are intentionally kept.
+      lsRemove(KEY.autoBackupRecs);
       writeHealth(emptyHealth());
       appendAudit({
         timestamp: nowISO(), trigger: 'reset',
         bucketsUpdated: [], gamesAdded: [], gamesAgedOut: [],
         weaknessesAdded: [], weaknessesRemoved: [], weaknessesUpdated: [],
         validationResult: 'passed', rejectionReason: null,
-        diffSummary: 'Memory reset (csa_recommendations and csa_game_* preserved)',
+        diffSummary: 'Memory reset (auto-backups cleared; manual backups, csa_recommendations, and csa_game_* preserved)',
         claudeTokensUsed: 0, autoBackupCreated: false, skippedGames: []
       });
       return { success: true };
