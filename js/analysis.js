@@ -118,31 +118,87 @@ const Analysis = (() => {
   }
 
   /* ------------------------------------------------------------------ */
-  /*  STEP 4 — Calculate accuracy (Lichess formula)                       */
+  /*  STEP 4 — Whole-game accuracy (faithful Lichess aggregation)         */
   /* ------------------------------------------------------------------ */
+  //
+  // Per-move accuracy uses Lichess's EXACT curve: the win% sigmoid above
+  // plus the accuracy curve below, INCLUDING the "+1" uncertainty bonus
+  // (so a move that does not lose win% scores exactly 100). The whole-game
+  // number is NOT a simple mean — Lichess blends two aggregates of the
+  // per-move accuracies and averages them, per side:
+  //   1. a volatility-WEIGHTED mean — each move weighted by the population
+  //      standard deviation of win% over a sliding window around it
+  //      (windowSize = clamp(floor(nPlies/10), 2, 8); weight clamped to
+  //      [0.5, 12]). The start is padded with (windowSize - 2) copies of the
+  //      first window so there is exactly one weight per move.
+  //   2. a HARMONIC mean of the per-move accuracies, using Lichess's
+  //      max(1, acc) floor (which also keeps the reciprocal divide-by-zero
+  //      safe).
+  //   gameAccuracy = round( (weightedMean + harmonicMean) / 2 ).
+  // Weights are computed over the WHOLE game's win% sequence; the two means
+  // are taken over the player's moves only (per-side, as before).
+  // Ref: lila modules/analyse AccuracyPercent.scala + scalalib Maths.scala.
 
   function calculateAccuracy(classifiedMoves, playerColor) {
-    const playerMoves = classifiedMoves.filter(m => m.color === playerColor);
-    if (!playerMoves.length) return 0;
+    if (!classifiedMoves || !classifiedMoves.length) return 0;
 
-    let total = 0;
-    playerMoves.forEach(m => {
-      // Recompute win-percent loss from the raw eval snapshots stored on each move.
-      // This avoids relying on the pre-computed winPercentageLoss which may be stale or zero.
+    // Win% (white's perspective) for EVERY position: index 0 = before move 1,
+    // index k = after move k. Reconstructed from the per-move eval snapshots
+    // (move k's evalBefore === move k-1's eval), so no extra data is needed.
+    const winPercents = [ winPct((classifiedMoves[0].evalBefore ?? 0) * 100) ];
+    for (let i = 0; i < classifiedMoves.length; i++) {
+      winPercents.push(winPct((classifiedMoves[i].eval ?? 0) * 100));
+    }
+    const nPlies = classifiedMoves.length;
+
+    // Window size = clamp(floor(nPlies / 10), 2, 8).
+    const windowSize = Math.max(2, Math.min(8, Math.floor(nPlies / 10)));
+
+    // One volatility weight per move = clamped POPULATION std-dev of win% over
+    // a sliding window, with the start padded by (windowSize - 2) copies of the
+    // first window so that weights.length === nPlies (aligned to each move).
+    const padCount = Math.max(0, Math.min(windowSize, winPercents.length) - 2);
+    const windows  = [];
+    const firstWin = winPercents.slice(0, windowSize);
+    for (let p = 0; p < padCount; p++) windows.push(firstWin);
+    for (let s = 0; s + windowSize <= winPercents.length; s++) {
+      windows.push(winPercents.slice(s, s + windowSize));
+    }
+    const weights = windows.map(w => {
+      const mean = w.reduce((a, b) => a + b, 0) / w.length;
+      const sd   = Math.sqrt(w.reduce((a, b) => a + (b - mean) * (b - mean), 0) / w.length);
+      return Math.max(0.5, Math.min(12, sd));   // squeeze(0.5, 12)
+    });
+
+    // Player's per-move accuracies (Lichess curve, +1 bonus) + aligned weights.
+    const accs  = [];
+    const pairs = [];   // [accuracy, weight]
+    for (let i = 0; i < nPlies; i++) {
+      const m = classifiedMoves[i];
+      if (m.color !== playerColor) continue;
       const wpBefore = winPct((m.evalBefore ?? 0) * 100);
       const wpAfter  = winPct((m.eval        ?? 0) * 100);
       const wpl = m.color === 'white'
         ? Math.max(0, wpBefore - wpAfter)
         : Math.max(0, wpAfter  - wpBefore);
+      const acc = Math.max(0, Math.min(100, 103.1668 * Math.exp(-0.04354 * wpl) - 3.1669 + 1));
+      accs.push(acc);
+      pairs.push([acc, (weights[i] != null ? weights[i] : 1)]);
+    }
+    if (!accs.length) return 0;
 
-      const acc     = 103.1668 * Math.exp(-0.04354 * wpl) - 3.1669;
-      const clamped = Math.max(0, Math.min(100, acc));
+    // Volatility-weighted mean: Σ(acc·w) / Σw  (weights are clamped ≥ 0.5, so Σw > 0).
+    let vw = 0, ws = 0;
+    pairs.forEach(p => { vw += p[0] * p[1]; ws += p[1]; });
+    const weightedMean = ws > 0 ? (vw / ws) : (accs.reduce((a, b) => a + b, 0) / accs.length);
 
-      total += clamped;
-    });
+    // Harmonic mean with Lichess's max(1, acc) floor (divide-by-zero safe).
+    let recip = 0;
+    accs.forEach(v => { recip += 1 / Math.max(1, v); });
+    const harmonicMean = accs.length / recip;
 
-    const avg = Math.round(total / playerMoves.length);
-    return avg;
+    // Final game accuracy = average of the weighted and harmonic means.
+    return Math.round((weightedMean + harmonicMean) / 2);
   }
 
   /* ------------------------------------------------------------------ */

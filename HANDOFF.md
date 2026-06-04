@@ -8,6 +8,43 @@
 ## Last updated
 2026-06-04
 
+## Accuracy aggregation — match Lichess (weighted + harmonic blend) (2026-06-04)
+**Surgical change to `calculateAccuracy` in `js/analysis.js` only.** No other code touched
+(no `winPct`, no `classifyMoves`/thresholds, no `memory.js`/`storage.js`, no UI/practice/server,
+no engine/depth). Preceded by ACCURACY_INVESTIGATION.md (read-only diagnosis).
+- **Problem:** per-move accuracy already used Lichess's exact curve, but the whole-game number was a
+  **simple arithmetic mean** ([js/analysis.js:144](js/analysis.js#L144) old), whereas Lichess blends a
+  **volatility-weighted mean** and a **harmonic mean**, per side. So app accuracy read higher than
+  Lichess (esp. games with a few bad moves among many good ones).
+- **Confirmed Lichess's exact algorithm from source** (not approximated): lila
+  `modules/analyse/.../AccuracyPercent.scala` `gameAccuracy` + scalalib `Maths.scala`.
+  Key facts pulled verbatim: `windowSize = clamp(floor(nPlies/10), 2, 8)`; weight per move =
+  **population** std-dev (÷n) of win% over a sliding window, **clamped [0.5, 12]**; start padded with
+  `(windowSize − 2)` copies of the first window so #weights == nPlies; `weightedMean = Σ(acc·w)/Σw`;
+  `harmonicMean = n / Σ(1/max(1,acc))` (the **max(1,·) floor** is what makes it divide-by-zero safe);
+  game accuracy = `round((weightedMean + harmonicMean)/2)`.
+- **Per-move curve:** user approved adding Lichess's **`+1` uncertainty bonus** to the per-move curve
+  *inside* `calculateAccuracy` for true parity (a move that doesn't lose win% now scores exactly 100).
+  Constants `103.1668 / 0.04354 / 3.1669` unchanged; only `+ 1` added, inlined within the function.
+  (Note: the duplicate per-move curve in the **ui.js phase-accuracy bars** was deliberately NOT changed
+  — UI is out of scope; the phase sub-scores still use the no-`+1` simple-mean form. Flagged for a
+  future decision if we want those to match too.)
+- **Reconstruction trick:** the full game win% sequence (one value per position, both colors) is rebuilt
+  from `classifiedMoves` (move k's `evalBefore` === move k−1's `eval`), so **no signature change and no
+  extra retained state** — weights computed over the whole game; the two means taken over the player's
+  moves only (per-side preserved).
+- **Validated:** `node --check` passes. Worked example (one big white blunder, win% 59.1→18.7): move
+  acc = 15.6 ✓, that move's window std-dev → clamped weight 12.00 ✓, weightedMean 44.0 / harmonicMean
+  64.4 / blend **54**. "Steady inaccuracies" game → 85. Edge cases all finite, no NaN: 1-ply, 2-ply,
+  mate (±99 pawns), empty moves (→0), no-player-moves (→0), 0%-accuracy move (floor holds).
+- **Validation next step (for the user):** analyze a real game in the app, note the accuracy + side;
+  import the SAME PGN to Lichess (request computer analysis); compare the accuracy for the SAME side.
+  Should now be close (small residual from engine build/depth — SF18-lite depth 20 in-browser vs
+  Lichess server — and from Lichess seeding position 0 with a constant `Cp.initial` vs our real start
+  eval). A large remaining gap would indicate something still off.
+- **Next steps:** none required unless the Lichess comparison shows a large residual. Possible future
+  follow-up: align the ui.js phase-accuracy bars to the same `+1` curve (out of scope here).
+
 ## Repo cleanup — untrack .pyc bytecode, drop empty vestigial dirs, extend .gitignore (2026-06-04)
 Housekeeping only. **No application code, the Stop hook script, or CLAUDE.md were touched** — changes limited to git tracking, `.gitignore`, empty directories, and the two convention docs.
 - **Untracked committed Python bytecode** via `git rm --cached` (working files left in place; `.pyc` regenerate automatically): `.claude/hooks/__pycache__/verify_stop.cpython-314.pyc`, `legacy/__pycache__/analyzer_web.cpython-314.pyc`, `legacy/__pycache__/app.cpython-314.pyc`, `legacy/__pycache__/chess_db.cpython-314.pyc`. Verified afterward: `git ls-files | grep .pyc` → none. The hook source `.claude/hooks/verify_stop.py` is untouched and still on disk.
