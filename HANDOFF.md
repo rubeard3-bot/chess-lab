@@ -6,7 +6,15 @@
 ---
 
 ## Last updated
-2026-06-03
+2026-06-04
+
+## Docs restructure — CLAUDE.md is now the primary project doc (2026-06-04)
+Documentation-only change. **No application code touched** (no `js/`, no HTML, no `server/`, no `.claude/`). Restructured the project's durable docs around a single primary file.
+- **`CLAUDE.md` rebuilt as the primary project doc**, with this top-to-bottom structure: (1) **Conventions (MANDATORY — fire every turn)**, (2) Project Overview, (3) Tech Stack & Architecture, (4) Design System, (5) Memory System Rules (non-negotiable), (6) Current State, (7) Backlog / Next Steps. The mandatory Conventions are placed first so they're always in context: log every prompt to `COMMAND_LOG.md` with a timestamp each turn; ask clarifying questions *as they arise* (not batched) plus a final check; append a dated `HANDOFF.md` entry every turn; keep "Current State" under ~40k chars and prune to HANDOFF when it grows. The standing engineering guardrails (protected `memory.js`/`storage.js`, chess.js pinned at 0.10.3, `.hidden` must have a hiding rule, no build step) were carried into Conventions too.
+- **Folded `memory.md` into `CLAUDE.md`** — all durable context migrated: tech stack table, architecture diagram, key data structures (game storage, memory keys, classifications), the 6 memory design principles, weakness-drill grounding, 5 safeguard layers, bucket design (bullet <180 / blitz <600 / rapid ≥600, 25-game cap, 30/60/90-day decay), self-heal functions, Claude's role, the full "important decisions" log (single memory.js, /api/analyze reuse, overlay pattern, 3 parallel calls, serial coach queue, chess.js 0.10.3, localStorage-only, canvas board, inline CSS, arrow-lag), CSS prefix table, `--az-*` palette + button hierarchy, nav model, branding/rebrand, and the 5-step memory pace. **Verified against the actual code** — buckets (`TC_BULLET_MAX_SECONDS=180`/`TC_BLITZ_MAX_SECONDS=600`, memory.js:85-86), `ACTIVE_GAMES_CAP=25`, decay 1.0/0.5/0.25, `CLAUDE_TIMEOUT_MS=60000`, `MAX_GAMES=50` all match what memory.md claimed. **No discrepancies found.**
+- **`memory.md` reduced to a deprecated pointer** (not deleted — preserves git history and breaks no references). It now just points to CLAUDE.md (durable context), HANDOFF.md (session log), COMMAND_LOG.md (prompts), SETUP.md (run/deploy). Full prior content remains in git history.
+- **`COMMAND_LOG.md` created** with a header + this session's prompt logged (the logging convention now has a target).
+- **`HANDOFF.md` unchanged in purpose** — still the running dated log (this entry added per the new every-turn convention).
 
 ## Memory hardening — H5 + M10 fixed, M11 pending decision (2026-06-03)
 From AUDIT_REPORT.md. Two memory data-integrity fixes shipped; M11 investigated only (awaiting user decision).
