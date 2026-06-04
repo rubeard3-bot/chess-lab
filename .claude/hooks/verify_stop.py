@@ -21,6 +21,17 @@
 #                               bug class that froze the board twice.
 #   CHECK 3  scope-lock       - flags js/memory.js or js/storage.js appearing
 #                               in the change set ("protected file changed").
+#   CHECK 4  HANDOFF doc      - on a "substantive" turn (see below), warns if
+#                               HANDOFF.md was NOT updated this turn. Convention
+#                               1/3 from CLAUDE.md: substantive turns must append
+#                               a dated HANDOFF.md entry.
+#   CHECK 5  COMMAND_LOG doc  - on a substantive turn, warns if COMMAND_LOG.md
+#                               was NOT updated this turn (the prompt log).
+#
+# SUBSTANTIVE TURN: a turn in which any changed file (staged, unstaged, or
+# untracked) is under js/, or under css/, or under server/, or matches *.html.
+# CHECK 4 and CHECK 5 do not fire at all on non-substantive turns (e.g. a
+# docs-only or no-op turn).
 #
 # MODE: WARN-ONLY  (this is the important part)
 # ---------------------------------------------
@@ -56,6 +67,11 @@ PROTECTED = {"js/memory.js", "js/storage.js"}
 # Pages that the task notes already carry their own inline generic `.hidden`
 # rule, so any hidden element on them is considered covered up-front.
 SELF_COVERED_HTML = {"practice.html", "openings.html"}
+
+# Doc files that CLAUDE.md conventions require updating on a substantive turn.
+# Matched against the change set as repo-root-relative paths (exact case).
+HANDOFF_DOC = "HANDOFF.md"
+COMMAND_LOG_DOC = "COMMAND_LOG.md"
 
 
 def log(msg):
@@ -280,6 +296,48 @@ def check_protected(rel_files, findings):
 
 
 # --------------------------------------------------------------------------- #
+# Substantive-turn detection (gates CHECK 4 and CHECK 5)
+# --------------------------------------------------------------------------- #
+def is_substantive_turn(rel_files):
+    """
+    A turn is substantive if any changed file is under js/, under css/, under
+    server/, or is an *.html file. Uses the same change set the other checks do.
+    """
+    for rel in rel_files:
+        if rel.startswith("js/") or rel.startswith("css/") or rel.startswith("server/"):
+            return True
+        if rel.endswith(".html"):
+            return True
+    return False
+
+
+# --------------------------------------------------------------------------- #
+# CHECK 4 - HANDOFF.md updated on substantive turns
+# --------------------------------------------------------------------------- #
+def check_handoff(rel_files, substantive, findings):
+    if not substantive:
+        return
+    if HANDOFF_DOC not in rel_files:
+        findings.append(
+            "CHECK 4 (HANDOFF): code changed but HANDOFF.md was not "
+            "updated this turn."
+        )
+
+
+# --------------------------------------------------------------------------- #
+# CHECK 5 - COMMAND_LOG.md updated on substantive turns
+# --------------------------------------------------------------------------- #
+def check_command_log(rel_files, substantive, findings):
+    if not substantive:
+        return
+    if COMMAND_LOG_DOC not in rel_files:
+        findings.append(
+            "CHECK 5 (COMMAND_LOG): code changed but COMMAND_LOG.md was not "
+            "updated this turn."
+        )
+
+
+# --------------------------------------------------------------------------- #
 # main
 # --------------------------------------------------------------------------- #
 def main():
@@ -317,6 +375,9 @@ def main():
         check_js_syntax(root, rel_files, findings)
         check_hidden_css(root, rel_files, findings)
         check_protected(rel_files, findings)
+        substantive = is_substantive_turn(rel_files)
+        check_handoff(rel_files, substantive, findings)
+        check_command_log(rel_files, substantive, findings)
     except Exception as exc:
         # Never let a check crash the session.
         log(f"[stop-hook] internal error during checks (allow): {exc}")

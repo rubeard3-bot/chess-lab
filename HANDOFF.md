@@ -8,6 +8,15 @@
 ## Last updated
 2026-06-04
 
+## Stop hook — add CHECK 4 (HANDOFF) + CHECK 5 (COMMAND_LOG), warn-only (2026-06-04)
+Extended `.claude/hooks/verify_stop.py` with two new doc-convention checks. **Only the hook script changed** — no app code, no `settings.json`. Hook stays WARN-ONLY: every check (1–5) prints findings to stderr but the script always exits 0; the single `###<<< FLIP-TO-BLOCK >>>###` `sys.exit(0)` line is still the one place to flip to blocking later.
+- **Substantive-turn gate** (`is_substantive_turn`): a turn is substantive if any changed file (staged/unstaged/untracked, from the existing `changed_files` gather) is under `js/`, `css/`, or `server/`, or matches `*.html`. CHECK 4/5 do not fire on non-substantive turns.
+- **CHECK 4 (`check_handoff`)**: substantive turn but `HANDOFF.md` not in the change set → warns "code changed but HANDOFF.md was not updated this turn."
+- **CHECK 5 (`check_command_log`)**: same logic for `COMMAND_LOG.md`. Both match the exact repo filenames (`HANDOFF.md` / `COMMAND_LOG.md`).
+- Respects the `stop_hook_active` loop-guard (exits 0 immediately) and is fail-safe (any error → exit 0) exactly like the existing checks. Top-of-file comment block updated to document CHECK 4/5 and the substantive-turn definition.
+- **Tested** in a throwaway git repo, all exit 0: (a) substantive change with both docs updated → checks pass; (b) substantive change without docs → CHECK 4 + CHECK 5 warn; (c) docs-only/non-substantive turn → silent; (d) `stop_hook_active:true` → immediate allow.
+- **Next steps**: hook remains warn-only by design; flip to blocking only when the team wants it enforced. No follow-up required.
+
 ## Docs restructure — CLAUDE.md is now the primary project doc (2026-06-04)
 Documentation-only change. **No application code touched** (no `js/`, no HTML, no `server/`, no `.claude/`). Restructured the project's durable docs around a single primary file.
 - **`CLAUDE.md` rebuilt as the primary project doc**, with this top-to-bottom structure: (1) **Conventions (MANDATORY — fire every turn)**, (2) Project Overview, (3) Tech Stack & Architecture, (4) Design System, (5) Memory System Rules (non-negotiable), (6) Current State, (7) Backlog / Next Steps. The mandatory Conventions are placed first so they're always in context: log every prompt to `COMMAND_LOG.md` with a timestamp each turn; ask clarifying questions *as they arise* (not batched) plus a final check; append a dated `HANDOFF.md` entry every turn; keep "Current State" under ~40k chars and prune to HANDOFF when it grows. The standing engineering guardrails (protected `memory.js`/`storage.js`, chess.js pinned at 0.10.3, `.hidden` must have a hiding rule, no build step) were carried into Conventions too.
