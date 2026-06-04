@@ -24,7 +24,11 @@
       "Bash(where python *)",
       "Bash(py --version)",
       "PowerShell(claude *)",
-      "WebFetch(domain:docs.claude.com)"
+      "WebFetch(domain:docs.claude.com)",
+      "Bash(grep -nE \"^#{1,3} \" AUDIT_REPORT.md)",
+      "Bash(git rm *)",
+      "Bash(grep -E '\\\\.pyc$')",
+      "Bash(git check-ignore *)"
     ]
   }
 }

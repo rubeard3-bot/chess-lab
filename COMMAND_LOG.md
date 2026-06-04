@@ -35,3 +35,14 @@ top-of-file comment block, and keep the single flip-to-block line. Only modify t
 script (not app code or settings.json). Test the three cases (docs updated / not updated /
 non-substantive) and confirm exit 0 everywhere. Per conventions, this substantive turn also
 appends a dated HANDOFF.md entry and logs this prompt.
+
+### 2026-06-04 10:34:05 -0500
+Quick repo cleanup — three low-risk housekeeping items from the repo analysis.
+(1) Untrack committed .pyc bytecode (.claude/hooks/__pycache__/ + legacy/__pycache__/)
+via `git rm --cached`, leaving working files in place, and add `__pycache__/` + `*.pyc`
+to .gitignore. (2) Delete the four confirmed-empty vestigial root dirs ("CHESS ANALYZER
+v.2/", assets/, static/, templates/) — verify each is empty first, skip any that aren't.
+(3) Confirm .gitignore covers server/node_modules/, __pycache__/, *.pyc. Hard constraints:
+do not touch app code (js/, *.html, css/, server/index.js), the Stop hook script, or
+CLAUDE.md; delete nothing that isn't a confirmed-empty dir or regenerable .pyc. Substantive
+turn — log this prompt and append a dated HANDOFF.md entry.
