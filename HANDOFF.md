@@ -1023,3 +1023,24 @@ These pages were built feature-by-feature with self-contained CSS. Keeping style
 
 **Next steps**
 1. Russell reviews and merges the PR.
+
+---
+
+## 2026-10-19: Phase-accuracy — Lichess formula + scalachess Divider (branch agent/phase-accuracy-lichess)
+
+**What was done** (first live agent-team build; analyzer-only)
+- The analyzer game-report phase-accuracy bars (opening/middlegame/endgame) now (1) use the SAME Lichess-style accuracy formula as `Analysis.calculateAccuracy` — including the `+1` uncertainty bonus that the old phase code was missing — and (2) detect phases BY POSITION via a faithful JS port of lichess scalachess `Divider` instead of the old fixed ply ranges (opening ≤10, mid ≤30, end rest).
+- **Route: new module `js/phase-accuracy.js`** (IIFE, no DOM). Reason: `js/ui.js` cannot be loaded by `tests/helpers.js` in Node — its IIFE reads `document` at top level (`loadModule` has only a `window` shim). The new module holds the pure functions and is wired into `analyzer.html`'s script order BEFORE `js/ui.js`. It is also `module.exports`-guarded so it is harmless in the browser and the loader.
+- Pure functions: `overallAccuracy(moves,color)` (verbatim port of `calculateAccuracy`; over all a player's moves it reproduces it EXACTLY), `phaseAccuracy(moves,color,plyLo,plyHi)` (same blend filtered to a half-open ply range; empty slice → `null`), `divideGame(boards)` (scalachess `majorsAndMinors`/`backrankSparse`/`mixedness`+`score` table, verbatim from Divider.scala @ 11ac4c5a2b8a852e0e3c4a7c0c5ae0904aa40025). Whole-game volatility weights are computed once over the whole game and indexed by the move's position, exactly as `calculateAccuracy` does.
+- `renderPhaseAccuracy(movesData, playerColor, fens)` now builds the board sequence (index 0 = initial — `App.fens[0]` is the initial position because `buildFens` seeds `new Chess().fen()`), calls `divideGame`, maps the boundaries to ply ranges (opening `[1,mid+1)`, mid `[mid+1,end+1)`, end `[end+1,∞)`), and renders `phaseAccuracy` per bar; empty phase → width 0% + text `—`. If `fens` are absent it falls back to replaying the moves' SAN. `fens` is threaded through `renderFullReport` and BOTH its `js/app.js` callers (the analyze flow local `fens`, and `loadGameIntoApp`'s `state.fens`).
+- **Divider verified on the golden fixture:** `divideGame` on the LAPlrQCB board sequence returns `{middle:24, end:46, plies:99}` — exactly Lichess's own division (`/game/export/LAPlrQCB?division=true` → `"division":{"middle":24,"end":46}`).
+
+**Files changed:** `js/phase-accuracy.js` (new), `js/ui.js`, `js/app.js`, `analyzer.html`, `tests/phase_accuracy.test.js` (new), plus docs (`COMMAND_LOG.md`, `HANDOFF.md`, `CLAUDE.md` Current State).
+
+**Checks:** `node --check` on each changed JS = OK; `python3 tests/ci_checks.py` = PASS (32 files); `node tests/run-all.js` = 3/3 files pass — golden still White 53 / Black 51, new phase tests pass (parity 53/51, divider 24/46, empty-phase `null`), protect-paths all pass.
+
+**Current state:** committed on `agent/phase-accuracy-lichess` (off latest `origin/main`), not merged. No protected paths touched; no CSS/hidden-class changes.
+
+**Next steps**
+1. Reviewers (code + chess) and tester review; Russell merges.
+2. Note for reviewers: `ui.js` renderPhaseAccuracy uses the global `Chess` to turn FENs into boards — analyzer loads chess.js before ui.js, so this holds in prod.

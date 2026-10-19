@@ -85,3 +85,17 @@ Yes, approved: docs-only fix of those two lines.
 1. Project Overview: replace "there is no test suite" with a pointer to the test suite and checks described in Agent Rules.
 2. Make the hidden-class wording consistent everywhere: there is no generic .hidden rule in css/styles.css, so every element using the hidden class needs its own scoped rule; practice.html and openings.html are the only exceptions, because each defines its own page-level generic .hidden rule.
 Do it on a new branch named agent/docs-fixes, commit, push, and open a pull request. Do not merge. Follow the standing conventions (HANDOFF.md entry, COMMAND_LOG.md).
+
+### 2026-10-19 20:48 +0000
+(Builder, branch agent/phase-accuracy-lichess.) Approved build: make the analyzer game-report
+phase-accuracy bars (opening/middlegame/endgame) use the SAME Lichess-style formula as
+Analysis.calculateAccuracy (incl. the +1 bonus, currently missing) AND detect phases BY POSITION
+via a faithful JS port of lichess scalachess Divider (replacing the fixed ply ranges in
+renderPhaseAccuracy/phaseRange). Formula + divider must live in PURE functions shared by prod and
+tests (verify ui.js loads in Node first; else new module). Part 1: replicate calculateAccuracy
+verbatim; overallAccuracy over all a player's moves must equal it exactly (White 53 / Black 51).
+Part 2: port Divider.scala @ 11ac4c5a2b8a852e0e3c4a7c0c5ae0904aa40025 exactly (majorsAndMinors,
+backrankSparse, mixedness/score table), boards[0]=initial, drop middle unless it precedes end.
+Empty phase -> "—". New test tests/phase_accuracy.test.js: parity + exact boundaries middle 24 /
+end 46 (do not change constants on mismatch — STOP). Run ci_checks + run-all; commit; push to the
+agent branch only; no PR/merge.
