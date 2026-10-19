@@ -731,7 +731,7 @@ const App = (() => {
         const moveData = (fullAnalysis.moves || []).find(m => m.ply === state.currentPly) || null;
         UI.renderMoveDetail(moveData, state.currentPly, playerColor);
         UI.revealCoachingContent();
-        UI.renderFullReport(fullAnalysis, fullAnalysis.moves, playerColor, gameId);
+        UI.renderFullReport(fullAnalysis, fullAnalysis.moves, playerColor, gameId, fens);
         UI.renderCoachSummary(fullAnalysis.summary || {}, gameId);
         UI.sendCoachOpeningMessage(fullAnalysis.summary || {});
 
@@ -786,7 +786,7 @@ const App = (() => {
     UI.renderEvalGraph(analysisData.moves || [], navigateToPly);
     UI.renderOpeningPanel(analysisData.opening || {});
     UI.renderGameNotes(analysisData);
-    UI.renderFullReport(analysisData, analysisData.moves, playerColor, gameId);
+    UI.renderFullReport(analysisData, analysisData.moves, playerColor, gameId, state.fens);
 
     // Orient board: player's pieces at bottom
     const shouldBeFlipped = (playerColor === 'black');

@@ -793,50 +793,60 @@ const UI = (() => {
     });
   }
 
-  function renderPhaseAccuracy(movesData, playerColor) {
+  // Build the board sequence (index 0 = initial position, index k = after
+  // ply k) that the scalachess divider needs. Prefer the analyzer's real
+  // App.fens; if those are missing, rebuild from the moves' SAN so the panel
+  // still works. Uses the global Chess (chess.js, loaded before ui.js).
+  function _boardSequence(movesData, fens) {
+    if (fens && fens.length) {
+      const boards = [];
+      for (let i = 0; i < fens.length; i++) {
+        try { boards.push(new Chess(fens[i]).board()); }
+        catch (_) { return null; }
+      }
+      return boards;
+    }
+    // Fallback: replay the SAN moves from the initial position.
+    try {
+      const chess  = new Chess();
+      const boards = [chess.board()];
+      (movesData || []).forEach(m => { if (m.san) { chess.move(m.san); } boards.push(chess.board()); });
+      return boards;
+    } catch (_) { return null; }
+  }
+
+  function renderPhaseAccuracy(movesData, playerColor, fens) {
+    // Detect phase boundaries BY POSITION (faithful scalachess Divider port).
+    const boards = _boardSequence(movesData, fens);
+    const div = (boards && typeof PhaseAccuracy !== 'undefined')
+      ? PhaseAccuracy.divideGame(boards)
+      : { middle: null, end: null };
+    const mid = (div.middle == null) ? Infinity : div.middle;
+    const end = (div.end    == null) ? Infinity : div.end;
+
+    // Move at 1-based ply j is played from board j-1:
+    //   opening   (j-1) < mid        -> ply in [1, mid+1)
+    //   middlegame mid <= (j-1) < end -> ply in [mid+1, end+1)
+    //   endgame   (j-1) >= end        -> ply in [end+1, Infinity)
     const phases = [
-      { key: 'opening', max: 10,  fillId: 'az-phase-opening', pctId: 'az-phase-opening-pct' },
-      { key: 'mid',     max: 30,  fillId: 'az-phase-mid',     pctId: 'az-phase-mid-pct' },
-      { key: 'end',     max: 999, fillId: 'az-phase-end',     pctId: 'az-phase-end-pct' }
+      { lo: 1,       hi: mid + 1,   fillId: 'az-phase-opening', pctId: 'az-phase-opening-pct' },
+      { lo: mid + 1, hi: end + 1,   fillId: 'az-phase-mid',     pctId: 'az-phase-mid-pct' },
+      { lo: end + 1, hi: Infinity,  fillId: 'az-phase-end',     pctId: 'az-phase-end-pct' }
     ];
 
-    function winPct(evalCp) {
-      return 50 + 50 * (2 / (1 + Math.exp(-0.00368208 * evalCp)) - 1);
-    }
-
-    function phaseRange(key) {
-      if (key === 'opening') return [1, 10];
-      if (key === 'mid')     return [11, 30];
-      return [31, Infinity];
-    }
-
     phases.forEach(ph => {
-      const [minPly, maxPly] = phaseRange(ph.key);
-      const phaseMoves = (movesData || []).filter(m =>
-        m.color === playerColor && m.ply >= minPly && m.ply <= maxPly
-      );
-      if (phaseMoves.length === 0) {
-        const fill = document.getElementById(ph.fillId);
-        const pct  = document.getElementById(ph.pctId);
-        if (fill) fill.style.width = '0%';
-        if (pct)  pct.textContent  = '—';
-        return;
-      }
-      let total = 0;
-      phaseMoves.forEach(m => {
-        const wpBefore = winPct((m.evalBefore ?? 0) * 100);
-        const wpAfter  = winPct((m.eval        ?? 0) * 100);
-        const wpl = m.color === 'white'
-          ? Math.max(0, wpBefore - wpAfter)
-          : Math.max(0, wpAfter  - wpBefore);
-        const acc = 103.1668 * Math.exp(-0.04354 * wpl) - 3.1669;
-        total += Math.max(0, Math.min(100, acc));
-      });
-      const avg = Math.round(total / phaseMoves.length);
+      const acc = (typeof PhaseAccuracy !== 'undefined')
+        ? PhaseAccuracy.phaseAccuracy(movesData || [], playerColor, ph.lo, ph.hi)
+        : null;
       const fill = document.getElementById(ph.fillId);
       const pct  = document.getElementById(ph.pctId);
-      if (fill) fill.style.width = avg + '%';
-      if (pct)  pct.textContent  = avg + '%';
+      if (acc == null) {
+        if (fill) fill.style.width = '0%';
+        if (pct)  pct.textContent  = '—';
+      } else {
+        if (fill) fill.style.width = acc + '%';
+        if (pct)  pct.textContent  = acc + '%';
+      }
     });
   }
 
@@ -1023,13 +1033,13 @@ const UI = (() => {
   /*  FULL REPORT RENDER (called after both SF + Claude complete)        */
   /* ------------------------------------------------------------------ */
 
-  function renderFullReport(analysisData, movesData, playerColor, gameId) {
+  function renderFullReport(analysisData, movesData, playerColor, gameId, fens) {
     _analysisData = analysisData;
     renderCoachSummary(analysisData.summary || {}, gameId);
     renderVsAverage(analysisData.summary || {}, movesData, playerColor);
     renderPatternsSummary();
     renderNextSteps(analysisData.opening || {}, analysisData.summary || {});
-    renderPhaseAccuracy(movesData, playerColor);
+    renderPhaseAccuracy(movesData, playerColor, fens);
     updateStatGridMisses(movesData, playerColor);
 
     // Store critical position FEN (worst blunder move if any)
