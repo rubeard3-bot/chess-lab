@@ -79,3 +79,9 @@ inside calculateAccuracy for full parity.]
 
 ### 2026-10-19 13:52 -0500
 (Claude.ai session, applied directly to the repo.) Build the Slack agent team after Russell's audit of all five agent prompts: revised Lead/builder/code-reviewer/chess-reviewer/tester prompts with every audit fix, agent memory, single-source protected-paths list, hard-lock hook, accuracy golden test from the Lichess fixture game, whole-repo CI checks and a GitHub Actions workflow, retrospective step, and untracking settings.local.json. Self-audit fixes also applied: agents cannot edit their own rules or other agents' memory, the lock applies to every agent, reviewers stay read-only and review independently before reading the builder's claims, no branch switching by reviewers, no outside scripts without escalation, screenshots kept on an unmerged evidence branch, golden numbers kept only in the test file, copy-paste build line in plan reports. Cost tuning intentionally excluded. Russell's prompt: "Ok fix these for me".
+
+### 2026-10-19 19:29 +0000
+Yes, approved: docs-only fix of those two lines.
+1. Project Overview: replace "there is no test suite" with a pointer to the test suite and checks described in Agent Rules.
+2. Make the hidden-class wording consistent everywhere: there is no generic .hidden rule in css/styles.css, so every element using the hidden class needs its own scoped rule; practice.html and openings.html are the only exceptions, because each defines its own page-level generic .hidden rule.
+Do it on a new branch named agent/docs-fixes, commit, push, and open a pull request. Do not merge. Follow the standing conventions (HANDOFF.md entry, COMMAND_LOG.md).

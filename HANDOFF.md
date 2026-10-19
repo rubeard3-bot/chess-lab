@@ -1009,3 +1009,17 @@ These pages were built feature-by-feature with self-contained CSS. Keeping style
 3. Connect Claude Code on the web to the repo, install the Claude app in Slack (Code only routing), create a private channel.
 4. First test run on low-stakes work: align the phase-accuracy bars (ui.js) with the new formula. Use it to confirm thread behavior, approvals, tester browser availability, and hooks in cloud sessions.
 5. Then preview deployments, then real features (opening teacher).
+
+---
+
+## 2026-10-19: CLAUDE.md docs fixes (branch agent/docs-fixes)
+
+**What was done** (docs-only, approved by Russell; no application code touched)
+- Project Overview: replaced the stale "There is **no test suite**." with a pointer to `tests/` and the "Checks and tests" list under Agent Rules.
+- Hidden-class wording made consistent in both places it appears (Engineering guardrails and Agent Rules): there is no generic `.hidden` rule in `css/styles.css`, so every element using `hidden` needs its own scoped rule; the only exceptions are `practice.html` and `openings.html`, which each define a page-level generic `.hidden` rule (verified: `practice.html:9`, `openings.html:9`; no generic rule in `css/styles.css`).
+- Left unchanged on purpose: the 2026-06-03 HANDOFF entry (historical log, already accurate) and `.claude/agent-memory/code-reviewer/MEMORY.md` (consistent, and agents may not write another agent's memory).
+
+**Current state:** committed on `agent/docs-fixes`, for a PR to `main` (not merged).
+
+**Next steps**
+1. Russell reviews and merges the PR.
