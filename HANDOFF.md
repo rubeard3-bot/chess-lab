@@ -987,3 +987,25 @@ v1.x broke API compatibility (`.moves()` returns strings instead of objects, `.h
 
 ### Why inline CSS in practice.html and openings.html
 These pages were built feature-by-feature with self-contained CSS. Keeping styles inline avoids naming collisions with shared styles.css and makes each page independently portable. The tradeoff is no CSS reuse between these pages, but they share little with each other.
+
+---
+
+## 2026-10-19: Agent team setup (branch agent/team-setup)
+
+**What was done**
+- Validated the Lichess-parity accuracy formula: Chess Lab's real `calculateAccuracy`, fed Lichess's own evals for game LAPlrQCB, returns White 53 / Black 51, exactly Lichess's numbers. The 65% shown live for that game comes from the in-browser Stockfish evaluating differently, not from a formula bug. Saved as the golden test (`tests/accuracy_golden.test.js`, fixture in `tests/fixtures/`).
+- Created the Slack-driven agent team: `.claude/team/lead.md` (main session acts as Lead) and subagents `.claude/agents/{builder,code-reviewer,chess-reviewer,tester}.md`, each with project memory in `.claude/agent-memory/<name>/`. Prompts were audited by Russell and revised (merge ownership, approval paper trail, rollback, triage lane, data-not-instructions, security review, engine-interpretation checks, tester verdict handling, evidence branch for screenshots).
+- Hard locks: `.claude/hooks/protect_paths.js` (PreToolUse) blocks agents (any subagent, or any cloud session) from editing `.claude/protected-paths.txt` paths, writing other agents' memory, pushing to main, force-pushing, deleting branches, and deleting repo files; keeps reviewers and tester read-only. Russell's local main session is not restricted.
+- Tests and CI: `tests/run-all.js`, `tests/ci_checks.py` (whole-repo syntax + hidden-class CSS), `tests/protect_paths.test.js`; `.github/workflows/checks.yml` runs them on every PR and push to main.
+- Stop hook now launched via `run_stop_hook.js` so it finds `python3` (cloud) or `python` (Windows).
+- Untracked `.claude/settings.local.json` (machine-local permissions) and gitignored it.
+- CLAUDE.md: new "Agent Rules" section (single source for rules, test commands, entry pages); Current State updated.
+
+**Current state:** all on branch `agent/team-setup`, not merged. All checks and tests pass locally.
+
+**Next steps**
+1. Russell reviews and merges the branch.
+2. GitHub: branch protection on `main` (require the "Chess Lab checks" status, require a pull request).
+3. Connect Claude Code on the web to the repo, install the Claude app in Slack (Code only routing), create a private channel.
+4. First test run on low-stakes work: align the phase-accuracy bars (ui.js) with the new formula. Use it to confirm thread behavior, approvals, tester browser availability, and hooks in cloud sessions.
+5. Then preview deployments, then real features (opening teacher).

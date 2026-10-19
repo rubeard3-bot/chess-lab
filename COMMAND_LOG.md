@@ -76,3 +76,6 @@ memory.js/storage.js/UI/practice/server or Stockfish depth. Validate with a work
 and say what to compare against Lichess. Substantive turn — log prompt + append HANDOFF.
 [Clarifying Q asked & answered: user chose to ALSO add Lichess's per-move "+1" uncertainty bonus
 inside calculateAccuracy for full parity.]
+
+### 2026-10-19 13:52 -0500
+(Claude.ai session, applied directly to the repo.) Build the Slack agent team after Russell's audit of all five agent prompts: revised Lead/builder/code-reviewer/chess-reviewer/tester prompts with every audit fix, agent memory, single-source protected-paths list, hard-lock hook, accuracy golden test from the Lichess fixture game, whole-repo CI checks and a GitHub Actions workflow, retrospective step, and untracking settings.local.json. Self-audit fixes also applied: agents cannot edit their own rules or other agents' memory, the lock applies to every agent, reviewers stay read-only and review independently before reading the builder's claims, no branch switching by reviewers, no outside scripts without escalation, screenshots kept on an unmerged evidence branch, golden numbers kept only in the test file, copy-paste build line in plan reports. Cost tuning intentionally excluded. Russell's prompt: "Ok fix these for me".

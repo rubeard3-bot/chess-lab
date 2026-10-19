@@ -1,0 +1,23 @@
+# Protected paths for Chess Lab agents.
+# Agents must never edit these. Any task that needs to change one escalates
+# to Russell. This file is the single source of truth: it is read by the
+# agents (via CLAUDE.md) and enforced by .claude/hooks/protect_paths.js.
+# One path per line, relative to the repo root. A trailing / protects the
+# whole folder. Lines starting with # are comments.
+#
+# Data integrity and chess math
+js/memory.js
+js/storage.js
+js/analysis.js
+# Backend (Railway deploys it; holds the API proxy)
+server/
+# Golden test data: the trusted reference numbers must not be weakened
+tests/fixtures/
+tests/accuracy_golden.test.js
+# The safety system itself: agents must not loosen their own locks
+.claude/protected-paths.txt
+.claude/hooks/
+.claude/settings.json
+.claude/agents/
+.claude/team/
+.github/workflows/

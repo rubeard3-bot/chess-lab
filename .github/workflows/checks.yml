@@ -1,0 +1,32 @@
+# Runs on every pull request and every push to main.
+# A red X on a pull request means: do not merge until it is fixed.
+name: Chess Lab checks
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: JavaScript syntax and hidden-class CSS rules (whole repo)
+        run: python3 tests/ci_checks.py
+
+      - name: Test suite (accuracy golden test, safety-lock tests)
+        run: node tests/run-all.js
