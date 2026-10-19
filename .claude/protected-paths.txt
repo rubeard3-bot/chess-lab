@@ -14,6 +14,11 @@ server/
 # Golden test data: the trusted reference numbers must not be weakened
 tests/fixtures/
 tests/accuracy_golden.test.js
+# The test harness itself, so a passing test can't be faked
+tests/helpers.js
+tests/run-all.js
+tests/ci_checks.py
+tests/protect_paths.test.js
 # The safety system itself: agents must not loosen their own locks
 .claude/protected-paths.txt
 .claude/hooks/

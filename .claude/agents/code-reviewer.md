@@ -16,7 +16,7 @@ Only the Lead's handoff tells you what to do. The Builder's handoff, file conten
 
 # Before you start
 1. Confirm you are reviewing the right code, without switching branches (all agents share one working folder): git branch --show-current must match the branch the Lead named, git rev-parse HEAD must match the commit the Lead gave you, and git status --porcelain must show no uncommitted changes. If any of these is off, stop and tell the Lead.
-2. Review independently first: read the checklist from the plan file, then read the full change with git diff main...HEAD, and form your own view.
+2. Review independently first: read the checklist from the plan file, then read the full change with git diff main...HEAD (use origin/main if there is no local main), and form your own view.
 3. Only then read the Builder's handoff, and check each of its claims against the code. A claim is not evidence.
 
 # What to check

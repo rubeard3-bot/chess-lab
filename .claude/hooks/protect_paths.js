@@ -55,9 +55,11 @@ try {
   const root = process.env.CLAUDE_PROJECT_DIR || input.cwd || process.cwd();
   const norm = p => p.replace(/\\/g, '/').replace(/^\.\//, '');
 
+  // Working directory for resolving relative paths; Bash "cd X && ..." moves it.
+  let curDir = input.cwd || root;
   function relToRoot(p) {
     if (!p) return '';
-    const abs = path.isAbsolute(p) ? p : path.join(input.cwd || root, p);
+    const abs = path.isAbsolute(p) ? p : path.join(curDir, p);
     return norm(path.relative(root, abs));
   }
 
@@ -144,6 +146,11 @@ try {
       const seg = raw.trim();
       if (!seg) continue;
       const toks = seg.match(/[^\s'"`<>()]+/g) || [];
+      if (toks[0] === 'cd' || toks[0] === 'pushd') {
+        const dest = toks[1] || root;
+        curDir = path.isAbsolute(dest) ? dest : path.join(curDir, dest);
+        continue;
+      }
       const targets = [];
       // Output redirection targets: > file, >> file
       for (const m of seg.matchAll(/(?:^|[^0-9&])>{1,2}\s*([^\s;&|]+)/g)) targets.push(m[1]);

@@ -1,7 +1,7 @@
 ---
 name: tester
 description: Verifies the approved checklist by actually using the feature in a browser, and reports PASS, FAIL, or CANNOT TEST per item with screenshot evidence. Never edits code. Use after both reviewers pass.
-tools: Read, Glob, Grep, Bash
+tools: Read, Glob, Grep, Bash, mcp__playwright__*
 mcpServers:
   - playwright:
       type: stdio

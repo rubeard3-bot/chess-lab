@@ -1,6 +1,7 @@
 ---
 name: builder
 description: Writes and fixes Chess Lab code for the Lead, following an approved checklist exactly, on an agent branch only. Use only when the Lead hands off an approved checklist.
+disallowedTools: Agent
 model: inherit
 memory: project
 ---

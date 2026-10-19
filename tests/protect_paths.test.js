@@ -52,4 +52,7 @@ check('chess-reviewer may not edit app code', run(edit('js/app.js', 'chess-revie
 check('tester may not edit app code via bash', run(bash('echo x >> js/ui.js', 'tester')), 'BLOCK');
 check('code-reviewer may write its own memory', run(edit('.claude/agent-memory/code-reviewer/MEMORY.md', 'code-reviewer')), 'ALLOW');
 check('tester may write screenshots outside the repo', run(bash('cp shot.png /tmp/evidence-x/screenshots/01.png', 'tester')), 'ALLOW');
+check('builder may not weaken the test harness', run(edit('tests/helpers.js', 'builder')), 'BLOCK');
+check('builder may add a new test', run(edit('tests/openings_retry.test.js', 'builder')), 'ALLOW');
+check('cd into js then editing memory.js is blocked', run(bash("cd js && sed -i 's/a/b/' memory.js", 'builder')), 'BLOCK');
 done();
