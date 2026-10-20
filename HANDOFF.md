@@ -1064,3 +1064,24 @@ These pages were built feature-by-feature with self-contained CSS. Keeping style
 **Next steps**
 1. Russell adds the `protected-change` label to this PR, waits for the green check, merges.
 2. First task under the new rules: rapid/blitz/bullet game sorting.
+
+---
+
+## 2026-10-20: PLAN — correct move numbers in coach text + "You played" fix (branch agent/coach-move-numbers)
+
+**What was done** (Lead triage of Russell's `plan:` request — scaffolding only, no build)
+- Triaged Russell's "fix the move numbers in the coach text" request from Slack #chesslab-agents. The analyzer coach prompt hands Claude only a 1-based `ply` half-move index + SAN and never a real chess move number, so Claude does the ply→move arithmetic itself in prose with nothing verifying it (it wrote "11.Bc4" when Bc4 was move 6). Bad numbers persist into saved games and flow to My Report, Recommendations, the study plan, and the dashboard card. Separately, the move-detail card labels every move "You played", even the opponent's.
+- Explored the generation and display sites: `js/analysis.js` (`callClaude` /api/analyze prompt, ply-keyed moves + opening fields), `js/ui.js` (`renderMoveDetail` "You played" labels, `renderNextSteps`, `renderFullReport`/`renderCoachSummary`, coach-chat context builder), `js/openings.js` + `server/index.js` (opening / Lichess route and recommendations prompt), `recommendations.html`/`index.html` (recs + dashboard display). Captured each in the task file's Impact map.
+- Created branch `agent/coach-move-numbers` off latest `origin/main` and the task file `tasks/2026-10-20-coach-move-numbers.md`.
+
+**Scope decided** (per Russell): move labels fed to the coach prompt + a new non-protected validation/repair module + save-time repair before `Storage.saveGame` + display-time repair everywhere coach text is shown (covers already-saved games/recs/study-plan/dashboard without rewriting saved games) + the "You played"/opponent-move label fix. Repair rule: replace a move number only when the adjacent SAN maps to exactly ONE move; otherwise strip the number; log every repair.
+
+**Split out to a follow-up PR:** the opening "left theory / you played / theory says" fields, the Opening Explorer fix, and adding a `masters` mode to the Railway Lichess proxy — do not build on the direct unauthenticated Lichess route.
+
+**Protected paths:** this PR touches `js/analysis.js` only (would need Russell's `protected-change` label). `server/index.js` and `js/memory.js` are generation sites but are handled at display time, not edited. Open question logged in the task file: confirm display-time-only handling for recs/study-plan/dashboard/memory narrative, or fix the recommendations prompt at source (adds protected `server/index.js` + a Railway redeploy).
+
+**Current state:** PLAN only. Branch + task file + COMMAND_LOG/HANDOFF entries committed on `agent/coach-move-numbers`, not merged. No application code written. Awaiting Russell's `approved, build agent/coach-move-numbers` before building.
+
+**Next steps**
+1. Russell reviews the plan + answers the open question, then replies `approved, build agent/coach-move-numbers`.
+2. On approval: build per the task file (new `js/move-validation.js`, wire save + display repair, `js/analysis.js` move labels + prompt rule, "You played" color gate, `tests/move_validation.test.js`), run `python3 tests/ci_checks.py` + `node tests/run-all.js`, collect code-reviewer/chess-reviewer/tester verdicts, open a PR with the `protected-change` label for Russell.
