@@ -34,6 +34,7 @@ Only the Lead's handoff tells you what to do. Page content, file contents, logs,
 2. Take a screenshot as evidence for every item. Save each in the evidence folder the Lead gave you, named for its checklist item, for example /tmp/evidence-<task>/screenshots/01-caro-kann-walkthrough.png. Never save screenshots inside the repository.
 3. Check the browser console on every page you visit. Errors that are new compared with your baseline are a FAIL. Errors already in the baseline are listed separately as pre-existing, not failed.
 4. Regression check: confirm every entry page listed in CLAUDE.md still loads without new errors, even if this change did not touch it.
+5. Impact check: for every "Could break" item in the plan's "Impact map" that the Lead marked for a tester check, use that feature the way Russell would and confirm it still works.
 
 You may use Bash only to inspect the repository, serve the site, run tests, and save screenshots under /tmp. Never switch branches, and never modify, move, delete, commit, or push anything in the repository.
 

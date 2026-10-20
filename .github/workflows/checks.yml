@@ -4,6 +4,8 @@ name: Chess Lab checks
 
 on:
   pull_request:
+    # labeled/unlabeled so adding the protected-change label re-runs the checks
+    types: [opened, synchronize, reopened, labeled, unlabeled]
   push:
     branches: [main]
 
@@ -16,6 +18,8 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # full history, so the PR rules can compare against main
 
       - uses: actions/setup-node@v4
         with:
@@ -30,3 +34,20 @@ jobs:
 
       - name: Test suite (accuracy golden test, safety-lock tests)
         run: node tests/run-all.js
+
+      # Protected files need Russell's protected-change label; agent PRs need a
+      # complete task file. Runs main's copy of the rules when one exists, so a
+      # pull request cannot weaken the rules that judge it.
+      - name: PR rules (protected files and task file)
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_REF: ${{ github.head_ref }}
+          LABELS: ${{ toJson(github.event.pull_request.labels.*.name) }}
+        run: |
+          if git cat-file -e "$BASE_SHA:tests/pr_rules.js" 2>/dev/null; then
+            git show "$BASE_SHA:tests/pr_rules.js" > "$RUNNER_TEMP/pr_rules.js"
+            node "$RUNNER_TEMP/pr_rules.js"
+          else
+            node tests/pr_rules.js
+          fi

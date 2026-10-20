@@ -99,3 +99,9 @@ backrankSparse, mixedness/score table), boards[0]=initial, drop middle unless it
 Empty phase -> "—". New test tests/phase_accuracy.test.js: parity + exact boundaries middle 24 /
 end 46 (do not change constants on mismatch — STOP). Run ci_checks + run-all; commit; push to the
 agent branch only; no PR/merge.
+
+---
+
+### 2026-10-20 (Russell, advisor session)
+> also we need to make sure that the agents whenever they make an edit are able to see the whole codebase so one edit doesn't mess with something else. Like i want it to auto sort the games by rapid blitz and bullet so that it can have entirely different past games that can be sorted. but i dont want to accidentally destroy something else
+> Ok yeah lets do the safety rules now

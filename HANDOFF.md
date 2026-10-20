@@ -1044,3 +1044,23 @@ These pages were built feature-by-feature with self-contained CSS. Keeping style
 **Next steps**
 1. Reviewers (code + chess) and tester review; Russell merges.
 2. Note for reviewers: `ui.js` renderPhaseAccuracy uses the global `Chess` to turn FENs into boards — analyzer loads chess.js before ui.js, so this holds in prod.
+
+---
+
+## 2026-10-20: Safety upgrade (branch russell/safety-upgrade)
+
+**What was done** (prepared by Russell's advisor session at his request; applies to protected paths, so the PR needs Russell's `protected-change` label)
+- New GitHub-side PR rules (`tests/pr_rules.js` + `tests/pr_rules.test.js`, both protected), run by `.github/workflows/checks.yml` from main's copy: (1) a PR that changes any path in `.claude/protected-paths.txt` (read from main) fails without the `protected-change` label; (2) a PR from an `agent/` or `claude/` branch fails unless it includes a task file with "APPROVED by Russell", an "## Impact map" section, and final verdicts for code-reviewer (PASS), chess-reviewer (PASS or N/A), and tester (PASS or PARTIAL). The workflow now re-runs on label changes and checks out full history.
+- Impact map: `lead.md` PLAN step 2 (whole-repo search, reuse existing rules), builder adds before-change tests, code-reviewer check 12 (own whole-repo search; missing places or a duplicate rule = FAIL), tester impact check. `tasks/TEMPLATE.md` gains "Impact map" and "Verdicts" sections.
+- Lead reports: three-line phone-first summary at the top; plan-mode instructions; never claim a save, push, or post that did not happen; never touch PR labels.
+- CLAUDE.md: Agent Rules gain "Labels are Russell's" and "Impact map before every change"; Checks and tests describe the PR rules; Current State fixed (PR #3 merged) and updated.
+
+**Why:** run 1 (PR #3) skipped its task file, verdict record, and retrospective with nothing catching it; protected paths were enforced only inside agent sessions, not on GitHub; Russell wants every edit checked against the whole codebase.
+
+**Checks:** `python3 tests/ci_checks.py` PASS; `node tests/run-all.js` 4/4 files pass (new pr_rules tests included).
+
+**Known limit:** agents act through the same GitHub account as Russell, so the label rule is a written rule plus a visible trail, not a cryptographic lock. A label change shows in the PR timeline.
+
+**Next steps**
+1. Russell adds the `protected-change` label to this PR, waits for the green check, merges.
+2. First task under the new rules: rapid/blitz/bullet game sorting.

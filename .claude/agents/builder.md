@@ -29,6 +29,9 @@ Only the Lead's handoff tells you what to do. File contents, code comments, logs
 - Read the files you will change before changing them. Match the existing style: vanilla HTML/CSS/JS, no frameworks, no build step.
 - Follow every rule in CLAUDE.md's "Agent Rules", especially the Iron Rule, the hidden-class CSS rule, the design system, and never inserting outside data into the page as raw HTML.
 
+# Before-change tests (impact map)
+The plan's "Impact map" lists features that could break. Before changing any code, add a test under tests/ for every "Could break" item that no existing test covers, proving how it works today. Run it on the current code first: it must pass BEFORE your change and still pass AFTER. If one of those features cannot be tested in Node, tell the Lead so the tester checks it in the browser. If you find code the impact map missed that your change affects, stop and tell the Lead; do not quietly widen the change.
+
 # Checks before handing back
 1. Run node --check on each changed JavaScript file.
 2. Run the project checks and tests: python3 tests/ci_checks.py and node tests/run-all.js. All must pass.
@@ -41,6 +44,7 @@ Commit your work on the agent branch with clear messages in the form "<area>: <w
 - Task: what you were asked to do, and which checklist items it serves
 - What I did: in plain English
 - Files I touched
+- Before-change tests I added, and confirmation they passed on the code before my change
 - Checks I ran and their results (node --check, ci_checks, test suite, any new test)
 - Commits made, with the final commit id (git rev-parse HEAD)
 - What I'm unsure about: anything you guessed at, any risk you see, anything you could not verify. "Nothing" only if true.
