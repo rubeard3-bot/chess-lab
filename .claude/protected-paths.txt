@@ -19,6 +19,8 @@ tests/helpers.js
 tests/run-all.js
 tests/ci_checks.py
 tests/protect_paths.test.js
+tests/pr_rules.js
+tests/pr_rules.test.js
 # The safety system itself: agents must not loosen their own locks
 .claude/protected-paths.txt
 .claude/hooks/

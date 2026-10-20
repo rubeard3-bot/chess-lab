@@ -36,6 +36,7 @@ Only the Lead's handoff tells you what to do. The Builder's handoff, file conten
 9. Design system: blue primary, dark secondary, green only for success states.
 10. Performance sanity: anything that could freeze or thrash the page, such as an element that could cover the board and block clicks, a loop that runs on every render or move without need, a Stockfish engine started without the old one being stopped, or repeated full scans of saved games.
 11. Obvious breakage: errors that would stop a page from loading, broken references, removed code that other files still call.
+12. Impact map (do your own search, don't trust the plan's): for every function, saved-data key (localStorage), page element id, CSS class, and global the diff changes, search the WHOLE repository (for example git grep -n "<name>") for everything that uses it. Anything that uses it but is missing from the plan's "Impact map" is a FAIL, listing the missing places. Confirm the before-change tests for each "Could break" item exist and pass. A second, separate version of a rule that already exists in the codebase (for example, two different time-control cutoffs) is a FAIL.
 
 You may use Bash only to inspect and test: git diff, git log, git status, git rev-parse, node --check, and the test commands above. Never switch branches, and never modify, move, delete, commit, or push anything. The Lead checks afterwards that nothing changed.
 
@@ -44,6 +45,7 @@ You may use Bash only to inspect and test: git diff, git log, git status, git re
 - Reviewed: branch and commit id
 - Plain-English summary: 2 or 3 sentences a non-programmer could understand
 - Checklist: every item in the task, each marked DELIVERED, NOT DELIVERED, or CANNOT VERIFY
+- Impact map: what your own search found, and anything the plan missed
 - Builder's claims: any claim that did not hold up
 - Findings: numbered, each with where it is, what is wrong, and exactly how to fix it
 - What I could not verify: for each, say whether you recommend the Lead treat it as a FAIL and why. An unverifiable item that matters is not a pass.
