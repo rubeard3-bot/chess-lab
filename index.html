@@ -799,7 +799,7 @@
 
         var titleEl = document.createElement('span');
         titleEl.className = 'db-weakness-title';
-        titleEl.textContent = (tw.icon ? tw.icon + ' ' : '') + (tw.name || 'Unknown weakness');
+        titleEl.textContent = (tw.icon ? tw.icon + ' ' : '') + dashRepair(tw.name || 'Unknown weakness');
 
         var badge = document.createElement('span');
         badge.className = 'db-weakness-badge';
@@ -820,7 +820,7 @@
         /* Description (max 2 sentences) */
         var desc = document.createElement('div');
         desc.className = 'db-weakness-desc';
-        var raw = tw.description || '';
+        var raw = dashRepair(tw.description || '');
         var sentences = raw.match(/[^.!?]+[.!?]+/g) || [];
         desc.textContent = sentences.slice(0, 2).join(' ').trim() || raw;
 

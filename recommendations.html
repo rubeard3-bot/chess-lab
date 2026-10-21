@@ -553,7 +553,7 @@
             <div class="rec-resource-icon">${icon}</div>
             <div class="rec-resource-info">
               <div class="rec-resource-name">${esc(r.name)}</div>
-              <div class="rec-resource-desc">${esc(r.description)}</div>
+              <div class="rec-resource-desc">${esc(recRepairCross(r.description))}</div>
               ${r.url ? `<a class="rec-resource-link" href="${esc(r.url)}" target="_blank" rel="noopener noreferrer">Open resource ↗</a>` : ''}
             </div>
           </div>`;
@@ -645,7 +645,7 @@
         const R     = 38;
         const circ  = 2 * Math.PI * R;
         const dash  = (score / 100 * circ).toFixed(2);
-        const issues = (data.keyIssues || []).map(i => `<li>${esc(i)}</li>`).join('');
+        const issues = (data.keyIssues || []).map(i => `<li>${esc(recRepairCross(i))}</li>`).join('');
         return `
 <div class="rec-phase-card">
   <div class="rec-phase-card-title">${ph.label}</div>
@@ -659,7 +659,7 @@
     </svg>
     <div class="rec-circular-label">${score}</div>
   </div>
-  <p class="rec-phase-assessment">${esc(data.assessment)}</p>
+  <p class="rec-phase-assessment">${esc(recRepairCross(data.assessment))}</p>
   ${issues ? `<ul class="rec-phase-issues">${issues}</ul>` : ''}
 </div>`;
       }).join('');
@@ -679,10 +679,10 @@
         return `
 <div class="rec-tactic-card">
   <div class="rec-tactic-header">
-    <span class="rec-tactic-pattern">${esc(t.pattern)}</span>
+    <span class="rec-tactic-pattern">${esc(recRepairCross(t.pattern))}</span>
     <span class="rec-tactic-occ">${t.occurrences || 0}×</span>
   </div>
-  <p class="rec-tactic-desc">${esc(t.description)}</p>
+  <p class="rec-tactic-desc">${esc(recRepairCross(t.description))}</p>
   ${drills ? `<ul class="rec-drills-list">${drills}</ul>` : ''}
   ${gameRefs ? `<div class="rec-game-refs"><div class="rec-game-refs-label">Referenced Games</div>${gameRefs}</div>` : ''}
 </div>`;
@@ -699,9 +699,9 @@
       }
       el.innerHTML = improvements.map(imp => `
 <div class="rec-improvement-card">
-  <div class="rec-improvement-area">${esc(imp.area)}</div>
-  <p class="rec-improvement-evidence">${esc(imp.evidence)}</p>
-  <p class="rec-improvement-msg">${esc(imp.message)}</p>
+  <div class="rec-improvement-area">${esc(recRepairCross(imp.area))}</div>
+  <p class="rec-improvement-evidence">${esc(recRepairCross(imp.evidence))}</p>
+  <p class="rec-improvement-msg">${esc(recRepairCross(imp.message))}</p>
   ${imp.gameId ? `<div class="rec-game-refs">${renderGameRefCard(imp.gameId, imp.area)}</div>` : ''}
 </div>`).join('');
     }
@@ -741,11 +741,11 @@
   <div class="rec-goal-header">
     <div class="rec-goal-number">${i + 1}</div>
     <div>
-      <div class="rec-goal-title">${esc(g.goal)}</div>
+      <div class="rec-goal-title">${esc(recRepairCross(g.goal))}</div>
       <div class="rec-goal-timeframe">${esc(g.timeframe)}</div>
     </div>
   </div>
-  <p class="rec-goal-achieve">${esc(g.howToAchieve)}</p>
+  <p class="rec-goal-achieve">${esc(recRepairCross(g.howToAchieve))}</p>
 </div>`).join('');
     }
 
