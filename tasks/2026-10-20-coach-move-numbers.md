@@ -105,9 +105,9 @@ APPROVED by Russell on 2026-10-20: "approved, build agent/coach-move-numbers"
 
 ## Verdicts
 <The Lead pastes each agent's FINAL verdict here, with the commit it reviewed. GitHub blocks the pull request until all three lines are filled in.>
-- code-reviewer: PENDING
-- chess-reviewer: PENDING
-- tester: PENDING
+- code-reviewer: PASS (commit e56757c)
+- chess-reviewer: PASS (commit e0ffa1d; Iron Rule clean — later commits add only the conservative eval-guard and display-time wiring, no new chess facts)
+- tester: PARTIAL (commit e56757c; all in-scope assertions pass, only non-PASS is the environmental openings/practice CDN block unrelated to this PR)
 
 ## Log
 - 2026-10-20 Lead: plan written.

@@ -1085,3 +1085,33 @@ These pages were built feature-by-feature with self-contained CSS. Keeping style
 **Next steps**
 1. Russell reviews the plan + answers the open question, then replies `approved, build agent/coach-move-numbers`.
 2. On approval: build per the task file (new `js/move-validation.js`, wire save + display repair, `js/analysis.js` move labels + prompt rule, "You played" color gate, `tests/move_validation.test.js`), run `python3 tests/ci_checks.py` + `node tests/run-all.js`, collect code-reviewer/chess-reviewer/tester verdicts, open a PR with the `protected-change` label for Russell.
+
+---
+
+## 2026-10-21: BUILT — correct move numbers in coach text + "You played" fix (branch agent/coach-move-numbers)
+
+**What was built** (per the approved `tasks/2026-10-20-coach-move-numbers.md`; HEAD e56757c)
+- **Real move labels fed to the analyzer coach prompt** (`js/analysis.js`, PROTECTED): a `moveLabel` is computed INLINE in `movesForPrompt` (the protected file does not import the new module) plus a prompt RULE instructing the coach to refer to each move only by its provided label and never compute its own move numbers. The opening "left theory / you played / theory says" fields were left untouched — deferred to the follow-up.
+- **New non-protected `js/move-validation.js`** (dual-export IIFE, Node-testable like `js/phase-accuracy.js`): `plyToMoveLabel` ("6. Bc4" / "6... Nf6"), `buildMoveIndex` (SAN → plies map), `repairCoachText` (corrects a move number when the adjacent SAN maps to exactly one ply, strips it when ambiguous/absent, leaves everything else untouched), the pure `movePlayerLabel` (the "You played:" / "Opponent played:" gate), and `logRepairs`.
+- **Save-time repair** in `js/app.js` (in the Claude `.then`, before persist): repairs `fullAnalysis.moves[].explanation` + `summary.*` against the move index built from the parsed game; only the game being saved is touched, existing games are not rewritten.
+- **Display-time repair** so already-saved games/recs/dashboard show correct numbers WITHOUT rewriting saved data: `js/ui.js` (per-move explanation + Report tab, plus the "You played"/"Opponent played" fix via `movePlayerLabel`), `recommendations.html` (per-example cards validated against their own game's index; cross-game prose repaired strip-only), and `index.html` (dashboard weakness chip, Today's-focus, and the Top Weakness card).
+
+**Review cycle**
+- code-reviewer caught and the builder fixed an eval-corruption bug: `repairCoachText` Form A could rewrite a whole-number eval written just before a SAN (e.g. "crashed to -3. Nxe5") because the sign/decimal sat outside the match. Guard added (skip Form A when the preceding char is `+`/`-`/`.`/a digit) plus three preservation tests — commit 4d5464e.
+- tester caught and the builder fixed a missed render site: the dashboard Top Weakness card wrote `tw.description` straight to `textContent` without repair; fixed, and the remaining recommendations prose fields were swept through strip-only repair — commit e56757c.
+- **Final verdicts: code-reviewer PASS, chess-reviewer PASS, tester PARTIAL** (recorded in the task file's `## Verdicts` section).
+
+**Tests**
+- `python3 tests/ci_checks.py` green (36 files).
+- `node tests/run-all.js` 5/5 (the new `move_validation` suite is 60 checks; accuracy-golden, phase-accuracy, pr_rules, and protect_paths suites unaffected).
+
+**OPEN ITEMS for Russell**
+- (a) `js/analysis.js` is a protected path — the PR needs Russell's `protected-change` label. Both reviewers ESCALATE solely on this governance point.
+- (b) The local `.claude/hooks/protect_paths.js` hook did NOT block the agent editing the protected file in the builder environment — a safety-system gap to investigate.
+- (c) Known lexical limitation: a BARE UNSIGNED integer immediately before a move (e.g. "fell to 3. Nf3") is indistinguishable from a real move reference and is still rewritten; all signed/decimal evals, percentages, and counts are protected.
+- (d) Prod-only checks: openings.html / practice.html board liveness could not be tested (the sandbox blocks the chess.js CDN those pages use — pre-existing, not this PR); and the dashboard weakness card's pre-existing 2-sentence truncation can clip a trailing "+1.5" to "+1." (unchanged by this PR).
+- (e) No PR created yet — Russell to create it (the task file already links the Slack thread) and merge; the follow-up PR will move the opening fields + Opening Explorer to the Railway proxy `masters` mode.
+
+**Next steps**
+1. Await Russell's `protected-change` label + PR/merge.
+2. Then the opening-fields / Opening Explorer follow-up PR (adds the Railway proxy `masters` mode).
