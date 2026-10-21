@@ -217,6 +217,7 @@ const Analysis = (() => {
     const movesForPrompt = classifiedMoves.map(m => ({
       ply:            m.ply,
       san:            m.san,
+      moveLabel:      (function(){ const n = Math.ceil(m.ply / 2); return (m.ply % 2 === 1 ? n + '. ' : n + '... ') + m.san; })(),
       evalBefore:     fmt(m.evalBefore),
       eval:           fmt(m.eval),
       evalLoss:       fmt(m.evalLoss),
@@ -269,6 +270,7 @@ Return ONLY valid JSON with no markdown fences:
 }
 
 RULES for moveExplanations — include EVERY ${playerPlies} ply (${playerName}'s moves):
+- Refer to each move only by its provided \`moveLabel\` (e.g. '6. Bc4'); never compute or invent your own move numbers.
 - blunder / mistake / inaccuracy: 2-3 sentences. Name the move played, name the best move (bestMoveSan), cite the eval change (evalBefore → eval). Explain WHY bestMoveSan is better — choose the most relevant reason: piece activity, king safety, pawn structure, tactical threat, or endgame technique. Explain what went wrong with the move played. Be specific, like a coach talking to a student.
 - miss: 2-3 sentences. Name the move played, name the best move (bestMoveSan), cite the eval change. Explain that the player was in a clearly winning position and missed a more decisive continuation. Describe what the engine recommended and why it was stronger. Tone: "You missed a winning continuation here" — the position did not collapse, but a real opportunity was squandered.
 - best / excellent / good: 1 sentence explaining what made the move strong.

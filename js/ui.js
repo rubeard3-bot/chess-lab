@@ -11,6 +11,7 @@ const UI = (() => {
   let _analysisData    = null; // reference to current full analysis
   let _gameMetadata    = {};
   let _currentGameId   = null;
+  let _moveIndex       = null; // SAN -> [ply] for the current game (coach-text repair)
 
   const API_URL = window.location.hostname === 'localhost'
     ? 'http://localhost:4000/api/analyze'
@@ -44,6 +45,18 @@ const UI = (() => {
   function fmtEval(v) {
     if (typeof v !== 'number' || !isFinite(v)) return null;
     return (v >= 0 ? '+' : '') + v.toFixed(2);
+  }
+
+  // Display-time coach-text repair against the current game's SAN->ply index.
+  // Covers already-saved games (which may hold wrong move numbers) WITHOUT
+  // rewriting them. No index yet -> return the text untouched (never strip
+  // valid numbers in the analyzer, which always has a single game).
+  function _repairCoachText(text, context) {
+    if (typeof text !== 'string' || !text) return text;
+    if (typeof MoveValidation === 'undefined' || !_moveIndex) return text;
+    const r = MoveValidation.repairCoachText(text, _moveIndex);
+    if (r.repairs.length) MoveValidation.logRepairs(r.repairs, context || 'display');
+    return r.text;
   }
 
   /* ------------------------------------------------------------------ */
@@ -274,6 +287,13 @@ const UI = (() => {
 
   function renderMoveList(verboseHistory, analysisData, onMovePlyClick) {
     const container = document.getElementById('move-list');
+    // Build the current game's SAN->ply index once per game load, so the
+    // coach-text repair in renderMoveDetail / renderCoachSummary can validate
+    // move numbers against the real game. Done before the early return so the
+    // index is available even if the move-list container is absent.
+    _moveIndex = (typeof MoveValidation !== 'undefined')
+      ? MoveValidation.buildMoveIndex(verboseHistory)
+      : null;
     if (!container) return;
     container.innerHTML = '';
 
@@ -447,8 +467,14 @@ const UI = (() => {
       ? 'Engine agrees — this is a strong move.'
       : (bestMoveSan ? `Engine recommended ${escapeHtml(bestMoveSan)}.` : '');
 
-    const explText = explanation || defaultExpl;
+    const explText = _repairCoachText(explanation, 'display:moveDetail') || defaultExpl;
     const pvText   = pvSan.slice(0, 8).join(' ');
+
+    // "You played" vs "Opponent played" — single source of truth (fixes the
+    // bug where opponent moves were also labelled "You played").
+    const playedLabel = (typeof MoveValidation !== 'undefined')
+      ? MoveValidation.movePlayerLabel(moveData.color, playerColor)
+      : 'You played';
 
     const badgeClsMap = {
       best: 'az-badge-best', excellent: 'az-badge-excellent', good: '',
@@ -470,12 +496,12 @@ const UI = (() => {
         </div>
         ${showMiddle ? `
         <div class="coach-row-middle">
-          <span class="coach-played">You played: <strong>${escapeHtml(san)}</strong></span>
+          <span class="coach-played">${escapeHtml(playedLabel)}: <strong>${escapeHtml(san)}</strong></span>
           <span class="coach-mid-sep">→</span>
           <span class="coach-best"><span class="coach-engine-icon">⚙</span> Best: <strong>${escapeHtml(bestMoveSan)}</strong></span>
         </div>` : `
         <div class="coach-row-middle">
-          <span class="coach-played">You played: <strong>${escapeHtml(san)}</strong></span>
+          <span class="coach-played">${escapeHtml(playedLabel)}: <strong>${escapeHtml(san)}</strong></span>
           ${cls === 'best' ? '<span style="color:var(--az-green);font-size:12px;margin-left:8px">(engine agrees)</span>' : ''}
         </div>`}
         <div class="coach-explanation">
@@ -862,9 +888,9 @@ const UI = (() => {
 
     const textEl = document.getElementById('az-coach-summary-text');
     if (!textEl) return;
-    const strength = summary.strength || '';
-    const weakness = summary.weakness || '';
-    const pattern  = summary.recurringPattern || '';
+    const strength = _repairCoachText(summary.strength || '', 'display:report');
+    const weakness = _repairCoachText(summary.weakness || '', 'display:report');
+    const pattern  = _repairCoachText(summary.recurringPattern || '', 'display:report');
     if (strength || weakness) {
       textEl.innerHTML =
         (strength ? `<p style="margin-bottom:8px"><strong>Strength:</strong> ${escapeHtml(strength)}</p>` : '') +

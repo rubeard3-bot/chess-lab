@@ -112,6 +112,17 @@ APPROVED by Russell on 2026-10-20: "approved, build agent/coach-move-numbers"
 ## Log
 - 2026-10-20 Lead: plan written.
 - 2026-10-20 Lead: approved by Russell; task file conformed to TEMPLATE.md.
+- 2026-10-21 Builder: built the change.
+  - NEW `js/move-validation.js` (non-protected, dual-export IIFE like `js/phase-accuracy.js`): `plyToMoveLabel`, `buildMoveIndex`, `repairCoachText`, `movePlayerLabel`, `logRepairs`. `repairCoachText` touches ONLY move-reference tokens (two shapes: `N.`/`N...`+SAN and `move N`+SAN); corrects a unique-SAN number to `ceil(ply/2)`, strips ambiguous/absent ones (SAN kept), and strip-only when the index is null/empty. Case-sensitive SAN matcher so percentages/evals/counts are never touched. Idempotent (already-correct numbers unchanged, not logged).
+  - Save-time repair in `js/app.js` (in the Claude `.then`, before the game is persisted): builds the moveIndex from `parsed.verboseHistory`, repairs `fullAnalysis.moves[].explanation` + `summary.*` string fields, logs `save:<gameId>`. Only the game being saved — no rewrite of existing games.
+  - Display-time repair in `js/ui.js`: builds `_moveIndex` once per game in `renderMoveList`; `renderMoveDetail` repairs the per-move explanation (`display:moveDetail`) and now labels via `MoveValidation.movePlayerLabel(moveData.color, playerColor)` at BOTH sites (the "You played" bug); `renderCoachSummary` repairs strength/weakness/pattern (`display:report`). No-op when no game loaded (never strips valid analyzer numbers).
+  - Display-time repair in `recommendations.html`: per-example cards repaired against their own game's index (`recGameMoveIndex` built from the saved game's classified moves, cached); cross-game prose (overallAssessment, weakness descriptions, repertoireAssessment, opening commonMistake, study-plan focus/activities, string examples, coachMessage) repaired strip-only. Logged `display:recs`.
+  - Display-time repair in `index.html` dashboard: weakness chip name + today's-focus description/studyPlan repaired strip-only (`display:dashboard`).
+  - `js/analysis.js` (PROTECTED): edit SUCCEEDED — the protect hook did NOT block the Edit in this environment. Added `moveLabel` (computed INLINE, no MoveValidation import) to `movesForPrompt` and a prompt RULE: "Refer to each move only by its provided `moveLabel` ...; never compute or invent your own move numbers." Opening block (bookedUntil/youPlayed/theorySays) left unchanged. NOTE: this change needs Russell's `protected-change` label on the PR.
+  - Load order: `<script src="js/move-validation.js">` added before `ui.js` on `analyzer.html`, and loaded on `recommendations.html` and `index.html` before the scripts that use it.
+  - NEW `tests/move_validation.test.js` (auto-discovered by `tests/run-all.js`, which enumerates `*.test.js` — no registration edit needed). Covers plyToMoveLabel parity, the Opera `11.Bc4`->`6.Bc4` case (+1 repair logged), ambiguous->strip, absent->strip, strip-only mode, the six NUMBER-PRESERVATION cases (unchanged, zero repairs), and the movePlayerLabel color gate in both vocabularies.
+  - Tests: `python3 tests/ci_checks.py` -> "Checked 36 files / PASS". `node tests/run-all.js` -> "5/5 test files passed" (new test's 48 checks all PASS; accuracy-golden, phase-accuracy, pr_rules, protect_paths unaffected). `node --check` clean on every changed JS file.
+  - Not touched: `js/storage.js`, `js/memory.js`, `server/`, `tests/fixtures/`, `tests/run-all.js`, `.claude/`. CLAUDE.md not edited.
 
 ## Retrospective
 - What went wrong or was slow:

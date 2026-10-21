@@ -246,6 +246,7 @@
   <script src="js/chesscom.js"></script>
   <script src="js/storage.js"></script>
   <script src="js/memory.js"></script>
+  <script src="js/move-validation.js"></script>
   <script src="js/nav.js"></script>
   <script>document.addEventListener('DOMContentLoaded', function () { initNav('index'); });</script>
 
@@ -267,6 +268,15 @@
     function lsGetInt(key) {
       var v = parseInt(localStorage.getItem(key), 10);
       return isNaN(v) ? null : v;
+    }
+
+    // Cross-game coach prose (no single game): strip-only repair removes the
+    // NUMBER from any move-reference token (SAN kept); non-move numbers untouched.
+    function dashRepair(text) {
+      if (typeof MoveValidation === 'undefined' || typeof text !== 'string' || !text) return text || '';
+      var r = MoveValidation.repairCoachText(text, null);
+      if (r.repairs.length) MoveValidation.logRepairs(r.repairs, 'display:dashboard');
+      return r.text;
     }
 
     function safeText(el, val) {
@@ -451,7 +461,7 @@
       if (recs && recs.topWeaknesses && recs.topWeaknesses[0] && recs.topWeaknesses[0].name) {
         var chip2 = document.createElement('span');
         chip2.className = 'db-chip';
-        chip2.textContent = recs.topWeaknesses[0].name;
+        chip2.textContent = dashRepair(recs.topWeaknesses[0].name);
         chip2.style.background = '#451a03';
         chip2.style.color = '#fcd34d';
         chipsEl.appendChild(chip2);
@@ -536,8 +546,8 @@
       if (recs && recs.topWeaknesses && recs.topWeaknesses[0]) {
         var tw = recs.topWeaknesses[0];
         var focusContent = '';
-        if (tw.description) focusContent += tw.description;
-        if (tw.studyPlan)   focusContent += (focusContent ? ' Focus on ' + tw.studyPlan + '.' : tw.studyPlan);
+        if (tw.description) focusContent += dashRepair(tw.description);
+        if (tw.studyPlan)   focusContent += (focusContent ? ' Focus on ' + dashRepair(tw.studyPlan) + '.' : dashRepair(tw.studyPlan));
         var sentences = focusContent.match(/[^.!?]+[.!?]+/g) || [];
         var display = sentences.slice(0, 2).join(' ').trim() || focusContent;
         if (focusTextEl && display) focusTextEl.textContent = display;
