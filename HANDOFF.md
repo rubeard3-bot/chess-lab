@@ -1115,3 +1115,15 @@ These pages were built feature-by-feature with self-contained CSS. Keeping style
 **Next steps**
 1. Await Russell's `protected-change` label + PR/merge.
 2. Then the opening-fields / Opening Explorer follow-up PR (adds the Railway proxy `masters` mode).
+
+---
+
+## 2026-10-21 — PLAN: harden the protected-paths lock (repo-root resolution)
+
+**What / why.** Triage of the PR #5 gap (open item (b) above): the in-session PreToolUse hook `.claude/hooks/protect_paths.js` did NOT block the builder editing the protected file `js/analysis.js`; only GitHub's server-side PR rule caught it. Root cause: the hook resolves the repo root as `CLAUDE_PROJECT_DIR || input.cwd || process.cwd()` (protect_paths.js:55). In cloud sessions `CLAUDE_PROJECT_DIR` is unset and the working directory is the repo's PARENT (`/home/user`, repo at `/home/user/chess-lab`), so the edit target normalizes to `chess-lab/js/analysis.js` and fails the exact-string match against the protected entry `js/analysis.js` — the hook exits 0 (allow). A wrong root also degrades to the weaker hardcoded fallback list, and the `settings.json` command can't even locate the script when the var is unset.
+
+**Done this session.** Wrote the PLAN task file `tasks/2026-10-21-protect-paths-root.md` with a 5-requirement fix design: (1) derive the repo root from the hook's own file location (`__dirname`), not the session cwd; (2) match each edited target against the protected list of the checkout that owns it (walk up to the nearest `.claude/protected-paths.txt`); (3) make the `settings.json` command robust to an unset `CLAUDE_PROJECT_DIR` and a parent-folder start, failing CLOSED (exit 2) in the cloud when it can't find the script; (4) add a per-build startup canary self-check as a narrow exception in builder.md + a BUILD-lane trigger in lead.md; (5) add tests to the protected `tests/protect_paths.test.js` for parent-folder cwd, a repo subfolder cwd, unset-or-parent `CLAUDE_PROJECT_DIR`, a second checkout, and that tester `/tmp` screenshots still save. All six touched files are PROTECTED (the fix needs the `protected-change` label at build time); 4 open Questions for Russell are listed in the task file (branch convention, the identical Stop-hook bug, the `sh -c` wrapper, the canary filename).
+
+**State.** Plan-only turn — NO application or safety code changed. Task file + this log pushed to `claude/slack-session-vgynce` (session-pinned; based on latest `main`). Awaiting Russell's approval in the Slack thread + the `protected-change` label.
+
+**Next step.** On approval, run the BUILD lane — which must itself START with the new canary self-check before any code is written; if the canary Edit does not return `[protect-paths] BLOCKED`, stop and report [NEEDS YOU].
