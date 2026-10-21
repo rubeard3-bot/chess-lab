@@ -1064,3 +1064,54 @@ These pages were built feature-by-feature with self-contained CSS. Keeping style
 **Next steps**
 1. Russell adds the `protected-change` label to this PR, waits for the green check, merges.
 2. First task under the new rules: rapid/blitz/bullet game sorting.
+
+---
+
+## 2026-10-20: PLAN — correct move numbers in coach text + "You played" fix (branch agent/coach-move-numbers)
+
+**What was done** (Lead triage of Russell's `plan:` request — scaffolding only, no build)
+- Triaged Russell's "fix the move numbers in the coach text" request from Slack #chesslab-agents. The analyzer coach prompt hands Claude only a 1-based `ply` half-move index + SAN and never a real chess move number, so Claude does the ply→move arithmetic itself in prose with nothing verifying it (it wrote "11.Bc4" when Bc4 was move 6). Bad numbers persist into saved games and flow to My Report, Recommendations, the study plan, and the dashboard card. Separately, the move-detail card labels every move "You played", even the opponent's.
+- Explored the generation and display sites: `js/analysis.js` (`callClaude` /api/analyze prompt, ply-keyed moves + opening fields), `js/ui.js` (`renderMoveDetail` "You played" labels, `renderNextSteps`, `renderFullReport`/`renderCoachSummary`, coach-chat context builder), `js/openings.js` + `server/index.js` (opening / Lichess route and recommendations prompt), `recommendations.html`/`index.html` (recs + dashboard display). Captured each in the task file's Impact map.
+- Created branch `agent/coach-move-numbers` off latest `origin/main` and the task file `tasks/2026-10-20-coach-move-numbers.md`.
+
+**Scope decided** (per Russell): move labels fed to the coach prompt + a new non-protected validation/repair module + save-time repair before `Storage.saveGame` + display-time repair everywhere coach text is shown (covers already-saved games/recs/study-plan/dashboard without rewriting saved games) + the "You played"/opponent-move label fix. Repair rule: replace a move number only when the adjacent SAN maps to exactly ONE move; otherwise strip the number; log every repair.
+
+**Split out to a follow-up PR:** the opening "left theory / you played / theory says" fields, the Opening Explorer fix, and adding a `masters` mode to the Railway Lichess proxy — do not build on the direct unauthenticated Lichess route.
+
+**Protected paths:** this PR touches `js/analysis.js` only (would need Russell's `protected-change` label). `server/index.js` and `js/memory.js` are generation sites but are handled at display time, not edited. Open question logged in the task file: confirm display-time-only handling for recs/study-plan/dashboard/memory narrative, or fix the recommendations prompt at source (adds protected `server/index.js` + a Railway redeploy).
+
+**Current state:** PLAN only. Branch + task file + COMMAND_LOG/HANDOFF entries committed on `agent/coach-move-numbers`, not merged. No application code written. Awaiting Russell's `approved, build agent/coach-move-numbers` before building.
+
+**Next steps**
+1. Russell reviews the plan + answers the open question, then replies `approved, build agent/coach-move-numbers`.
+2. On approval: build per the task file (new `js/move-validation.js`, wire save + display repair, `js/analysis.js` move labels + prompt rule, "You played" color gate, `tests/move_validation.test.js`), run `python3 tests/ci_checks.py` + `node tests/run-all.js`, collect code-reviewer/chess-reviewer/tester verdicts, open a PR with the `protected-change` label for Russell.
+
+---
+
+## 2026-10-21: BUILT — correct move numbers in coach text + "You played" fix (branch agent/coach-move-numbers)
+
+**What was built** (per the approved `tasks/2026-10-20-coach-move-numbers.md`; HEAD e56757c)
+- **Real move labels fed to the analyzer coach prompt** (`js/analysis.js`, PROTECTED): a `moveLabel` is computed INLINE in `movesForPrompt` (the protected file does not import the new module) plus a prompt RULE instructing the coach to refer to each move only by its provided label and never compute its own move numbers. The opening "left theory / you played / theory says" fields were left untouched — deferred to the follow-up.
+- **New non-protected `js/move-validation.js`** (dual-export IIFE, Node-testable like `js/phase-accuracy.js`): `plyToMoveLabel` ("6. Bc4" / "6... Nf6"), `buildMoveIndex` (SAN → plies map), `repairCoachText` (corrects a move number when the adjacent SAN maps to exactly one ply, strips it when ambiguous/absent, leaves everything else untouched), the pure `movePlayerLabel` (the "You played:" / "Opponent played:" gate), and `logRepairs`.
+- **Save-time repair** in `js/app.js` (in the Claude `.then`, before persist): repairs `fullAnalysis.moves[].explanation` + `summary.*` against the move index built from the parsed game; only the game being saved is touched, existing games are not rewritten.
+- **Display-time repair** so already-saved games/recs/dashboard show correct numbers WITHOUT rewriting saved data: `js/ui.js` (per-move explanation + Report tab, plus the "You played"/"Opponent played" fix via `movePlayerLabel`), `recommendations.html` (per-example cards validated against their own game's index; cross-game prose repaired strip-only), and `index.html` (dashboard weakness chip, Today's-focus, and the Top Weakness card).
+
+**Review cycle**
+- code-reviewer caught and the builder fixed an eval-corruption bug: `repairCoachText` Form A could rewrite a whole-number eval written just before a SAN (e.g. "crashed to -3. Nxe5") because the sign/decimal sat outside the match. Guard added (skip Form A when the preceding char is `+`/`-`/`.`/a digit) plus three preservation tests — commit 4d5464e.
+- tester caught and the builder fixed a missed render site: the dashboard Top Weakness card wrote `tw.description` straight to `textContent` without repair; fixed, and the remaining recommendations prose fields were swept through strip-only repair — commit e56757c.
+- **Final verdicts: code-reviewer PASS, chess-reviewer PASS, tester PARTIAL** (recorded in the task file's `## Verdicts` section).
+
+**Tests**
+- `python3 tests/ci_checks.py` green (36 files).
+- `node tests/run-all.js` 5/5 (the new `move_validation` suite is 60 checks; accuracy-golden, phase-accuracy, pr_rules, and protect_paths suites unaffected).
+
+**OPEN ITEMS for Russell**
+- (a) `js/analysis.js` is a protected path — the PR needs Russell's `protected-change` label. Both reviewers ESCALATE solely on this governance point.
+- (b) The local `.claude/hooks/protect_paths.js` hook did NOT block the agent editing the protected file in the builder environment — a safety-system gap to investigate.
+- (c) Known lexical limitation: a BARE UNSIGNED integer immediately before a move (e.g. "fell to 3. Nf3") is indistinguishable from a real move reference and is still rewritten; all signed/decimal evals, percentages, and counts are protected.
+- (d) Prod-only checks: openings.html / practice.html board liveness could not be tested (the sandbox blocks the chess.js CDN those pages use — pre-existing, not this PR); and the dashboard weakness card's pre-existing 2-sentence truncation can clip a trailing "+1.5" to "+1." (unchanged by this PR).
+- (e) No PR created yet — Russell to create it (the task file already links the Slack thread) and merge; the follow-up PR will move the opening fields + Opening Explorer to the Railway proxy `masters` mode.
+
+**Next steps**
+1. Await Russell's `protected-change` label + PR/merge.
+2. Then the opening-fields / Opening Explorer follow-up PR (adds the Railway proxy `masters` mode).

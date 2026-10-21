@@ -716,6 +716,32 @@ const App = (() => {
       .then(claudeData => {
         const fullAnalysis = Analysis.buildAnalysis(classifiedMoves, accuracy, claudeData, parsed.metadata, playerColor);
 
+        // Save-time repair: correct/strip any wrong move numbers Claude wrote
+        // into this game's coach text BEFORE it is persisted (this game only —
+        // already-saved games are covered by display-time repair, not rewritten).
+        if (typeof MoveValidation !== 'undefined') {
+          try {
+            const moveIndex = MoveValidation.buildMoveIndex(parsed.verboseHistory);
+            const allRepairs = [];
+            (fullAnalysis.moves || []).forEach(m => {
+              if (typeof m.explanation === 'string' && m.explanation) {
+                const r = MoveValidation.repairCoachText(m.explanation, moveIndex);
+                m.explanation = r.text;
+                if (r.repairs.length) allRepairs.push.apply(allRepairs, r.repairs);
+              }
+            });
+            const summary = fullAnalysis.summary || {};
+            Object.keys(summary).forEach(k => {
+              if (typeof summary[k] === 'string' && summary[k]) {
+                const r = MoveValidation.repairCoachText(summary[k], moveIndex);
+                summary[k] = r.text;
+                if (r.repairs.length) allRepairs.push.apply(allRepairs, r.repairs);
+              }
+            });
+            MoveValidation.logRepairs(allRepairs, 'save:' + gameId);
+          } catch (_) {}
+        }
+
         try {
           const key    = 'csa_game_' + gameId;
           const stored = JSON.parse(localStorage.getItem(key) || 'null');

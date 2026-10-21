@@ -245,6 +245,7 @@
 
   <script src="js/storage.js"></script>
   <script src="js/memory.js"></script>
+  <script src="js/move-validation.js"></script>
   <script src="js/recommendations.js"></script>
   <script src="js/nav.js"></script>
   <script>
@@ -320,6 +321,39 @@
         .replace(/'/g, '&#39;');
     }
 
+    // Cross-game coach prose: no single game, so strip-only mode removes the
+    // NUMBER from any move-reference token (SAN kept). Non-move numbers
+    // (percentages, evals, counts) are never touched.
+    function recRepairCross(text) {
+      if (typeof MoveValidation === 'undefined' || typeof text !== 'string' || !text) return text || '';
+      const r = MoveValidation.repairCoachText(text, null);
+      if (r.repairs.length) MoveValidation.logRepairs(r.repairs, 'display:recs');
+      return r.text;
+    }
+
+    // Per-example text is validated against ITS game's real SAN->ply index
+    // (built from the saved game's classified moves, ordered ply 1..n).
+    const _recIndexCache = {};
+    function recGameMoveIndex(gameId) {
+      if (typeof MoveValidation === 'undefined' || !gameId) return null;
+      if (gameId in _recIndexCache) return _recIndexCache[gameId];
+      let idx = null;
+      try {
+        const raw  = localStorage.getItem(gameId);
+        const game = raw ? JSON.parse(raw) : null;
+        const moves = game && game.analysis && game.analysis.moves;
+        if (Array.isArray(moves)) idx = MoveValidation.buildMoveIndex(moves);
+      } catch (_) { idx = null; }
+      _recIndexCache[gameId] = idx;
+      return idx;
+    }
+    function recRepairForGame(text, gameId) {
+      if (typeof MoveValidation === 'undefined' || typeof text !== 'string' || !text) return text || '';
+      const r = MoveValidation.repairCoachText(text, recGameMoveIndex(gameId)); // null idx -> strip-only
+      if (r.repairs.length) MoveValidation.logRepairs(r.repairs, 'display:recs');
+      return r.text;
+    }
+
     function getGameInfo(gameId) {
       const saved = localStorage.getItem(gameId);
       if (!saved) return null;
@@ -343,7 +377,7 @@
       return `<a class="rec-game-ref-card" href="analyzer.html?gameId=${esc(gameId)}" target="_blank" rel="noopener noreferrer">
         <span class="rec-game-ref-icon">♟</span>
         <span class="rec-game-ref-body">
-          <span class="rec-game-ref-desc">${esc(description)}</span>
+          <span class="rec-game-ref-desc">${esc(recRepairForGame(description, gameId))}</span>
           ${info ? `<span class="rec-game-ref-meta">${esc(info.opening)} · ${esc(info.date)}</span>` : ''}
         </span>
         <span class="rec-game-ref-right">
@@ -460,7 +494,7 @@
 
       // Overall assessment
       const assessEl = document.getElementById('rec-assessment-text');
-      if (assessEl) assessEl.textContent = recs.overallAssessment || '';
+      if (assessEl) assessEl.textContent = recRepairCross(recs.overallAssessment || '');
 
       // Phase score chips — animate hidden bar-fills for JS contract; update visible chip values
       ['opening', 'middlegame', 'endgame'].forEach(p => {
@@ -478,7 +512,7 @@
       renderWeaknesses(recs.topWeaknesses || []);
 
       const repEl = document.getElementById('rec-repertoire-assessment');
-      if (repEl) repEl.textContent = recs.openingReport?.repertoireAssessment || '';
+      if (repEl) repEl.textContent = recRepairCross(recs.openingReport?.repertoireAssessment || '');
       renderOpenings(recs.openingReport?.openings || []);
 
       renderPhaseAnalysis(recs.phaseAnalysis || {});
@@ -492,7 +526,7 @@
       renderGoals(recs.nextGoals || []);
 
       const coachEl = document.getElementById('rec-coach-msg-text');
-      if (coachEl) coachEl.textContent = recs.coachMessage || '';
+      if (coachEl) coachEl.textContent = recRepairCross(recs.coachMessage || '');
     }
 
     /* ---- weaknesses ---- */
@@ -508,7 +542,7 @@
         const sevLabel = { critical: 'Critical', major: 'Major', moderate: 'Moderate' }[sev] || esc(w.severity);
         const examples = (w.examples || []).map(e =>
           typeof e === 'string'
-            ? `<div class="rec-example-line">${esc(e)}</div>`
+            ? `<div class="rec-example-line">${esc(recRepairCross(e))}</div>`
             : renderGameRefCard(e.gameId, e.description || e.move || '')
         ).join('');
 
@@ -519,7 +553,7 @@
             <div class="rec-resource-icon">${icon}</div>
             <div class="rec-resource-info">
               <div class="rec-resource-name">${esc(r.name)}</div>
-              <div class="rec-resource-desc">${esc(r.description)}</div>
+              <div class="rec-resource-desc">${esc(recRepairCross(r.description))}</div>
               ${r.url ? `<a class="rec-resource-link" href="${esc(r.url)}" target="_blank" rel="noopener noreferrer">Open resource ↗</a>` : ''}
             </div>
           </div>`;
@@ -536,7 +570,7 @@
     <span class="rec-weakness-title">${esc(w.title)}</span>
     ${w.frequency ? `<span class="rec-freq-tag">${esc(w.frequency)}</span>` : ''}
   </div>
-  <p class="rec-weakness-desc">${esc(w.description)}</p>
+  <p class="rec-weakness-desc">${esc(recRepairCross(w.description))}</p>
   ${examples ? `<div class="rec-examples-block"><div class="rec-examples-label">Referenced Games</div><div class="rec-game-refs">${examples}</div></div>` : ''}
   ${sp ? `
   <button class="rec-sp-toggle" onclick="toggleStudyPlan(this)">
@@ -587,7 +621,7 @@
       <span>${o.gamesPlayed || 0} game${(o.gamesPlayed || 0) !== 1 ? 's' : ''}</span>
       <span>${o.averageAccuracy || 0}% avg accuracy</span>
     </div>
-    ${o.commonMistake ? `<p class="rec-opening-mistake">Common mistake: ${esc(o.commonMistake)}</p>` : ''}
+    ${o.commonMistake ? `<p class="rec-opening-mistake">Common mistake: ${esc(recRepairCross(o.commonMistake))}</p>` : ''}
     ${links ? `<div class="rec-opening-links">${links}</div>` : ''}
     ${gameRefs ? `<div class="rec-game-refs"><div class="rec-game-refs-label">Games</div>${gameRefs}</div>` : ''}
   </div>
@@ -611,7 +645,7 @@
         const R     = 38;
         const circ  = 2 * Math.PI * R;
         const dash  = (score / 100 * circ).toFixed(2);
-        const issues = (data.keyIssues || []).map(i => `<li>${esc(i)}</li>`).join('');
+        const issues = (data.keyIssues || []).map(i => `<li>${esc(recRepairCross(i))}</li>`).join('');
         return `
 <div class="rec-phase-card">
   <div class="rec-phase-card-title">${ph.label}</div>
@@ -625,7 +659,7 @@
     </svg>
     <div class="rec-circular-label">${score}</div>
   </div>
-  <p class="rec-phase-assessment">${esc(data.assessment)}</p>
+  <p class="rec-phase-assessment">${esc(recRepairCross(data.assessment))}</p>
   ${issues ? `<ul class="rec-phase-issues">${issues}</ul>` : ''}
 </div>`;
       }).join('');
@@ -645,10 +679,10 @@
         return `
 <div class="rec-tactic-card">
   <div class="rec-tactic-header">
-    <span class="rec-tactic-pattern">${esc(t.pattern)}</span>
+    <span class="rec-tactic-pattern">${esc(recRepairCross(t.pattern))}</span>
     <span class="rec-tactic-occ">${t.occurrences || 0}×</span>
   </div>
-  <p class="rec-tactic-desc">${esc(t.description)}</p>
+  <p class="rec-tactic-desc">${esc(recRepairCross(t.description))}</p>
   ${drills ? `<ul class="rec-drills-list">${drills}</ul>` : ''}
   ${gameRefs ? `<div class="rec-game-refs"><div class="rec-game-refs-label">Referenced Games</div>${gameRefs}</div>` : ''}
 </div>`;
@@ -665,9 +699,9 @@
       }
       el.innerHTML = improvements.map(imp => `
 <div class="rec-improvement-card">
-  <div class="rec-improvement-area">${esc(imp.area)}</div>
-  <p class="rec-improvement-evidence">${esc(imp.evidence)}</p>
-  <p class="rec-improvement-msg">${esc(imp.message)}</p>
+  <div class="rec-improvement-area">${esc(recRepairCross(imp.area))}</div>
+  <p class="rec-improvement-evidence">${esc(recRepairCross(imp.evidence))}</p>
+  <p class="rec-improvement-msg">${esc(recRepairCross(imp.message))}</p>
   ${imp.gameId ? `<div class="rec-game-refs">${renderGameRefCard(imp.gameId, imp.area)}</div>` : ''}
 </div>`).join('');
     }
@@ -681,12 +715,12 @@
         return;
       }
       el.innerHTML = days.map((day, i) => {
-        const acts = (day.activities || []).map(a => `<li>${esc(a)}</li>`).join('');
+        const acts = (day.activities || []).map(a => `<li>${esc(recRepairCross(a))}</li>`).join('');
         return `
 <div class="rec-week-day ${i % 2 === 0 ? 'even' : 'odd'}">
   <div class="rec-day-name">${esc(day.day)}</div>
   <div class="rec-day-body">
-    <div class="rec-day-focus">${esc(day.focus)}</div>
+    <div class="rec-day-focus">${esc(recRepairCross(day.focus))}</div>
     ${acts ? `<ul class="rec-day-activities">${acts}</ul>` : ''}
   </div>
   <div class="rec-day-duration">${esc(day.duration)}</div>
@@ -707,11 +741,11 @@
   <div class="rec-goal-header">
     <div class="rec-goal-number">${i + 1}</div>
     <div>
-      <div class="rec-goal-title">${esc(g.goal)}</div>
+      <div class="rec-goal-title">${esc(recRepairCross(g.goal))}</div>
       <div class="rec-goal-timeframe">${esc(g.timeframe)}</div>
     </div>
   </div>
-  <p class="rec-goal-achieve">${esc(g.howToAchieve)}</p>
+  <p class="rec-goal-achieve">${esc(recRepairCross(g.howToAchieve))}</p>
 </div>`).join('');
     }
 

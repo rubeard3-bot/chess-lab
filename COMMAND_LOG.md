@@ -105,3 +105,12 @@ agent branch only; no PR/merge.
 ### 2026-10-20 (Russell, advisor session)
 > also we need to make sure that the agents whenever they make an edit are able to see the whole codebase so one edit doesn't mess with something else. Like i want it to auto sort the games by rapid blitz and bullet so that it can have entirely different past games that can be sorted. but i dont want to accidentally destroy something else
 > Ok yeah lets do the safety rules now
+
+### 2026-10-20 (Russell, Slack #chesslab-agents)
+> plan: fix the move numbers in the coach text. When I analyze a game the coach writes things like "11.Bc4" but Bc4 was actually move 6 — the arithmetic is wrong and the bad numbers end up in My Report, Recommendations, the study plan, and the dashboard card. Feed the coach the real move labels and add a save-before check so wrong numbers can't get saved. Also the opening section ("you left theory", "you played", "theory says") pulls from Lichess and is off. And the move card says "You played" even on my opponent's moves — fix that too.
+
+Follow-up decisions (Russell, same thread):
+- Opening "left theory / you played / theory says" fields are DEFERRED to a follow-up PR that fixes the Opening Explorer and adds a `masters` mode to the Railway Lichess proxy — do not build on the direct unauthenticated Lichess route. Out of this PR.
+- Repair in place: replace a move number only when the SAN next to it identifies exactly ONE move in the game; otherwise remove the number. Log every repair — nothing changes silently.
+- Run the same check at DISPLAY time so already-saved games, recommendations, the study plan, and the dashboard card show corrected numbers without rewriting saved games.
+- Split: this PR = move labels + validation/repair (save + display time) + the "You played" / opponent-move label fix. Branch `agent/coach-move-numbers`.
