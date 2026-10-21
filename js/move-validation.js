@@ -105,10 +105,23 @@ const MoveValidation = (() => {
     const stripOnly = _isEmptyIndex(moveIndex);
 
     const out = text.replace(newTokenRe(),
-      function (m, bMove, bNum, bSep, bSan, aNum, aSep, aSpace, aSan) {
+      function (m, bMove, bNum, bSep, bSan, aNum, aSep, aSpace, aSan, offset, str) {
         const isFormB = (bSan !== undefined);
         // The SAN is the last captured group of whichever form matched.
         const san = isFormB ? bSan : aSan;
+
+        // Form A guard: a whole-number eval written right before a SAN (e.g.
+        // "-3. Nxe5", "+2. Qh5", "1.5. Nf3") would otherwise match "3. Nxe5"
+        // and corrupt the eval — the sign/decimal point sits OUTSIDE the match.
+        // If the char immediately before the number is a sign, a dot, or a
+        // digit, this number is part of a larger numeric/eval token: leave it.
+        // Form B ("move N <SAN>") is anchored by the word "move" and is exempt.
+        if (!isFormB && offset > 0) {
+          const prev = str.charAt(offset - 1);
+          if (prev === '+' || prev === '-' || prev === '.' || (prev >= '0' && prev <= '9')) {
+            return m;
+          }
+        }
 
         if (stripOnly) {
           repairs.push({ original: m, replacement: san, reason: 'no-game-context' });

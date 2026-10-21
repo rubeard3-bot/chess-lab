@@ -71,6 +71,14 @@ preserved('evaluation 1.5', 'An evaluation 1.5 is comfortable.');
 preserved('plain count', 'You won 3 games this week.');
 preserved('move N no SAN', 'You had blunders on move 20 of the game.');
 
+// Whole-number / decimal evals written immediately before a SAN must NOT be
+// mistaken for a move-reference number (the sign/decimal sits outside the
+// match). "Nxe5"/"Qh5" are absent from operaIndex, so without the guard the
+// number would be stripped; with the guard the eval text is left intact.
+preserved('eval -3 before SAN', 'The eval crashed to -3. Nxe5 was forced.');
+preserved('eval +2 before SAN', 'It rose to +2. Qh5 then fell.');
+preserved('decimal eval before SAN', 'evaluation 1.5. Nf3 is fine');
+
 /* ---- 4. movePlayerLabel (Russell item 2) ---- */
 check('label white/white', MV.movePlayerLabel('white', 'white'), 'You played');
 check('label black/white', MV.movePlayerLabel('black', 'white'), 'Opponent played');
