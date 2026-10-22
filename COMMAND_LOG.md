@@ -134,3 +134,8 @@ Build record: Built + reviewed the protected-paths hardening on claude/slack-ses
 
 ### 2026-10-21 (Russell, advisor session)
 > Lets do the leftover check real quick then if its so easy
+
+---
+
+### 2026-10-21 (Russell, advisor session)
+> Ok now the opening explorer

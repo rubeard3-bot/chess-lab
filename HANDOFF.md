@@ -1174,3 +1174,20 @@ These pages were built feature-by-feature with self-contained CSS. Keeping style
 **Next steps**
 1. Russell labels `protected-change`, waits for green, merges.
 2. Next task: Weakness Drill triage (first build under the working lock; its startup self-check is the live proof).
+
+---
+
+## 2026-10-21: Lichess proxy masters mode (branch russell/proxy-masters)
+
+**What was done** (prepared by Russell's advisor session; changes protected `server/`, so the PR needs the `protected-change` label; merging redeploys Railway)
+- `/api/lichess-explorer` now takes `db=masters` to query the masters database; without it, behavior is unchanged (players "lichess" DB), so the Opening Drill caller in `js/practice-board.js` is unaffected. `db` only picks the path and is never forwarded. Whitelist adds `play`, `since`, `until`, `topGames`.
+- The URL is built by a new pure helper `server/explorer_url.js`, tested by `tests/explorer_url.test.js`.
+
+**Why:** Russell confirmed from his computer that an unauthenticated request to explorer.lichess.ovh/masters returns HTTP 401. `js/openings.js` calls Lichess directly with no token, so the Opening Explorer shows "out of book" / no moves and Train mode finds no lines (triage 2026-10-21). The proxy holds the token but only served the players DB.
+
+**Checks:** `node --check` on both server files; `python3 tests/ci_checks.py` PASS; `node tests/run-all.js` 6/6 PASS.
+
+**Next steps**
+1. Russell labels `protected-change`, merges; Railway redeploys.
+2. Agent task: route `js/openings.js` through the proxy (masters + players), show a real error state instead of "out of book" on failed requests, fix the `?opening=` deep link (carry the position, not just the name), fix search (stale dropdown + Enter).
+3. Later task: compute the report's opening fields from the masters DB instead of the coach.
