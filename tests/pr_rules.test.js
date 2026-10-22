@@ -42,6 +42,12 @@ check('FAIL verdict is caught', R.checkTaskContent(good.replace('code-reviewer: 
 check('missing tester verdict is caught', R.checkTaskContent(good.replace('- tester: PARTIAL (backend CANNOT TEST)\n', '')).length, 1);
 check('template placeholders do not pass', R.checkTaskContent(fs.readFileSync(path.join(ROOT, 'tasks', 'TEMPLATE.md'), 'utf8')).length > 0, true);
 // The literal "<date>" placeholder must NOT count as approval; a real YYYY-MM-DD must.
+// The approval line only counts inside the "## Approval" section.
+const quotedElsewhere = good
+  .replace('APPROVED by Russell on 2026-10-20: "approved, build agent/x"', '(waiting for Russell)')
+  .replace('## Impact map', '## Impact map\n- example from the plan: APPROVED by Russell on 2026-10-20: "approved, build agent/x"');
+check('approval quoted outside the Approval section does not count', R.checkTaskContent(quotedElsewhere).length, 1);
+check('missing Approval section is caught', R.checkTaskContent(good.replace('## Approval', '## Notes')).length, 1);
 check('placeholder date approval line fails the approval rule',
   R.checkTaskContent(good.replace('APPROVED by Russell on 2026-10-20: "approved, build agent/x"', 'APPROVED by Russell on <date>: <quote>')).length, 1);
 check('real YYYY-MM-DD approval line passes the approval rule',

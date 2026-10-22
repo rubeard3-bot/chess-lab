@@ -48,9 +48,14 @@ const REQUIRED_VERDICTS = {
 
 function checkTaskContent(text) {
   const problems = [];
-  // Require a REAL date (YYYY-MM-DD) right after "on"; the template placeholder
-  // "APPROVED by Russell on <date>" must NOT count as approval.
-  if (!/APPROVED by Russell on \d{4}-\d{2}-\d{2}/.test(text)) problems.push('missing a real "APPROVED by Russell on YYYY-MM-DD" line (the "<date>" placeholder does not count)');
+  // The approval must sit INSIDE the "## Approval" section, at the start of a
+  // line, with a REAL date (YYYY-MM-DD). The template placeholder
+  // "APPROVED by Russell on <date>" does not count, and neither does an example
+  // of the line quoted elsewhere in the plan (found in the PR #6 task file).
+  const a = text.split(/^## Approval\s*$/m)[1];
+  const approvalSection = a === undefined ? '' : a.split(/^## /m)[0];
+  if (a === undefined) problems.push('missing the "## Approval" section');
+  else if (!/^APPROVED by Russell on \d{4}-\d{2}-\d{2}/m.test(approvalSection)) problems.push('no real "APPROVED by Russell on YYYY-MM-DD" line inside the "## Approval" section (the "<date>" placeholder, or a line quoted elsewhere, does not count)');
   if (!/^## Impact map\s*$/m.test(text)) problems.push('missing the "## Impact map" section');
   const v = text.split(/^## Verdicts\s*$/m)[1];
   if (v === undefined) {

@@ -1160,3 +1160,17 @@ These pages were built feature-by-feature with self-contained CSS. Keeping style
 **State.** Awaiting Russell to open the PR, add the `protected-change` label (both/all changed files are protected), and merge. No agent opens the PR or touches labels.
 
 **Go-forward design gap to remember.** Once merged, the now-working hook blocks the builder from editing protected files EVEN FOR APPROVED changes — the hook has no label-awareness. Future protected-path changes will need either local application by Russell or an approval-aware hook.
+
+---
+
+## 2026-10-21: PR rules, approval must be inside the Approval section (branch russell/approval-section)
+
+**What was done** (prepared by Russell's advisor session at his request; changes protected `tests/pr_rules.js` + `tests/pr_rules.test.js`, so the PR needs the `protected-change` label)
+- `checkTaskContent` now requires a line starting "APPROVED by Russell on YYYY-MM-DD" INSIDE the task file's "## Approval" section. Previously the line could appear anywhere, so an example quoted in the plan text (as in the PR #6 task file) would have satisfied the rule.
+- New tests: an approval quoted outside the section fails; a missing Approval section fails. The task files from PRs #5 and #6 still pass.
+
+**Checks:** `python3 tests/ci_checks.py` PASS; `node tests/run-all.js` 5/5 PASS.
+
+**Next steps**
+1. Russell labels `protected-change`, waits for green, merges.
+2. Next task: Weakness Drill triage (first build under the working lock; its startup self-check is the live proof).
