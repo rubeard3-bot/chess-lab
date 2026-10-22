@@ -1,0 +1,17 @@
+Protected-paths canary (startup self-check).
+
+This file exists only so the builder can PROVE, at the start of every build,
+that the hard lock (.claude/hooks/protect_paths.js) actually blocks edits to
+protected paths. It lives inside the protected .claude/hooks/ folder, so any
+attempt by a restricted agent to Edit it must be blocked by the hook.
+
+How the self-check works:
+  The builder attempts exactly ONE no-op Edit on this file whose old_string is
+  a sentinel that is deliberately NOT present in this file. The expected result
+  is a "[protect-paths] BLOCKED" message (the hook stops the edit before the
+  string is ever looked up). If the builder instead sees a "string not found"
+  error, a module/hook error, or a success, the lock is NOT working -- the
+  builder must STOP and tell the Lead, and no code may be written.
+
+Do not rely on this file's contents for anything else. Editing it is never a
+real task; it is purely the lock's smoke test.

@@ -1,4 +1,6 @@
 // Tests for the hard-lock hook (.claude/hooks/protect_paths.js).
+const fs = require('fs');
+const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
 const { ROOT, check, done } = require('./helpers');
@@ -8,6 +10,18 @@ const HOOK = path.join(ROOT, '.claude', 'hooks', 'protect_paths.js');
 function run(input, { remote = false } = {}) {
   const env = { ...process.env, CLAUDE_PROJECT_DIR: ROOT, CLAUDE_CODE_REMOTE: remote ? 'true' : '' };
   const r = spawnSync(process.execPath, [HOOK], { input: JSON.stringify({ cwd: ROOT, ...input }), env });
+  return r.status === 2 ? 'BLOCK' : 'ALLOW';
+}
+
+// A variant that controls the working directory the hook sees (both the spawned
+// process cwd and the input.cwd) and whether CLAUDE_PROJECT_DIR is set. The
+// default run() hardcodes both to ROOT; these cases prove the hook anchors on
+// its own file location regardless of where the session started.
+function runAt(input, { remote = false, cwd = ROOT, projectDir = undefined, spawnCwd = cwd } = {}) {
+  const env = { ...process.env, CLAUDE_CODE_REMOTE: remote ? 'true' : '' };
+  if (projectDir === undefined) delete env.CLAUDE_PROJECT_DIR;
+  else env.CLAUDE_PROJECT_DIR = projectDir;
+  const r = spawnSync(process.execPath, [HOOK], { input: JSON.stringify({ cwd, ...input }), env, cwd: spawnCwd });
   return r.status === 2 ? 'BLOCK' : 'ALLOW';
 }
 const edit = (file, agent) => ({ tool_name: 'Edit', tool_input: { file_path: file }, ...(agent ? { agent_type: agent } : {}) });
@@ -55,4 +69,38 @@ check('tester may write screenshots outside the repo', run(bash('cp shot.png /tm
 check('builder may not weaken the test harness', run(edit('tests/helpers.js', 'builder')), 'BLOCK');
 check('builder may add a new test', run(edit('tests/openings_retry.test.js', 'builder')), 'ALLOW');
 check('cd into js then editing memory.js is blocked', run(bash("cd js && sed -i 's/a/b/' memory.js", 'builder')), 'BLOCK');
+
+// Repo-root resolution: the hook must anchor on its OWN file location, not on
+// CLAUDE_PROJECT_DIR / cwd. These absolute-path edits of js/analysis.js must be
+// blocked no matter where the session started. (They ALLOW on the pre-fix code.)
+const ABS_ANALYSIS = path.join(ROOT, 'js', 'analysis.js');
+const PARENT = path.dirname(ROOT);
+const SUBFOLDER = path.join(ROOT, 'js');
+check('builder edit blocked when cwd is the repo parent (CLAUDE_PROJECT_DIR unset)',
+  runAt(edit(ABS_ANALYSIS, 'builder'), { remote: true, cwd: PARENT }), 'BLOCK');
+check('builder edit blocked when cwd is a repo subfolder (CLAUDE_PROJECT_DIR unset)',
+  runAt(edit(ABS_ANALYSIS, 'builder'), { remote: true, cwd: SUBFOLDER }), 'BLOCK');
+check('builder edit blocked when CLAUDE_PROJECT_DIR points at the parent',
+  runAt(edit(ABS_ANALYSIS, 'builder'), { remote: true, cwd: ROOT, projectDir: PARENT }), 'BLOCK');
+
+// Second checkout / clone: a target owned by ANOTHER checkout (its own
+// .claude/protected-paths.txt up the tree) must also be blocked.
+const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'protcheck-'));
+try {
+  fs.mkdirSync(path.join(tmpRoot, '.claude'), { recursive: true });
+  fs.mkdirSync(path.join(tmpRoot, 'js'), { recursive: true });
+  fs.copyFileSync(path.join(ROOT, '.claude', 'protected-paths.txt'),
+                  path.join(tmpRoot, '.claude', 'protected-paths.txt'));
+  fs.writeFileSync(path.join(tmpRoot, 'js', 'analysis.js'), '// second checkout\n');
+  check('builder edit of js/analysis.js in a SECOND checkout is blocked',
+    runAt(edit(path.join(tmpRoot, 'js', 'analysis.js'), 'builder'), { remote: true, cwd: ROOT }), 'BLOCK');
+} finally {
+  fs.rmSync(tmpRoot, { recursive: true, force: true });
+}
+
+// A target owned by no checkout (plain /tmp) stays allowed for the tester.
+check('tester Edit of a /tmp screenshot is allowed', runAt(edit('/tmp/shot.png', 'tester'), { remote: true }), 'ALLOW');
+check('tester Write of a /tmp screenshot is allowed',
+  runAt({ tool_name: 'Write', tool_input: { file_path: '/tmp/shot.png' }, agent_type: 'tester' }, { remote: true }), 'ALLOW');
+
 done();

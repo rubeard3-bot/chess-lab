@@ -52,30 +52,96 @@ const restricted = isRemote || agentType !== '';
 if (!restricted) process.exit(0);
 
 try {
-  const root = process.env.CLAUDE_PROJECT_DIR || input.cwd || process.cwd();
+  // The repo root is derived from THIS hook file's own location
+  // (.claude/hooks/protect_paths.js -> repo root), NOT from CLAUDE_PROJECT_DIR /
+  // input.cwd / process.cwd(). In cloud sessions CLAUDE_PROJECT_DIR is unset and
+  // the working directory is the repo's PARENT, which used to make absolute edit
+  // targets normalize to "<repo>/js/..." and slip past the exact-string match.
+  const HOOK_ROOT = path.resolve(__dirname, '..', '..');
   const norm = p => p.replace(/\\/g, '/').replace(/^\.\//, '');
 
   // Working directory for resolving relative paths; Bash "cd X && ..." moves it.
-  let curDir = input.cwd || root;
-  function relToRoot(p) {
+  let curDir = input.cwd || HOOK_ROOT;
+  function absOf(p) {
     if (!p) return '';
-    const abs = path.isAbsolute(p) ? p : path.join(curDir, p);
-    return norm(path.relative(root, abs));
+    return path.isAbsolute(p) ? p : path.join(curDir, p);
+  }
+  function relToRoot(p) {
+    const abs = absOf(p);
+    if (!abs) return '';
+    return norm(path.relative(HOOK_ROOT, abs));
   }
 
-  let protectedList = [];
-  try {
-    protectedList = fs.readFileSync(path.join(root, '.claude', 'protected-paths.txt'), 'utf8')
-      .split(/\r?\n/).map(l => l.trim()).filter(l => l && !l.startsWith('#')).map(norm);
-  } catch (e) {
-    // If the list is missing, protect at least the safety system itself.
-    protectedList = ['.claude/', 'js/memory.js', 'js/storage.js', 'js/analysis.js', 'server/'];
+  // Full current protected list, used ONLY if protected-paths.txt can't be read.
+  // (Kept in sync with .claude/protected-paths.txt; must NOT be the weak 5-entry
+  // list, so a wrong/missing file can never silently degrade protection.)
+  const FALLBACK_LIST = [
+    'js/memory.js', 'js/storage.js', 'js/analysis.js', 'server/',
+    'tests/fixtures/', 'tests/accuracy_golden.test.js', 'tests/helpers.js',
+    'tests/run-all.js', 'tests/ci_checks.py', 'tests/protect_paths.test.js',
+    'tests/pr_rules.js', 'tests/pr_rules.test.js',
+    '.claude/protected-paths.txt', '.claude/hooks/', '.claude/settings.json',
+    '.claude/agents/', '.claude/team/', '.github/workflows/',
+  ];
+
+  function readList(rootDir) {
+    try {
+      return fs.readFileSync(path.join(rootDir, '.claude', 'protected-paths.txt'), 'utf8')
+        .split(/\r?\n/).map(l => l.trim()).filter(l => l && !l.startsWith('#')).map(norm);
+    } catch (e) { return null; }
   }
 
-  function protectedMatch(rel) {
-    if (!rel || rel.startsWith('..')) return null;
-    for (const p of protectedList) {
+  // The HOOK_ROOT list (with the full fallback and a loud warning if it's used).
+  let hookList = readList(HOOK_ROOT);
+  if (!hookList) {
+    hookList = FALLBACK_LIST;
+    if (isRemote) {
+      process.stderr.write('[protect-paths] WARN: protected-paths.txt not found at ' +
+        path.join(HOOK_ROOT, '.claude', 'protected-paths.txt') + '; using built-in list\n');
+    }
+  }
+
+  // Per-target checkout matching: for a target, walk UP to the nearest ancestor
+  // that owns a .claude/protected-paths.txt and match against THAT checkout's
+  // list too. This covers edits aimed at a second clone / worktree of the repo.
+  const listCache = new Map();
+  function listFor(rootDir) {
+    if (!listCache.has(rootDir)) listCache.set(rootDir, readList(rootDir));
+    return listCache.get(rootDir);
+  }
+  function findCheckoutRoot(absFile) {
+    if (!absFile) return null;
+    let dir = path.dirname(absFile);
+    let prev = null;
+    while (dir && dir !== prev) {
+      try {
+        if (fs.existsSync(path.join(dir, '.claude', 'protected-paths.txt'))) return dir;
+      } catch (e) { /* ignore */ }
+      prev = dir;
+      dir = path.dirname(dir);
+    }
+    return null;
+  }
+
+  function matchList(rel, list) {
+    if (!rel || rel.startsWith('..') || !list) return null;
+    for (const p of list) {
       if (p.endsWith('/') ? (rel === p.slice(0, -1) || rel.startsWith(p)) : rel === p) return p;
+    }
+    return null;
+  }
+
+  // Returns {rel, entry} if the target is protected by EITHER the HOOK_ROOT list
+  // or its own checkout's list; null (allowed) if neither matches.
+  function protectedHit(p) {
+    const hook = matchList(relToRoot(p), hookList);
+    if (hook) return { rel: relToRoot(p), entry: hook };
+    const abs = absOf(p);
+    const coRoot = findCheckoutRoot(abs);
+    if (coRoot) {
+      const coRel = norm(path.relative(coRoot, abs));
+      const co = matchList(coRel, listFor(coRoot));
+      if (co) return { rel: coRel, entry: co };
     }
     return null;
   }
@@ -99,8 +165,8 @@ try {
     const rel = relToRoot(p);
     const ro = readOnlyViolation(rel);
     if (ro) block(ro + '.');
-    const hit = protectedMatch(rel);
-    if (hit) block(`"${rel}" is protected (listed in .claude/protected-paths.txt as "${hit}").`);
+    const hit = protectedHit(p);
+    if (hit) block(`"${hit.rel}" is protected (listed in .claude/protected-paths.txt as "${hit.entry}").`);
     const mv = memoryViolation(rel);
     if (mv) block(mv + '.');
   }
@@ -132,7 +198,7 @@ try {
       if (/\bgit\s+push(\s+(-u|--set-upstream))?(\s+origin)?\s*$/.test(s)) {
         // A bare "git push" pushes the current branch; refuse if that is main.
         try {
-          const headRef = fs.readFileSync(path.join(root, '.git', 'HEAD'), 'utf8');
+          const headRef = fs.readFileSync(path.join(HOOK_ROOT, '.git', 'HEAD'), 'utf8');
           if (/refs\/heads\/(main|master)\s*$/.test(headRef)) block('you are on main; pushing from main is not allowed.');
         } catch (e) { /* ignore */ }
       }
@@ -177,8 +243,8 @@ try {
         const rel = relToRoot(t);
         const ro = readOnlyViolation(rel);
         if (ro) block(ro + '.');
-        const hit = protectedMatch(rel);
-        if (hit) block(`this command would change protected "${rel}" (listed as "${hit}").`);
+        const hit = protectedHit(t);
+        if (hit) block(`this command would change protected "${hit.rel}" (listed as "${hit.entry}").`);
         const mv = memoryViolation(rel);
         if (mv) block(mv + '.');
       }

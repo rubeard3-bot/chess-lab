@@ -41,6 +41,11 @@ check('missing impact map is caught', R.checkTaskContent(good.replace('## Impact
 check('FAIL verdict is caught', R.checkTaskContent(good.replace('code-reviewer: PASS', 'code-reviewer: FAIL')).length, 1);
 check('missing tester verdict is caught', R.checkTaskContent(good.replace('- tester: PARTIAL (backend CANNOT TEST)\n', '')).length, 1);
 check('template placeholders do not pass', R.checkTaskContent(fs.readFileSync(path.join(ROOT, 'tasks', 'TEMPLATE.md'), 'utf8')).length > 0, true);
+// The literal "<date>" placeholder must NOT count as approval; a real YYYY-MM-DD must.
+check('placeholder date approval line fails the approval rule',
+  R.checkTaskContent(good.replace('APPROVED by Russell on 2026-10-20: "approved, build agent/x"', 'APPROVED by Russell on <date>: <quote>')).length, 1);
+check('real YYYY-MM-DD approval line passes the approval rule',
+  R.checkTaskContent(good.replace('APPROVED by Russell on 2026-10-20: "approved, build agent/x"', 'APPROVED by Russell on 2026-10-22: "approved, build claude/slack-session-vgynce"')).length, 0);
 
 const read = f => (f === 'tasks/2026-10-20-x.md' ? good : '');
 check('agent PR with complete task file passes', R.checkTaskFile('agent/x', ['js/ui.js', 'tasks/2026-10-20-x.md'], read).ok, true);

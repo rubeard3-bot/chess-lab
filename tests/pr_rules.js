@@ -48,7 +48,9 @@ const REQUIRED_VERDICTS = {
 
 function checkTaskContent(text) {
   const problems = [];
-  if (!/APPROVED by Russell/.test(text)) problems.push('missing the "APPROVED by Russell" line');
+  // Require a REAL date (YYYY-MM-DD) right after "on"; the template placeholder
+  // "APPROVED by Russell on <date>" must NOT count as approval.
+  if (!/APPROVED by Russell on \d{4}-\d{2}-\d{2}/.test(text)) problems.push('missing a real "APPROVED by Russell on YYYY-MM-DD" line (the "<date>" placeholder does not count)');
   if (!/^## Impact map\s*$/m.test(text)) problems.push('missing the "## Impact map" section');
   const v = text.split(/^## Verdicts\s*$/m)[1];
   if (v === undefined) {
