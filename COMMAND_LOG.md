@@ -114,3 +114,18 @@ Follow-up decisions (Russell, same thread):
 - Repair in place: replace a move number only when the SAN next to it identifies exactly ONE move in the game; otherwise remove the number. Log every repair — nothing changes silently.
 - Run the same check at DISPLAY time so already-saved games, recommendations, the study plan, and the dashboard card show corrected numbers without rewriting saved games.
 - Split: this PR = move labels + validation/repair (save + display time) + the "You played" / opponent-move label fix. Branch `agent/coach-move-numbers`.
+
+## 2026-10-21 (Russell, Slack #chesslab-agents)
+> plan: Fix the protected-file lock based on the triage of why the hook let the builder edit `js/analysis.js` during PR #5 (only GitHub's server-side rule caught it). The in-session PreToolUse hook (`.claude/hooks/protect_paths.js`) resolves the repo root from `CLAUDE_PROJECT_DIR || cwd || process.cwd()`; in cloud sessions that var is unset and cwd is the repo's PARENT, so the edit target normalizes past the exact-match and the hook allows it. Requirements: (1) derive the repo root from the hook's own file location (`__dirname`), not the session cwd; (2) check each edited target against the protected list of the checkout that actually owns it (walk up to the nearest `.claude/protected-paths.txt`); (3) make the settings.json command robust to an unset CLAUDE_PROJECT_DIR and a parent-folder start, and fail CLOSED (block) in the cloud when it can't locate the script; (4) add a per-build startup canary self-check as a narrow exception in builder.md (one no-op Edit on a `.claude/hooks/` canary file must return `[protect-paths] BLOCKED`, else the Lead stops with [NEEDS YOU]); (5) add tests for parent-folder cwd, a repo subfolder cwd, unset-or-parent CLAUDE_PROJECT_DIR, a second checkout, and that tester /tmp screenshots still save. Plan only — no code.
+
+## 2026-10-22 (Russell, Slack #chesslab-agents)
+> approved, build claude/slack-session-vgynce
+
+Answers to the 4 plan questions (same thread):
+- (1) Branch: keep `claude/slack-session-vgynce`.
+- (2) Stop hook: YES — fix its identical CLAUDE_PROJECT_DIR / cwd root-resolution bug in `.claude/hooks/run_stop_hook.js` in THIS same PR.
+- (3) settings.json: use a cross-platform NODE resolver, NOT an `sh -c` wrapper, so Russell's local Windows sessions aren't affected.
+- (4) Canary file `.claude/hooks/protect_canary.txt`: fine.
+- ADDED: tighten `tests/pr_rules.js` so the template placeholder "APPROVED by Russell on <date>" does NOT count as approval — require a real `YYYY-MM-DD` immediately after "on", with a test proving the `<date>` placeholder FAILS and a real approval line PASSES.
+
+Build record: Built + reviewed the protected-paths hardening on claude/slack-session-vgynce; final commit 9118323; code-reviewer PASS / tester PASS / chess-reviewer N/A; awaiting Russell's PR + protected-change label + merge.

@@ -1115,3 +1115,48 @@ These pages were built feature-by-feature with self-contained CSS. Keeping style
 **Next steps**
 1. Await Russell's `protected-change` label + PR/merge.
 2. Then the opening-fields / Opening Explorer follow-up PR (adds the Railway proxy `masters` mode).
+
+---
+
+## 2026-10-21 — PLAN: harden the protected-paths lock (repo-root resolution)
+
+**What / why.** Triage of the PR #5 gap (open item (b) above): the in-session PreToolUse hook `.claude/hooks/protect_paths.js` did NOT block the builder editing the protected file `js/analysis.js`; only GitHub's server-side PR rule caught it. Root cause: the hook resolves the repo root as `CLAUDE_PROJECT_DIR || input.cwd || process.cwd()` (protect_paths.js:55). In cloud sessions `CLAUDE_PROJECT_DIR` is unset and the working directory is the repo's PARENT (`/home/user`, repo at `/home/user/chess-lab`), so the edit target normalizes to `chess-lab/js/analysis.js` and fails the exact-string match against the protected entry `js/analysis.js` — the hook exits 0 (allow). A wrong root also degrades to the weaker hardcoded fallback list, and the `settings.json` command can't even locate the script when the var is unset.
+
+**Done this session.** Wrote the PLAN task file `tasks/2026-10-21-protect-paths-root.md` with a 5-requirement fix design: (1) derive the repo root from the hook's own file location (`__dirname`), not the session cwd; (2) match each edited target against the protected list of the checkout that owns it (walk up to the nearest `.claude/protected-paths.txt`); (3) make the `settings.json` command robust to an unset `CLAUDE_PROJECT_DIR` and a parent-folder start, failing CLOSED (exit 2) in the cloud when it can't find the script; (4) add a per-build startup canary self-check as a narrow exception in builder.md + a BUILD-lane trigger in lead.md; (5) add tests to the protected `tests/protect_paths.test.js` for parent-folder cwd, a repo subfolder cwd, unset-or-parent `CLAUDE_PROJECT_DIR`, a second checkout, and that tester `/tmp` screenshots still save. All six touched files are PROTECTED (the fix needs the `protected-change` label at build time); 4 open Questions for Russell are listed in the task file (branch convention, the identical Stop-hook bug, the `sh -c` wrapper, the canary filename).
+
+**State.** Plan-only turn — NO application or safety code changed. Task file + this log pushed to `claude/slack-session-vgynce` (session-pinned; based on latest `main`). Awaiting Russell's approval in the Slack thread + the `protected-change` label.
+
+**Next step.** On approval, run the BUILD lane — which must itself START with the new canary self-check before any code is written; if the canary Edit does not return `[protect-paths] BLOCKED`, stop and report [NEEDS YOU].
+
+---
+
+## 2026-10-22 — APPROVED: protected-paths hardening plan (answers folded in)
+
+**What / why.** Russell approved the protected-paths hardening plan in the Slack thread ("approved, build claude/slack-session-vgynce") and answered the 4 open questions. Folded the answers into `tasks/2026-10-21-protect-paths-root.md` and logged the approval.
+
+**Done this session (docs only — no code).** Updated the task file:
+- Answered all 4 questions: (1) keep branch `claude/slack-session-vgynce`; (2) the Stop hook's identical bug is now IN SCOPE for this same PR; (3) use a cross-platform NODE resolver in settings.json (not an `sh -c` wrapper) so local Windows sessions are unaffected; (4) canary filename `.claude/hooks/protect_canary.txt` approved.
+- Rewrote Design requirement 3 to specify the cross-platform node resolver.
+- Added requirement 6 (fix `.claude/hooks/run_stop_hook.js` + its Stop command the same way — warn-only, so not-found still exits 0 but must actually run) and requirement 7 (tighten `tests/pr_rules.js` so the literal `APPROVED by Russell on <date>` placeholder is rejected and a real `YYYY-MM-DD` is required, with new cases in `tests/pr_rules.test.js`).
+- Extended the Impact map Touches list (run_stop_hook.js, pr_rules.js, pr_rules.test.js; noted BOTH settings.json command strings change), moved the Stop hook out of "Not changing", and recorded the approval line + Log entry.
+
+**State.** Docs-only turn — NO application or safety code changed. Task file + COMMAND_LOG + this log pushed to `claude/slack-session-vgynce`. Build is starting on the same branch; the BUILD lane must START with the canary self-check before any code is written.
+
+**Next step.** Run the BUILD lane for the 7-requirement fix; all touched files are PROTECTED, so the PR needs Russell's `protected-change` label.
+
+---
+
+## 2026-10-22 — BUILT + REVIEWED: protected-paths hardening (awaiting Russell's PR + label + merge)
+
+**What / why.** The protected-paths hardening was built and reviewed on `claude/slack-session-vgynce` (final commit `9118323`). All 7 requirements delivered:
+- `protect_paths.js` (PROTECTED): repo root now anchored to the hook's own file location (`HOOK_ROOT` from `__dirname`) plus per-checkout matching — fixing the cloud parent-folder bypass where `CLAUDE_PROJECT_DIR` is unset and cwd is the repo's parent.
+- `.claude/settings.json` (PROTECTED): cross-platform node resolver for BOTH the PreToolUse and the Stop command strings, failing CLOSED in the cloud when the hook script can't be located.
+- `.claude/hooks/run_stop_hook.js` (PROTECTED): `__dirname` resolution fix (same bug class; warn-only so not-found still exits 0 but now actually runs).
+- Canary startup self-check: `.claude/hooks/protect_canary.txt` + the exception wired into `.claude/agents/builder.md` and `.claude/team/lead.md`.
+- `tests/pr_rules.js` (PROTECTED): stricter approval-date check (rejects the literal `<date>` placeholder, requires a real `YYYY-MM-DD`), with new cases in `tests/pr_rules.test.js`; plus new regression tests in `tests/protect_paths.test.js`.
+
+**Review outcome.** code-reviewer PASS / tester PASS / chess-reviewer N/A (no chess logic touched). Both suites green: `ci_checks` 36 files PASS, `run-all` 5/5 PASS. (First build was commit `f70d6df`; code-reviewer flagged a stale `root` reference at `protect_paths.js:216` that failed OPEN for non-remote restricted agents on a bare `cd`; commit `9118323` fixed it to `HOOK_ROOT` and added a bare-cd regression test.)
+
+**State.** Awaiting Russell to open the PR, add the `protected-change` label (both/all changed files are protected), and merge. No agent opens the PR or touches labels.
+
+**Go-forward design gap to remember.** Once merged, the now-working hook blocks the builder from editing protected files EVEN FOR APPROVED changes — the hook has no label-awareness. Future protected-path changes will need either local application by Russell or an approval-aware hook.

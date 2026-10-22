@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/protect_paths.js\""
+            "command": "node -e \"const fs=require('fs'),path=require('path'),cp=require('child_process');const rel=['.claude','hooks','protect_paths.js'];const cwd=process.cwd();const cands=[process.env.CLAUDE_PROJECT_DIR,cwd];try{for(const d of fs.readdirSync(cwd,{withFileTypes:true}))if(d.isDirectory())cands.push(path.join(cwd,d.name));}catch(e){}let found=null;for(const c of cands){if(!c)continue;const f=path.join(c,...rel);try{if(fs.statSync(f).isFile()){found=f;break;}}catch(e){}}if(!found){if(String(process.env.CLAUDE_CODE_REMOTE).toLowerCase()==='true'){process.stderr.write('[protect-paths] BLOCKED: hook script not found; failing closed in the cloud.\\n');process.exit(2);}process.exit(0);}let input=Buffer.alloc(0);try{input=fs.readFileSync(0);}catch(e){}const r=cp.spawnSync(process.execPath,[found],{input,stdio:['pipe','inherit','inherit']});process.exit(r.status===null?0:r.status);\""
           }
         ]
       }
@@ -17,7 +17,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/run_stop_hook.js\""
+            "command": "node -e \"const fs=require('fs'),path=require('path'),cp=require('child_process');const rel=['.claude','hooks','run_stop_hook.js'];const cwd=process.cwd();const cands=[process.env.CLAUDE_PROJECT_DIR,cwd];try{for(const d of fs.readdirSync(cwd,{withFileTypes:true}))if(d.isDirectory())cands.push(path.join(cwd,d.name));}catch(e){}let found=null;for(const c of cands){if(!c)continue;const f=path.join(c,...rel);try{if(fs.statSync(f).isFile()){found=f;break;}}catch(e){}}if(!found){process.exit(0);}let input=Buffer.alloc(0);try{input=fs.readFileSync(0);}catch(e){}const r=cp.spawnSync(process.execPath,[found],{input,stdio:['pipe','inherit','inherit']});process.exit(r.status===null?0:r.status);\""
           }
         ]
       }
