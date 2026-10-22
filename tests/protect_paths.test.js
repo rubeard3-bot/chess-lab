@@ -69,6 +69,10 @@ check('tester may write screenshots outside the repo', run(bash('cp shot.png /tm
 check('builder may not weaken the test harness', run(edit('tests/helpers.js', 'builder')), 'BLOCK');
 check('builder may add a new test', run(edit('tests/openings_retry.test.js', 'builder')), 'ALLOW');
 check('cd into js then editing memory.js is blocked', run(bash("cd js && sed -i 's/a/b/' memory.js", 'builder')), 'BLOCK');
+// A bare `cd` (no argument) must not throw in the hook; it falls back to the
+// repo root. Regression for a stale `root` reference that made the non-remote
+// restricted path fail open. (ALLOW on the pre-fix code.)
+check('builder bare-cd then sed on protected memory.js is blocked', run(bash("cd && sed -i 's/a/b/' js/memory.js", 'builder')), 'BLOCK');
 
 // Repo-root resolution: the hook must anchor on its OWN file location, not on
 // CLAUDE_PROJECT_DIR / cwd. These absolute-path edits of js/analysis.js must be

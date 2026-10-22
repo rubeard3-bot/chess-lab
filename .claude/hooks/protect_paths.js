@@ -213,7 +213,7 @@ try {
       if (!seg) continue;
       const toks = seg.match(/[^\s'"`<>()]+/g) || [];
       if (toks[0] === 'cd' || toks[0] === 'pushd') {
-        const dest = toks[1] || root;
+        const dest = toks[1] || HOOK_ROOT;
         curDir = path.isAbsolute(dest) ? dest : path.join(curDir, dest);
         continue;
       }
