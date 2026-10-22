@@ -1127,3 +1127,19 @@ These pages were built feature-by-feature with self-contained CSS. Keeping style
 **State.** Plan-only turn — NO application or safety code changed. Task file + this log pushed to `claude/slack-session-vgynce` (session-pinned; based on latest `main`). Awaiting Russell's approval in the Slack thread + the `protected-change` label.
 
 **Next step.** On approval, run the BUILD lane — which must itself START with the new canary self-check before any code is written; if the canary Edit does not return `[protect-paths] BLOCKED`, stop and report [NEEDS YOU].
+
+---
+
+## 2026-10-22 — APPROVED: protected-paths hardening plan (answers folded in)
+
+**What / why.** Russell approved the protected-paths hardening plan in the Slack thread ("approved, build claude/slack-session-vgynce") and answered the 4 open questions. Folded the answers into `tasks/2026-10-21-protect-paths-root.md` and logged the approval.
+
+**Done this session (docs only — no code).** Updated the task file:
+- Answered all 4 questions: (1) keep branch `claude/slack-session-vgynce`; (2) the Stop hook's identical bug is now IN SCOPE for this same PR; (3) use a cross-platform NODE resolver in settings.json (not an `sh -c` wrapper) so local Windows sessions are unaffected; (4) canary filename `.claude/hooks/protect_canary.txt` approved.
+- Rewrote Design requirement 3 to specify the cross-platform node resolver.
+- Added requirement 6 (fix `.claude/hooks/run_stop_hook.js` + its Stop command the same way — warn-only, so not-found still exits 0 but must actually run) and requirement 7 (tighten `tests/pr_rules.js` so the literal `APPROVED by Russell on <date>` placeholder is rejected and a real `YYYY-MM-DD` is required, with new cases in `tests/pr_rules.test.js`).
+- Extended the Impact map Touches list (run_stop_hook.js, pr_rules.js, pr_rules.test.js; noted BOTH settings.json command strings change), moved the Stop hook out of "Not changing", and recorded the approval line + Log entry.
+
+**State.** Docs-only turn — NO application or safety code changed. Task file + COMMAND_LOG + this log pushed to `claude/slack-session-vgynce`. Build is starting on the same branch; the BUILD lane must START with the canary self-check before any code is written.
+
+**Next step.** Run the BUILD lane for the 7-requirement fix; all touched files are PROTECTED, so the PR needs Russell's `protected-change` label.

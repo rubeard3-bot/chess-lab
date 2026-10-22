@@ -19,11 +19,14 @@ During PR #5 (coach move numbers), the builder edited the protected file `js/ana
 ## Impact map
 Touches:
 - `.claude/hooks/protect_paths.js` (PROTECTED) — root resolution (line 55), protected-list load (line 68), fallback list (70-73); add `__dirname` anchor + per-target checkout walk-up.
-- `.claude/settings.json` (PROTECTED) — PreToolUse command string.
+- `.claude/settings.json` (PROTECTED) — command string. BOTH the PreToolUse and the Stop command strings change.
 - `.claude/hooks/protect_canary.txt` (PROTECTED folder) — NEW canary file.
 - `.claude/agents/builder.md` (PROTECTED) — startup self-check exception (under `# Before you write any code`, ~line 14).
 - `.claude/team/lead.md` (PROTECTED) — BUILD-lane self-check trigger (top of `## BUILD`, ~line 41).
 - `tests/protect_paths.test.js` (PROTECTED) — new cases + a cwd/env-controlling runner variant.
+- `.claude/hooks/run_stop_hook.js` (PROTECTED) — Stop-hook script/root resolution (requirement 6).
+- `tests/pr_rules.js` (PROTECTED) — approval-line check must reject the `<date>` placeholder and require a real YYYY-MM-DD (requirement 7).
+- `tests/pr_rules.test.js` (PROTECTED) — new cases for placeholder-fails / real-date-passes (requirement 7).
 
 Used by:
 - `protect_paths.js` runs as the PreToolUse hook (via settings.json) on EVERY Edit/Write/MultiEdit/NotebookEdit/Bash/PowerShell from any restricted agent, and is spawned by `tests/protect_paths.test.js`. The root-resolution change affects all agent edits repo-wide.
@@ -41,7 +44,7 @@ Protected by (summary): the new requirement-5 tests + the existing suite + the s
 ## Design (maps to the 5 requirements)
 1. Repo root from the hook's own file location. In protect_paths.js derive `const HOOK_ROOT = path.resolve(__dirname, '..', '..');` (CommonJS — `__dirname` is available) and use it to load `protected-paths.txt` and as the baseline root, replacing `CLAUDE_PROJECT_DIR || input.cwd || process.cwd()` (line 55) and the `path.join(root, ...)` at line 68. If HOOK_ROOT's protected-paths.txt is missing, keep a fallback but make it the FULL current list (not the weaker 5-entry one), and emit a warning when remote.
 2. Per-target checkout match. For each edited target, resolve to absolute and walk UP its directory chain to the nearest dir containing `.claude/protected-paths.txt` (its owning checkout); compute the target's path relative to THAT root and match against THAT checkout's list. Block if EITHER the HOOK_ROOT list OR the target's-checkout list matches. A target owned by no checkout (e.g. `/tmp`) stays allowed.
-3. settings.json command robust to unset CLAUDE_PROJECT_DIR + parent-folder cwd. Replace the command with a wrapper that locates the script (try `$CLAUDE_PROJECT_DIR/.claude/hooks/protect_paths.js`, then `$PWD/.claude/hooks/protect_paths.js`, then immediate subdirs `$PWD/*/.claude/hooks/protect_paths.js`), `exec`s node on the first found (stdin passes through; exit code preserved), and if none is found AND `CLAUDE_CODE_REMOTE=true` prints a `[protect-paths] BLOCKED` note and exits 2 (fail CLOSED in the cloud); if not remote, exits 0. Matcher unchanged (`Edit|Write|MultiEdit|NotebookEdit|Bash|PowerShell`).
+3. settings.json command robust to unset CLAUDE_PROJECT_DIR + parent-folder cwd, using a CROSS-PLATFORM NODE RESOLVER (NOT an `sh -c` wrapper, so Russell's local Windows sessions are unaffected). The PreToolUse command runs `node` with a small resolver (e.g. an inline `node -e` program, or a tiny resolver the command points at) that: searches `process.env.CLAUDE_PROJECT_DIR`, `process.cwd()`, and the immediate subdirectories of `process.cwd()` for `.claude/hooks/protect_paths.js`; on the first match, spawns node on it forwarding this process's stdin and exiting with the child's exit code (so a block=2 propagates faithfully); if none is found AND `CLAUDE_CODE_REMOTE` is 'true', prints a `[protect-paths] BLOCKED: hook script not found` note and exits 2 (fail CLOSED in the cloud); otherwise exits 0. Pure Node so behavior is identical on Windows and Linux. Matcher unchanged (`Edit|Write|MultiEdit|NotebookEdit|Bash|PowerShell`).
 4. Startup self-check (canary). Add `.claude/hooks/protect_canary.txt` (inside the protected `.claude/hooks/` folder). In builder.md, under `# Before you write any code`, add an explicit NARROW exception: as the first step of every build, attempt exactly one no-op Edit on `.claude/hooks/protect_canary.txt` with old_string `HOOK_SELFCHECK_DOES_NOT_EXIST` (the ONLY permitted Edit at a protected path); expected result is `[protect-paths] BLOCKED`; a "string not found" error, a module/hook error, or a success all mean STOP and tell the Lead — write no code. In lead.md, at the top of the `## BUILD` lane (before step 3a), add: first have the builder run this self-check; if it does not return `[protect-paths] BLOCKED`, STOP and report [NEEDS YOU] — the lock is not working; do not start the build.
 5. Tests (added to the PROTECTED tests/protect_paths.test.js so they stay locked). Add a runner variant in that file that controls `cwd` and `CLAUDE_PROJECT_DIR` (the existing `run()` hardcodes both to ROOT). New cases — all absolute-path builder Edits of `js/analysis.js`, expect BLOCK:
    - cwd = repo PARENT, CLAUDE_PROJECT_DIR unset
@@ -50,21 +53,26 @@ Protected by (summary): the new requirement-5 tests + the existing suite + the s
    - second checkout: build a temp dir (under the scratchpad) containing `.claude/protected-paths.txt` + `js/analysis.js`, target it, expect BLOCK, then clean up
    - tester Edit/Write of `/tmp/shot.png` => ALLOW (and keep the existing Bash screenshot case)
    All existing cases must stay green.
+6. Fix the Stop hook's identical bug. `.claude/hooks/run_stop_hook.js` (and its settings.json Stop command) resolve the script/root the same broken way. Apply the same fixes: the Stop command uses the same cross-platform node resolver pattern to locate `run_stop_hook.js` when CLAUDE_PROJECT_DIR is unset and the session starts in the parent folder, and run_stop_hook.js resolves what it needs from its own `__dirname` rather than CLAUDE_PROJECT_DIR/cwd. (The Stop hook is warn-only, so on not-found it should still not block — exit 0 — but it must actually run.)
+7. Tighten `tests/pr_rules.js` so the template placeholder does NOT count as approval. The approval check must reject the literal placeholder `APPROVED by Russell on <date>` and require a real date in `YYYY-MM-DD` form immediately after `on` (e.g. `APPROVED by Russell on 2026-10-22: ...`). Add tests in `tests/pr_rules.test.js` proving (a) a task file whose only approval line is the literal `<date>` placeholder FAILS the rule, and (b) a task file with a real `YYYY-MM-DD` approval line PASSES.
 
 ## Not changing
 - No app code (js/*, server/, HTML, CSS). Safety-system only.
 - chess.js / stockfish.js vendored files.
-- The Stop hook (`run_stop_hook.js`) command — it has the SAME CLAUDE_PROJECT_DIR bug (this warn-only hook likely no-ops in the cloud today). Flagged as Question #2; not fixed here unless Russell says so.
 - The content of protected-paths.txt (only HOW the list is located changes, not the list).
+- The CONTENT of the protected-paths list and pr_rules' other checks (only the approval-date strictness changes in pr_rules).
 
-## Questions for you
-1. Branch: keep the session-pinned `claude/slack-session-vgynce` (where this is pushed), or recreate as `agent/protect-paths-root` per lead.md's convention?
-2. The Stop hook (`run_stop_hook.js`) has the identical root-resolution bug. Fix it in THIS same PR (same __dirname + wrapper approach) or leave it to a separate task?
-3. OK to use a POSIX `sh -c` search wrapper in settings.json (works in the Linux cloud where the restricted gate matters; harmless on your local Windows main session, which is unrestricted and exits early)? Or do you want a cross-platform node-based resolver?
-4. Canary file name OK as `.claude/hooks/protect_canary.txt`?
+## Questions for you (answered 2026-10-22)
+Answers (Russell, 2026-10-22):
+1. Branch: keep `claude/slack-session-vgynce`.
+2. Stop hook: YES — fix its identical bug in this same PR (requirement 6).
+3. settings.json: use a CROSS-PLATFORM NODE RESOLVER, not an `sh` wrapper (requirement 3), so local Windows sessions are unaffected.
+4. Canary file `.claude/hooks/protect_canary.txt`: approved.
+5. NEW: tighten `tests/pr_rules.js` so the `<date>` placeholder is not accepted as approval — require a real YYYY-MM-DD, with tests (requirement 7).
 
 ## Approval
 (The Lead adds "APPROVED by Russell on <date>: <quote>" here only when Russell approves in the Slack thread.)
+APPROVED by Russell on 2026-10-22: "approved, build claude/slack-session-vgynce" — answers: keep claude/slack-session-vgynce; fix the Stop hook's identical bug in this same PR; use a cross-platform node resolver (not sh); protect_canary.txt approved; and tighten tests/pr_rules.js so the "<date>" placeholder does not count as approval (require a real YYYY-MM-DD), with tests.
 
 ## Verdicts
 - code-reviewer: <PASS/FAIL/ESCALATE> (commit <id>)
@@ -73,6 +81,7 @@ Protected by (summary): the new requirement-5 tests + the existing suite + the s
 
 ## Log
 - 2026-10-21: Plan created from the protected-paths triage. Pushed to claude/slack-session-vgynce. Awaiting Russell's approval + the protected-change label.
+- 2026-10-22: Russell approved and answered the 4 questions; added requirement 7 (pr_rules.js approval-date strictness) and requirement 6 (Stop-hook fix). Build starting.
 
 ## Retrospective
 (filled at end of build)
