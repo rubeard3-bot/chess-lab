@@ -75,13 +75,16 @@ Answers (Russell, 2026-10-22):
 APPROVED by Russell on 2026-10-22: "approved, build claude/slack-session-vgynce" — answers: keep claude/slack-session-vgynce; fix the Stop hook's identical bug in this same PR; use a cross-platform node resolver (not sh); protect_canary.txt approved; and tighten tests/pr_rules.js so the "<date>" placeholder does not count as approval (require a real YYYY-MM-DD), with tests.
 
 ## Verdicts
-- code-reviewer: <PASS/FAIL/ESCALATE> (commit <id>)
-- chess-reviewer: <PASS/FAIL/ESCALATE, or N/A with the reason> (commit <id>)
-- tester: <PASS/PARTIAL/FAIL> (commit <id>)
+- code-reviewer: PASS (commit 9118323)
+- chess-reviewer: N/A — no chess logic, engine output, evaluations, accuracy, classifications, opening data, or coach text touched; the change is limited to the protection hooks, settings.json, pr_rules, and tests (commit 9118323)
+- tester: PASS (commit f70d6df; all 7 checklist items verified — parent/subfolder/misdirected-CLAUDE_PROJECT_DIR/second-checkout blocks, canary blocks, /tmp writes allowed, both suites green, pr_rules placeholder-vs-real-date, Stop hook runs from parent; the subsequent one-line bare-cd fix in commit 9118323 is covered by the test suite and re-confirmed green by code-reviewer on 9118323)
 
 ## Log
 - 2026-10-21: Plan created from the protected-paths triage. Pushed to claude/slack-session-vgynce. Awaiting Russell's approval + the protected-change label.
 - 2026-10-22: Russell approved and answered the 4 questions; added requirement 7 (pr_rules.js approval-date strictness) and requirement 6 (Stop-hook fix). Build starting.
+- 2026-10-22: Built on claude/slack-session-vgynce. Commit f70d6df implemented requirements 1-7; code-reviewer FAIL (stale 'root' ref at protect_paths.js:216 failing open for non-remote restricted agents on a bare 'cd'); commit 9118323 fixed it (root -> HOOK_ROOT) and added a bare-cd regression test. Final: code-reviewer PASS, tester PASS, chess-reviewer N/A. ci_checks 36 files PASS; run-all 5/5 PASS. Awaiting Russell's PR + protected-change label + merge.
 
 ## Retrospective
-(filled at end of build)
+- What went wrong/slow: the impact map for the HOOK_ROOT rename missed the bare `cd`/`pushd` call site (protect_paths.js:216), so the first build shipped a stale `root` reference that failed OPEN for non-remote restricted agents; the existing suite only tested `cd js` (arg present), so it stayed green and missed it — the code-reviewer caught it.
+- What to do differently: on any variable rename in a safety file, grep the WHOLE file for the old identifier as part of the impact map, and add edge-case tests (e.g. bare `cd`) alongside the happy path rather than only the common case.
+- Who should remember it: the builder (whole-file grep on renames) and the Lead/tester (edge-case coverage for the lock, not just the typical path).
