@@ -2,6 +2,7 @@ const express    = require('express');
 const cors       = require('cors');
 const rateLimit  = require('express-rate-limit');
 const fetch      = require('node-fetch');
+const { buildExplorerUrl } = require('./explorer_url');
 
 const app  = express();
 app.set('trust proxy', 1);
@@ -436,13 +437,8 @@ const lichessExplorerLimiter = rateLimit({
 
 app.get('/api/lichess-explorer', lichessExplorerLimiter, async (req, res) => {
   try {
-    const allowed = ['fen', 'speeds', 'ratings', 'moves', 'variant'];
-    const params  = new URLSearchParams();
-    for (const key of allowed) {
-      if (req.query[key] != null) params.set(key, req.query[key]);
-    }
-
-    const url      = `https://explorer.lichess.ovh/lichess?${params.toString()}`;
+    // ?db=masters selects the masters database; default stays "lichess" (players).
+    const url      = buildExplorerUrl(req.query);
     const upstream = await fetch(url, {
       headers: { Authorization: `Bearer ${process.env.LICHESS_API_TOKEN}` }
     });
