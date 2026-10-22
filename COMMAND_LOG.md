@@ -129,3 +129,8 @@ Answers to the 4 plan questions (same thread):
 - ADDED: tighten `tests/pr_rules.js` so the template placeholder "APPROVED by Russell on <date>" does NOT count as approval — require a real `YYYY-MM-DD` immediately after "on", with a test proving the `<date>` placeholder FAILS and a real approval line PASSES.
 
 Build record: Built + reviewed the protected-paths hardening on claude/slack-session-vgynce; final commit 9118323; code-reviewer PASS / tester PASS / chess-reviewer N/A; awaiting Russell's PR + protected-change label + merge.
+
+---
+
+### 2026-10-21 (Russell, advisor session)
+> Lets do the leftover check real quick then if its so easy
